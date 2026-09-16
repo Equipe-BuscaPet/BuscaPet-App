@@ -1,0 +1,765 @@
+<!doctype html>
+<title>Wireframes BuscaPet</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2ea;
+    --surface: #ffffff;
+    --surface-2: #fbf9f4;
+    --wire: #cabfa9;
+    --wire-strong: #a99c80;
+    --wire-fill: #efe9db;
+    --hatch: #e4dcc8;
+    --ink: #23201a;
+    --ink-dim: #726a5a;
+    --ink-faint: #a89d87;
+    --accent: #d9631f;
+    --accent-ink: #fffaf3;
+    --navy: #1c3550;
+    --navy-ink: #eef3f8;
+    --whatsapp: #2fa06d;
+    --tag-doc-bg: #e3ecdf;
+    --tag-doc-ink: #3c6b3f;
+    --tag-parcial-bg: #f3e9cf;
+    --tag-parcial-ink: #8a6a1f;
+    --tag-ideia-bg: #f2ded0;
+    --tag-ideia-ink: #a1502a;
+    --shadow: 0 1px 2px rgba(35,32,26,.06), 0 8px 24px -12px rgba(35,32,26,.18);
+    color-scheme: light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181c;
+      --surface: #1b2025;
+      --surface-2: #20262c;
+      --wire: #3c434b;
+      --wire-strong: #545c66;
+      --wire-fill: #232a31;
+      --hatch: #262d34;
+      --ink: #ece7dc;
+      --ink-dim: #a3a99f;
+      --ink-faint: #6f7681;
+      --accent: #ef8241;
+      --accent-ink: #201205;
+      --navy: #7fb0dc;
+      --navy-ink: #0c1720;
+      --whatsapp: #4bbf8a;
+      --tag-doc-bg: #223626;
+      --tag-doc-ink: #8fd39f;
+      --tag-parcial-bg: #362c17;
+      --tag-parcial-ink: #e0bd6a;
+      --tag-ideia-bg: #3a2519;
+      --tag-ideia-ink: #eda07c;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181c;
+    --surface: #1b2025;
+    --surface-2: #20262c;
+    --wire: #3c434b;
+    --wire-strong: #545c66;
+    --wire-fill: #232a31;
+    --hatch: #262d34;
+    --ink: #ece7dc;
+    --ink-dim: #a3a99f;
+    --ink-faint: #6f7681;
+    --accent: #ef8241;
+    --accent-ink: #201205;
+    --navy: #7fb0dc;
+    --navy-ink: #0c1720;
+    --whatsapp: #4bbf8a;
+    --tag-doc-bg: #223626;
+    --tag-doc-ink: #8fd39f;
+    --tag-parcial-bg: #362c17;
+    --tag-parcial-ink: #e0bd6a;
+    --tag-ideia-bg: #3a2519;
+    --tag-ideia-ink: #eda07c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  [hidden] { display: none !important; }
+
+  .app {
+    display: flex;
+    min-height: 100%;
+  }
+
+  /* ---------- Nav rail ---------- */
+  .rail {
+    flex: 0 0 232px;
+    background: var(--surface);
+    border-right: 1px solid var(--wire);
+    padding: 20px 14px calc(20px + env(safe-area-inset-bottom, 0px));
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+    padding: 0 6px;
+  }
+  .brand b:first-child { color: var(--navy); }
+  .brand b:last-child { color: var(--accent); }
+  .rail-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .66rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 6px;
+  }
+  .rail nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .rail button {
+    all: unset;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: 500;
+    color: var(--ink-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.25;
+  }
+  .rail button .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    color: var(--ink-faint);
+    width: 1.4em;
+  }
+  .rail button:hover { background: var(--surface-2); color: var(--ink); }
+  .rail button[aria-current="true"] {
+    background: var(--wire-fill);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .rail button[aria-current="true"] .num { color: var(--accent); }
+  .rail-foot {
+    margin-top: auto;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    font-size: .74rem;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .rail-foot code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    background: var(--wire-fill);
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+
+  /* ---------- Legend chips ---------- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 6px;
+  }
+  .chip {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    padding: 2px 7px;
+    border-radius: 100px;
+  }
+  .chip.doc { background: var(--tag-doc-bg); color: var(--tag-doc-ink); }
+  .chip.parcial { background: var(--tag-parcial-bg); color: var(--tag-parcial-ink); }
+  .chip.ideia { background: var(--tag-ideia-bg); color: var(--tag-ideia-ink); }
+
+  /* ---------- Main stage ---------- */
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: calc(28px + env(safe-area-inset-top, 0px)) 32px calc(48px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    justify-content: center;
+  }
+  .stage-inner { width: 100%; max-width: 1040px; }
+
+  .stage-head {
+    margin-bottom: 18px;
+  }
+  .stage-head h1 {
+    font-size: 1.5rem;
+    margin: 0 0 4px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .stage-head p {
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: .92rem;
+    max-width: 62ch;
+  }
+
+  /* device frame */
+  .frame {
+    background: var(--surface);
+    border: 1px solid var(--wire);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--wire);
+    background: var(--surface-2);
+  }
+  .frame-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wire-strong); }
+  .frame-bar .url {
+    margin-left: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    color: var(--ink-faint);
+  }
+  .frame-body { padding: 22px; }
+
+  /* ---------- wireframe primitives ---------- */
+  .wf {
+    position: relative;
+    border: 1.5px dashed var(--wire-strong);
+    border-radius: 8px;
+    background: var(--wire-fill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .02em;
+    min-height: 34px;
+    padding: 6px 8px;
+  }
+  .wf.solid { border-style: solid; }
+  .wf.img {
+    background-image: repeating-linear-gradient(135deg, var(--hatch) 0 6px, transparent 6px 12px);
+    color: var(--ink-faint);
+  }
+  .wf.tight { min-height: 0; padding: 5px 8px; }
+  .wf-label {
+    position: absolute;
+    top: -9px;
+    left: 8px;
+    background: var(--surface);
+    padding: 0 5px;
+    font-size: .6rem;
+    color: var(--ink-faint);
+    letter-spacing: .04em;
+  }
+
+  .btn {
+    all: unset;
+    cursor: pointer;
+    font-family: "Figtree", sans-serif;
+    font-weight: 700;
+    font-size: .82rem;
+    padding: 9px 16px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .btn.accent { background: var(--accent); color: var(--accent-ink); }
+  .btn.navy { background: var(--navy); color: var(--navy-ink); }
+  .btn.ghost { background: transparent; border: 1.5px solid var(--wire-strong); color: var(--ink); }
+  .btn.whatsapp { background: var(--whatsapp); color: #06210f; }
+  .btn.tiny { padding: 5px 10px; font-size: .72rem; border-radius: 6px; }
+
+  .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .6rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+
+  .annot {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .annot-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: .82rem;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .annot-item strong { color: var(--ink); font-weight: 600; }
+
+  /* generic layout helpers */
+  .row { display: flex; gap: 10px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+
+  /* ---------- screen: header nav mock ---------- */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--wire);
+    flex-wrap: wrap;
+  }
+  .app-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  .app-nav span {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ink-dim);
+    padding: 6px 10px;
+    border-radius: 100px;
+  }
+  .app-nav span.active { background: var(--wire-fill); color: var(--ink); }
+
+  /* ---------- auth screen ---------- */
+  .auth-shell { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .auth-card { width: 100%; max-width: 320px; }
+  .auth-tabs { display: flex; gap: 4px; background: var(--surface-2); border-radius: 100px; padding: 3px; margin-bottom: 16px; }
+  .auth-tabs button {
+    all: unset; flex: 1; text-align: center; cursor: pointer;
+    font-size: .78rem; font-weight: 700; padding: 7px 0; border-radius: 100px; color: var(--ink-dim);
+  }
+  .auth-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .field-label { font-size: .72rem; color: var(--ink-dim); margin-bottom: 4px; display: block; }
+  .account-pick { display: flex; flex-direction: column; gap: 8px; }
+  .account-opt {
+    border: 1.5px solid var(--wire); border-radius: 10px; padding: 10px 12px;
+    font-size: .8rem; color: var(--ink-dim); background: var(--surface-2);
+  }
+  .account-opt b { color: var(--ink); display: block; font-size: .84rem; margin-bottom: 1px; }
+
+  /* ---------- inicio screen ---------- */
+  .inicio-grid { display: flex; gap: 16px; align-items: stretch; min-height: 360px; }
+  .inicio-list { flex: 0 0 258px; display: flex; flex-direction: column; gap: 10px; }
+  .inicio-tabs { display: flex; gap: 6px; }
+  .inicio-tabs .tab { flex: 1; text-align: center; font-size: .74rem; font-weight: 700; padding: 6px 4px; border-radius: 7px; background: var(--surface-2); color: var(--ink-dim); }
+  .inicio-tabs .tab.active { background: var(--navy); color: var(--navy-ink); }
+  .list-item { display: flex; gap: 8px; align-items: center; padding: 7px; border: 1px solid var(--wire); border-radius: 9px; }
+  .list-item .thumb { flex: 0 0 34px; height: 34px; border-radius: 7px; }
+  .list-item .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .list-item .meta b { font-size: .76rem; }
+  .list-item .meta span { font-size: .68rem; color: var(--ink-faint); }
+  .map-area { flex: 1; border-radius: 10px; position: relative; min-height: 260px; }
+  .pin { position: absolute; width: 9px; height: 9px; border-radius: 50% 50% 50% 0; background: var(--accent); transform: rotate(-45deg); box-shadow: 0 0 0 2px var(--surface); }
+
+  /* ---------- perfil abrigo ---------- */
+  .abrigo-head { display: flex; gap: 14px; align-items: center; }
+  .abrigo-avatar { flex: 0 0 64px; height: 64px; border-radius: 12px; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+  .filter-chip { font-size: .7rem; padding: 5px 10px; border-radius: 100px; border: 1px solid var(--wire); color: var(--ink-dim); }
+  .animal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .animal-card { border: 1px solid var(--wire); border-radius: 10px; overflow: hidden; }
+  .animal-card .ph { height: 74px; }
+  .animal-card .info { padding: 7px 8px; font-size: .72rem; }
+  .animal-card .info b { display: block; font-size: .78rem; }
+  @media (max-width: 640px) { .animal-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- modal detalhe ---------- */
+  .modal-backdrop { background: color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 10px; padding: 26px; display: flex; justify-content: center; }
+  .modal-card { width: 100%; max-width: 460px; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .modal-gallery { height: 170px; position: relative; }
+  .gallery-dots { position: absolute; bottom: 8px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; }
+  .gallery-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint); display: block; }
+  .gallery-dots i:first-child { background: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent); }
+  .modal-body { padding: 16px; }
+  .ficha { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: .78rem; margin: 10px 0 14px; }
+  .ficha div span { color: var(--ink-faint); display: block; font-size: .66rem; }
+
+  /* ---------- wizard ---------- */
+  .stepper { display: flex; align-items: center; margin-bottom: 18px; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; }
+  .step .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--wire-fill); border: 2px solid var(--wire-strong); display: flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", monospace; font-size: .66rem; color: var(--ink-faint); z-index: 1; }
+  .step.done .dot { background: var(--navy); border-color: var(--navy); color: var(--navy-ink); }
+  .step.current .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .step span.lbl { font-size: .62rem; color: var(--ink-faint); text-align: center; }
+  .step.current span.lbl, .step.done span.lbl { color: var(--ink-dim); font-weight: 600; }
+  .step:not(:last-child)::after { content: ""; position: absolute; top: 11px; left: 50%; width: 100%; height: 2px; background: var(--wire); z-index: 0; }
+  .step.done:not(:last-child)::after { background: var(--navy); }
+
+  .substep-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .substep-tabs button { all: unset; cursor: pointer; font-size: .74rem; font-weight: 600; padding: 6px 12px; border-radius: 100px; background: var(--surface-2); color: var(--ink-dim); }
+  .substep-tabs button.active { background: var(--wire-fill); color: var(--ink); }
+
+  .dropzone { border: 2px dashed var(--wire-strong); border-radius: 12px; padding: 26px; text-align: center; color: var(--ink-faint); font-size: .8rem; }
+  .thumb-row { display: flex; gap: 8px; margin-top: 10px; }
+  .thumb-row .wf { flex: 1; aspect-ratio: 1; }
+
+  .cand-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .cand-card { border: 1px solid var(--wire); border-radius: 10px; overflow: hidden; }
+  .cand-card .ph { height: 90px; position: relative; }
+  .cand-card .sem { position: absolute; top: 6px; left: 6px; }
+  .cand-card .info { padding: 7px 8px; font-size: .68rem; color: var(--ink-dim); }
+  .sem.alta { background: var(--tag-doc-bg); color: var(--tag-doc-ink); }
+  .sem.media { background: var(--tag-parcial-bg); color: var(--tag-parcial-ink); }
+  .sem.baixa { background: var(--wire-fill); color: var(--ink-faint); }
+  @media (max-width: 640px) { .cand-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- quem apoia ---------- */
+  .cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cat-tabs span { font-size: .74rem; font-weight: 700; padding: 6px 12px; border-radius: 100px; background: var(--surface-2); color: var(--ink-dim); }
+  .cat-tabs span.active { background: var(--accent); color: var(--accent-ink); }
+  .destaque { display: flex; gap: 12px; border: 1px solid var(--wire); border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+  .destaque .ph { flex: 0 0 84px; height: 84px; }
+  .destaque blockquote { margin: 4px 0 0; font-size: .8rem; color: var(--ink-dim); font-style: italic; }
+  .rank-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .rank-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--wire); border-radius: 9px; font-size: .78rem; }
+  .rank-row .pos { font-family: "IBM Plex Mono", monospace; color: var(--ink-faint); width: 1.4em; }
+  .rank-row .badge { margin-left: auto; }
+  .need-list { display: flex; flex-direction: column; gap: 6px; }
+  .need-row { display: flex; align-items: center; gap: 8px; font-size: .78rem; padding: 7px 10px; border: 1px solid var(--wire); border-radius: 9px; }
+  .urg { margin-left: auto; }
+  .urg.alta { background: var(--tag-ideia-bg); color: var(--tag-ideia-ink); }
+  .urg.media { background: var(--tag-parcial-bg); color: var(--tag-parcial-ink); }
+  .urg.baixa { background: var(--tag-doc-bg); color: var(--tag-doc-ink); }
+
+  @media (max-width: 760px) {
+    .app { flex-direction: column; }
+    .rail { position: static; height: auto; width: 100%; flex-direction: row; align-items: center; overflow-x: auto; padding: 12px; gap: 12px; }
+    .rail nav { flex-direction: row; }
+    .rail-foot, .legend { display: none; }
+    main { padding: 20px 16px 40px; }
+  }
+  @media (max-width: 620px) {
+    .inicio-grid { flex-direction: column; }
+    .inicio-list { flex: none; }
+    .abrigo-head { flex-wrap: wrap; }
+    .ficha { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .frame { animation: rise .35s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><b>busca</b><b>pet</b></div>
+    <div class="rail-label">Protótipo · telas principais</div>
+    <nav id="nav"></nav>
+    <div class="legend">
+      <span class="chip doc">DOC</span>
+      <span class="chip parcial">DOC parcial</span>
+      <span class="chip ideia">IDEIA</span>
+    </div>
+    <div class="rail-foot">
+      Legenda de <code>descricao-paginas-fluxos-v1.md</code>: o que já está no
+      escopo, o que existe parcialmente e o que é sugestão da equipe.
+    </div>
+  </aside>
+
+  <main>
+    <div class="stage-inner" id="stage"></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const screens = [
+    {
+      id: "auth",
+      title: "Autenticação",
+      desc: "Login único — o sistema identifica o perfil pelo e-mail, sem botões separados por tipo de conta (decisão de arquitetura, seção 2.1 do escopo).",
+      url: "buscapet.app/entrar",
+      body: `
+        <div class="auth-shell"><div class="auth-card">
+          <div class="auth-tabs">
+            <button class="active">Entrar</button>
+            <button>Cadastrar</button>
+          </div>
+          <div class="col">
+            <div><span class="field-label">E-mail</span><div class="wf tight solid" style="justify-content:flex-start;padding-left:10px;">voce@exemplo.com</div></div>
+            <div><span class="field-label">Senha</span><div class="wf tight solid" style="justify-content:flex-start;padding-left:10px;">••••••••</div></div>
+            <div class="row" style="justify-content:space-between;align-items:center;">
+              <span style="font-size:.72rem;color:var(--ink-faint)">Esqueci minha senha</span>
+              <span class="tag" style="background:var(--tag-parcial-bg);color:var(--tag-parcial-ink)">DOC parcial</span>
+            </div>
+            <button class="btn accent">Entrar</button>
+            <button class="btn ghost">Ver mapa sem entrar</button>
+          </div>
+        </div></div>
+      `,
+      annot: [
+        ["DOC", "Tela única de login — RF-02, escopo seção 2.1."],
+        ["IDEIA", "Atalho “Ver mapa sem entrar”: RF-04 libera navegação sem login, mas isso precisa aparecer na UI para quem está em pânico não achar que precisa de conta primeiro."],
+      ],
+    },
+    {
+      id: "cadastro",
+      title: "Cadastro — escolha de perfil",
+      desc: "O tipo de conta é escolhido no cadastro, nunca no login (seção 2.1 do escopo).",
+      url: "buscapet.app/cadastro",
+      body: `
+        <div class="auth-shell"><div class="auth-card">
+          <div class="auth-tabs"><button>Entrar</button><button class="active">Cadastrar</button></div>
+          <div class="account-pick">
+            <div class="account-opt"><b>Quero adotar ou encontrar meu animal</b>Tutor / adotante</div>
+            <div class="account-opt"><b>Represento um abrigo ou sou protetor</b>Passa por validação do admin — RF-06</div>
+            <div class="account-opt"><b>Represento um estabelecimento que quer apoiar</b>Petshop, clínica ou distribuidora</div>
+          </div>
+        </div></div>
+      `,
+      annot: [
+        ["DOC", "Três opções de cadastro — RF-01, escopo seção 2.1."],
+        ["IDEIA", "Campos por opção detalhados em descricao-paginas-fluxos-v1.md (documento não lista campos explicitamente)."],
+      ],
+    },
+    {
+      id: "inicio",
+      title: "Início — mapa e descoberta",
+      desc: "Mapa central com lista lateral sincronizada, abas por camada (RF-07 a RF-09).",
+      url: "buscapet.app/",
+      body: `
+        <div class="app-header">
+          <div class="brand" style="font-size:.95rem"><b>busca</b><b>pet</b></div>
+          <div class="app-nav">
+            <span class="active">Início</span><span>Perdi meu animal</span><span>Encontrei um animal</span><span>Quem apoia</span><span>Minha conta</span>
+          </div>
+        </div>
+        <div class="inicio-grid">
+          <div class="inicio-list">
+            <div class="wf tight solid" style="justify-content:flex-start;padding-left:10px;">Buscar por cidade/bairro…</div>
+            <div class="inicio-tabs">
+              <div class="tab active">Abrigos</div><div class="tab">Perdidos</div><div class="tab">Avistados</div>
+            </div>
+            <div style="font-size:.68rem;color:var(--ink-faint)">38 abrigos num raio de 15&nbsp;km</div>
+            <div class="list-item"><div class="wf img thumb"></div><div class="meta"><b>Abrigo Patas Felizes</b><span>1,2 km · Boa Viagem</span></div></div>
+            <div class="list-item"><div class="wf img thumb"></div><div class="meta"><b>Lar Temporário Recife</b><span>2,8 km · Casa Amarela</span></div></div>
+            <div class="list-item"><div class="wf img thumb"></div><div class="meta"><b>Protetora Ana Luiza</b><span>4,1 km · Várzea</span></div></div>
+          </div>
+          <div class="map-area wf img" data-label="mapa">
+            <div class="pin" style="top:30%;left:38%"></div>
+            <div class="pin" style="top:52%;left:60%"></div>
+            <div class="pin" style="top:68%;left:30%"></div>
+          </div>
+        </div>
+      `,
+      annot: [
+        ["DOC", "Mapa + lista sincronizada, abas Abrigos/Perdidos/Avistados — RF-07 a RF-09."],
+        ["IDEIA", "Campo de busca por cidade/bairro e contador “38 abrigos num raio de 15 km”, conectando com RF-11."],
+      ],
+    },
+    {
+      id: "abrigo",
+      title: "Perfil do Abrigo",
+      desc: "Catálogo de animais do abrigo, com filtros combinados (RF-12 a RF-14).",
+      url: "buscapet.app/abrigos/patas-felizes",
+      body: `
+        <div class="abrigo-head">
+          <div class="wf img abrigo-avatar"></div>
+          <div class="col" style="gap:4px">
+            <b style="font-size:1rem">Abrigo Patas Felizes</b>
+            <span style="font-size:.76rem;color:var(--ink-dim)">Rua das Acácias, 120 · Seg–Sáb, 9h–17h</span>
+            <span style="font-size:.72rem;color:var(--ink-faint)">18 animais disponíveis · 3 necessidades em aberto</span>
+          </div>
+        </div>
+        <div class="chip-row">
+          <span class="filter-chip">Espécie</span><span class="filter-chip">Porte</span><span class="filter-chip">Sexo</span>
+          <span class="filter-chip">Idade</span><span class="filter-chip">Castrado</span><span class="filter-chip">Vacinado</span>
+          <span class="filter-chip">Com crianças</span>
+        </div>
+        <div class="animal-grid">
+          ${["Mel","Thor","Nina","Bidu"].map(n => `
+            <div class="animal-card">
+              <div class="wf img ph"></div>
+              <div class="info"><b>${n}</b>cão · médio · 2 anos</div>
+            </div>`).join("")}
+        </div>
+      `,
+      annot: [
+        ["DOC", "Cabeçalho, grade 4 colunas e filtros combinados — escopo seção 3.2, RF-13/RF-14."],
+      ],
+    },
+    {
+      id: "detalhe",
+      title: "Detalhe do Animal",
+      desc: "Sobreposição com galeria e ficha completa — o clique no WhatsApp registra interesse antes de redirecionar (RF-16).",
+      url: "buscapet.app/abrigos/patas-felizes · modal",
+      body: `
+        <div class="modal-backdrop">
+          <div class="modal-card">
+            <div class="modal-gallery wf img" data-label="galeria">
+              <div class="gallery-dots"><i></i><i></i><i></i></div>
+            </div>
+            <div class="modal-body">
+              <b style="font-size:1.05rem">Mel</b>
+              <div class="ficha">
+                <div>Espécie<span>Cão, SRD</span></div>
+                <div>Porte<span>Médio</span></div>
+                <div>Idade<span>~2 anos</span></div>
+                <div>Sexo<span>Fêmea</span></div>
+                <div>Castrada<span>Sim</span></div>
+                <div>Vacinas<span>Em dia</span></div>
+              </div>
+              <button class="btn whatsapp" style="width:100%">Falar no WhatsApp</button>
+            </div>
+          </div>
+        </div>
+      `,
+      annot: [
+        ["DOC", "Ficha e galeria navegável — escopo seção 3.3."],
+        ["DOC", "Registro de interesse antes do redirecionamento — RF-16: “um clique, um registro”."],
+      ],
+    },
+    {
+      id: "perdi",
+      title: "Perdi meu animal",
+      desc: "Wizard de 6 etapas com progresso visível (escopo seção 4.2). Alternar abaixo entre a Etapa 1 e a Etapa 5.",
+      url: "buscapet.app/perdi-meu-animal",
+      body: `
+        <div class="substep-tabs">
+          <button class="active" data-sub="s1">Etapa 1 — Fotos</button>
+          <button data-sub="s5">Etapa 5 — Resultados</button>
+        </div>
+        <div class="stepper">
+          ${["Fotos","Características","Local","Processando","Resultados","Salvar"].map((l,i) => `
+            <div class="step ${i===0?'current':''}" data-step="${i}">
+              <div class="dot">${i+1}</div><span class="lbl">${l}</span>
+            </div>`).join("")}
+        </div>
+        <div id="sub-s1">
+          <div class="dropzone">Arraste de 1 a 5 fotos, ou toque para escolher<br><span style="font-size:.7rem">corpo inteiro · boa luz · ângulos diferentes</span></div>
+          <div class="thumb-row">
+            <div class="wf img"></div><div class="wf img"></div><div class="wf" style="color:var(--ink-faint)">+</div>
+          </div>
+        </div>
+        <div id="sub-s5" hidden>
+          <div style="font-size:.78rem;color:var(--ink-dim);margin-bottom:10px">comparando com 3.482 registros — candidatos ordenados por semelhança</div>
+          <div class="cand-grid">
+            <div class="cand-card"><div class="ph wf img"><span class="tag sem alta">alta</span></div><div class="info">Avistamento · 1,1 km · há 2 dias</div></div>
+            <div class="cand-card"><div class="ph wf img"><span class="tag sem media">média</span></div><div class="info">Abrigo Patas Felizes · 3 km · hoje</div></div>
+            <div class="cand-card"><div class="ph wf img"><span class="tag sem baixa">baixa</span></div><div class="info">Avistamento · 6,4 km · há 5 dias</div></div>
+          </div>
+        </div>
+      `,
+      annot: [
+        ["DOC", "Wizard de 6 etapas com progresso visível — escopo seção 4.2."],
+        ["DOC", "Grau de semelhança qualitativo (alta/média/baixa), nunca porcentagem crua ou confirmação de match — escopo seção 4.3."],
+      ],
+    },
+    {
+      id: "apoia",
+      title: "Quem apoia",
+      desc: "Ranking por categoria + mural de necessidades — combina reconhecimento com conversão (escopo seção 5.3).",
+      url: "buscapet.app/quem-apoia",
+      body: `
+        <div class="cat-tabs">
+          <span class="active">Petshop</span><span>Clínica</span><span>Distribuidora</span><span>Pessoa física</span>
+        </div>
+        <div class="destaque">
+          <div class="wf img ph"></div>
+          <div>
+            <b style="font-size:.86rem">Destaque do mês · Ração & Cia</b>
+            <blockquote>“Com a doação mensal conseguimos manter os 40 animais alimentados mesmo nos meses mais difíceis.” — Abrigo Patas Felizes</blockquote>
+          </div>
+        </div>
+        <div class="rank-list">
+          ${[["1","Ração & Cia","6 meses seguidos"],["2","Petshop Amigo Fiel","4 meses seguidos"],["3","VetCare Clínica","2 meses seguidos"]].map(([p,n,r]) => `
+            <div class="rank-row"><span class="pos">${p}</span><b>${n}</b><span style="color:var(--ink-faint)">${r}</span><span class="tag badge" style="background:var(--tag-doc-bg);color:var(--tag-doc-ink)">selo ativo</span></div>`).join("")}
+        </div>
+        <div class="need-list">
+          <div class="need-row">Ração adulta · 20 sacos <span class="tag urg alta">alta</span></div>
+          <div class="need-row">Areia sanitária · 40 un. <span class="tag urg media">média</span></div>
+          <div class="need-row">Vermífugo · 15 un. <span class="tag urg baixa">baixa</span></div>
+        </div>
+        <button class="btn accent" style="margin-top:14px">Quero apoiar</button>
+      `,
+      annot: [
+        ["DOC", "Categorias, pontuação por regularidade e mural combinado — escopo seção 5.2/5.3."],
+        ["IDEIA", "Selo “ativo” no cartão do ranking — reforça a contrapartida ao apoiador (seção 5.4)."],
+      ],
+    },
+  ];
+
+  const nav = document.getElementById("nav");
+  const stage = document.getElementById("stage");
+
+  screens.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.innerHTML = `<span class="num">${String(i+1).padStart(2,"0")}</span>${s.title}`;
+    b.addEventListener("click", () => render(s.id));
+    b.dataset.id = s.id;
+    nav.appendChild(b);
+  });
+
+  function tagChip(kind) {
+    const map = { DOC: "doc", "DOC parcial": "parcial", IDEIA: "ideia" };
+    return `<span class="tag chip ${map[kind]}">${kind}</span>`;
+  }
+
+  function render(id) {
+    const s = screens.find(x => x.id === id);
+    [...nav.children].forEach(b => b.toggleAttribute("aria-current", b.dataset.id === id));
+    stage.innerHTML = `
+      <div class="stage-head">
+        <h1>${s.title}</h1>
+        <p>${s.desc}</p>
+      </div>
+      <div class="frame">
+        <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">${s.url}</span></div>
+        <div class="frame-body">${s.body}</div>
+      </div>
+      <div class="annot">
+        ${s.annot.map(([tag, text]) => `<div class="annot-item">${tagChip(tag)}<span>${text}</span></div>`).join("")}
+      </div>
+    `;
+    if (id === "perdi") {
+      const subBtns = stage.querySelectorAll(".substep-tabs button");
+      subBtns.forEach(btn => btn.addEventListener("click", () => {
+        subBtns.forEach(x => x.classList.toggle("active", x === btn));
+        const target = btn.dataset.sub;
+        stage.querySelector("#sub-s1").hidden = target !== "s1";
+        stage.querySelector("#sub-s5").hidden = target !== "s5";
+        const stepIdx = target === "s1" ? 0 : 4;
+        stage.querySelectorAll(".step").forEach((st, i) => {
+          st.classList.toggle("current", i === stepIdx);
+          st.classList.toggle("done", i < stepIdx);
+        });
+      }));
+    }
+  }
+
+  render(screens[0].id);
+})();
+</script>
