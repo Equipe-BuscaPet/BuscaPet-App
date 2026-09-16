@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: buscapet
+      POSTGRES_PASSWORD: buscapet
+      POSTGRES_DB: buscapet
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://buscapet:buscapet@db:5432/buscapet
+      REDIS_URL: redis://redis:6379/0
+      NUCLEO_OPENCL_URL: http://nucleo-opencl:8001
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./api:/app
+
+  nucleo-opencl:
+    build: ./nucleo-opencl
+    ports:
+      - "8001:8001"
+    # PoCL (runtime OpenCL por software) é instalado dentro da imagem — ver
+    # nucleo-opencl/Dockerfile. Implementação do serviço é trabalho da Sprint 3.
+
+  frontend:
+    build: ./frontend
+    env_file: .env
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  db_data:
