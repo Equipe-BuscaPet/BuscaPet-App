@@ -1,4 +1,5 @@
 .env
+registro-sessoes/
 __pycache__/
 *.pyc
 .venv/

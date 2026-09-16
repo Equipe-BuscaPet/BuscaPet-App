@@ -182,6 +182,10 @@ erDiagram
     }
 ```
 
+![Modelo Entidade-Relacionamento do BuscaPet](imagens/03-mer.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
+
 ## 3.1 Decisões de modelagem que exigem explicação
 
 **Contas por tipo (table-per-type), não uma tabela única com colunas opcionais.**
