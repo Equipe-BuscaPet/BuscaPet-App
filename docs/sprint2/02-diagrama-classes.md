@@ -185,6 +185,10 @@ classDiagram
     Usuario "1" o-- "*" LogAuditoria
 ```
 
+![Diagrama de classes do BuscaPet](imagens/02-diagrama-classes.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
+
 ## Notas sobre decisões de modelagem
 
 - **`NucleoComparacaoClient` e `MonitoramentoWorker`** são classes de serviço do backend Python — não do núcleo em C. Elas encapsulam a chamada HTTP (`httpx`) ao serviço `nucleo-opencl`, mantendo o resto do domínio (Tutor, Abrigo etc.) sem nenhuma dependência direta de como o núcleo é implementado. Se o núcleo mudar de linguagem no futuro, só essas duas classes precisam mudar.

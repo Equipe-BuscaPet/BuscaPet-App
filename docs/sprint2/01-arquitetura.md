@@ -44,6 +44,10 @@ graph TB
     Nucleo -.->|PoCL runtime| CPU["dispositivo CPU\n(sem GPU)"]
 ```
 
+![Diagrama de arquitetura do BuscaPet](imagens/01-arquitetura.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
+
 ## 1.2 Componentes e tecnologias
 
 | Componente | Tecnologia | Responsabilidade |

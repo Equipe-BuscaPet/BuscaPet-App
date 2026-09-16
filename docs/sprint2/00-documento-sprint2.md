@@ -19,7 +19,7 @@ Marlon Porto Torres — 01611478
 
 ---
 
-> ⚠️ **Antes de gerar o PDF final:** o roteiro exige um único arquivo contendo **todas as sprints anteriores + a atual**. Este arquivo cobre só a Sprint 2. Juntar, nesta ordem: (1) capa + conteúdo de `Buscapet Sprint1.pdf` (já está em `docs/`), (2) este documento convertido em PDF. Ferramentas possíveis: colar este Markdown no Google Docs/Word e exportar como PDF, ou uma extensão "Markdown PDF" no VS Code, e depois mesclar os dois PDFs (ferramenta online de merge, ou imprimir os dois como um único PDF).
+> ⚠️ **Antes de gerar o PDF final:** o roteiro exige um único arquivo contendo **todas as sprints anteriores + a atual**. Este arquivo cobre só a Sprint 2. Juntar, nesta ordem: (1) capa + conteúdo de `Buscapet Sprint1.pdf` (já está em `docs/`), (2) este documento convertido em PDF. Ferramentas possíveis: colar este Markdown no Google Docs/Word e exportar como PDF, ou uma extensão "Markdown PDF" no VS Code, e depois mesclar os dois PDFs (ferramenta online de merge, ou imprimir os dois como um único PDF). As imagens em `imagens/` já substituem os blocos Mermaid para quem for colar no Word.
 
 ---
 
@@ -80,6 +80,10 @@ graph TB
     Nucleo -->|grava resultado| DB
     Nucleo -.->|PoCL runtime| CPU["dispositivo CPU\n(sem GPU)"]
 ```
+
+![Diagrama de arquitetura do BuscaPet](imagens/01-arquitetura.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
 
 ## 1.2 Componentes e tecnologias
 
@@ -293,6 +297,10 @@ classDiagram
     Usuario "1" o-- "*" LogAuditoria
 ```
 
+![Diagrama de classes do BuscaPet](imagens/02-diagrama-classes.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
+
 ## Notas sobre decisões de modelagem
 
 - **`NucleoComparacaoClient` e `MonitoramentoWorker`** são classes de serviço do backend Python — não do núcleo em C. Elas encapsulam a chamada HTTP (`httpx`) ao serviço `nucleo-opencl`, mantendo o resto do domínio (Tutor, Abrigo etc.) sem nenhuma dependência direta de como o núcleo é implementado. Se o núcleo mudar de linguagem no futuro, só essas duas classes precisam mudar.
@@ -484,6 +492,10 @@ erDiagram
         int entidade_id
     }
 ```
+
+![Modelo Entidade-Relacionamento do BuscaPet](imagens/03-mer.png)
+
+_Imagem gerada a partir do bloco Mermaid acima — usar esta versão ao colar no Word/Google Docs, que não renderizam Mermaid nativamente._
 
 ## 3.1 Decisões de modelagem que exigem explicação
 
