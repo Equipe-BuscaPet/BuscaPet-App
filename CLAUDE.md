@@ -12,8 +12,8 @@ Software, Tópicos Avançados e Extensão IV.
 - Docker Compose local: `api`, `nucleo-opencl`, `db`, `redis`, `frontend`
 
 ## Onde estão as regras de negócio
-- `docs/` tem o documento de escopo, o plano de sprints, a descrição de páginas/fluxos e as notas técnicas — são a fonte de verdade para requisitos (RF-01 a RF-41) e decisões de arquitetura. Consultar antes de assumir comportamento.
-- `docs/schema.sql` é o modelo relacional; `api/app/models/` é a mesma coisa em SQLAlchemy — as duas fontes devem ficar em sincronia.
+- O repositório separado [`Docs`](https://github.com/Equipe-BuscaPet/Docs) (organização `Equipe-BuscaPet`) tem o documento de escopo, o plano de sprints, a descrição de páginas/fluxos e as notas técnicas — são a fonte de verdade para requisitos (RF-01 a RF-41) e decisões de arquitetura. Consultar antes de assumir comportamento. Não está clonado dentro deste repositório.
+- `docs/schema.sql` (neste repositório) é o modelo relacional; `api/app/models/` é a mesma coisa em SQLAlchemy — as duas fontes devem ficar em sincronia.
 
 ## Convenções
 - Nomes de tabelas/campos em português, snake_case (segue o domínio do projeto).

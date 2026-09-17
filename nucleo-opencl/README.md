@@ -6,7 +6,7 @@ RF-29). Escrito em **C** com a API oficial do OpenCL (`cl.h`), rodando em
 **dispositivo CPU** via **PoCL** (runtime OpenCL por software — não exige GPU).
 
 Implementação prevista para a Sprint 3 (janela crítica do projeto, ver
-`docs/plano-sprints-equipe-3.md`). Nesta Sprint 2 o que existe é o contrato de
+[`plano-sprints-equipe-3.md`](https://github.com/Equipe-BuscaPet/Docs/blob/main/planejamento/plano-sprints-equipe-3.md) no repositório `Docs`). Nesta Sprint 2 o que existe é o contrato de
 API e a estrutura de pastas — o binário ainda não faz nada.
 
 ## Contrato de API (provisório — versionar no OpenAPI junto com o backend)

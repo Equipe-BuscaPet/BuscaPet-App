@@ -18,9 +18,13 @@ buscapet/
   api/              backend web — FastAPI + SQLAlchemy/Alembic (Python)
   nucleo-opencl/    serviço de comparação por similaridade visual — C + OpenCL (PoCL)
   frontend/         interface web
-  docs/             documento de escopo, plano de sprints, fluxos de tela, notas técnicas, entregas de cada Sprint
+  docs/schema.sql   modelo relacional (DDL), espelha api/app/models/
   docker-compose.yml
 ```
+
+Documentação completa (escopo, plano de sprints, fluxos de tela, notas
+técnicas, entregas de cada Sprint) fica no repositório
+[`Docs`](https://github.com/Equipe-BuscaPet/Docs), separado deste.
 
 ## Rodando localmente
 
@@ -37,10 +41,11 @@ FastAPI — é o contrato de API usado pelo frontend). Núcleo OpenCL em
 
 ## Documentação
 
-- [`docs/`](docs/) — escopo, RFs, plano de sprints e decisões técnicas completas
-- [`docs/schema.sql`](docs/schema.sql) — modelo relacional
-- [`docs/sprint2/`](docs/sprint2/) — entregas da Sprint 2 (arquitetura, diagrama de classes, MER, modelo relacional, protótipos)
+- [`docs/schema.sql`](docs/schema.sql) — modelo relacional (neste repositório)
+- [Repositório `Docs`](https://github.com/Equipe-BuscaPet/Docs) — escopo, RFs, plano de sprints, decisões técnicas e entregas de cada Sprint
+  - [`planejamento/`](https://github.com/Equipe-BuscaPet/Docs/tree/main/planejamento) — escopo, plano de sprints, fluxos de tela, notas técnicas
+  - [`sprints/sprint-2/`](https://github.com/Equipe-BuscaPet/Docs/tree/main/sprints/sprint-2) — arquitetura, diagrama de classes, MER, modelo relacional, protótipos
 
 ## Sprints
 
-Cronograma completo em `docs/plano-sprints-equipe-3.md`. Entrega final: **05/12/2026**.
+Cronograma completo em [`planejamento/plano-sprints-equipe-3.md`](https://github.com/Equipe-BuscaPet/Docs/blob/main/planejamento/plano-sprints-equipe-3.md) (repositório `Docs`). Entrega final: **05/12/2026**.
