@@ -7,7 +7,7 @@ Esta é a área que o núcleo OpenCL (serviço C separado) consome e alimenta:
 """
 import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base

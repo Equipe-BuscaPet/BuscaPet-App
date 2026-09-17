@@ -1,11 +1,15 @@
 """Abrigos e animais — RF-12 a RF-18."""
 import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import Especie, Sexo, StatusAnimal, StatusInteresse
+
+if TYPE_CHECKING:
+    from app.models.reencontro import DescritorVisual
 
 
 class Animal(Base):
