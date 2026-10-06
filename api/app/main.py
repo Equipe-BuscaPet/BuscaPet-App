@@ -1,6 +1,6 @@
 """Ponto de entrada do backend. Sprint 2: healthcheck + esqueleto de rotas —
 regra de negócio completa (auth, CRUDs) é trabalho da Sprint 2 em andamento e
-da Sprint 3 em diante, conforme o plano de sprints no repositório Docs."""
+da Sprint 3 em diante, conforme o plano de sprints no repositório BuscaPet-Docs."""
 from fastapi import FastAPI
 
 app = FastAPI(
