@@ -56,6 +56,14 @@ uvicorn app.main:app --reload --port 8000
   `python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`
 - Testes automatizados (rodam em SQLite em memória, não tocam no banco real): `pytest`
 
+**Interface web** (em outro terminal, com a API rodando; precisa do Node 20+):
+
+```powershell
+cd frontend
+npm install
+npm run dev                            # abre em http://localhost:5173
+```
+
 ### B) Docker Compose
 
 ```bash
@@ -65,19 +73,23 @@ cd api && alembic upgrade head   # cria o schema no Postgres local
 docker compose up
 ```
 
-API em `http://localhost:8000/docs`. O núcleo OpenCL (`http://localhost:8001`) ainda é
-placeholder e o `frontend/` ainda não foi implementado, então `docker compose up`
-sobe esses dois serviços sem função por enquanto; para a Sprint 3, suba só
-`docker compose up api db redis`.
+API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL
+(`http://localhost:8001`) ainda é placeholder, então para a Sprint 3 basta
+`docker compose up api db redis frontend`. Esse caminho não foi testado nesta máquina
+(sem Docker instalado); o caminho A é o validado.
 
-### Roteiro rápido para testar no Swagger
+### Roteiro rápido para ver tudo funcionando (pela interface)
 
-1. `POST /auth/cadastro` com um abrigo (`tipo_conta: "abrigo"`) — nasce **pendente**.
-2. Crie o admin (comando acima), faça login com ele em **Authorize** e aprove o abrigo em
-   `PATCH /admin/abrigos/{id}/validacao` com `{"status": "aprovado"}`.
-3. Faça login com o abrigo e use `POST /animais`, `GET /animais`, `PATCH /animais/{id}` e
-   `DELETE /animais/{id}`.
-4. Cadastre um `tutor` e veja `POST /animais` responder **403** (perfil sem permissão).
+1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais*, mas com o
+   formulário bloqueado: o abrigo nasce **pendente**.
+2. Crie o admin (comando acima), entre com ele: abre em *Validar abrigos*. Clique em **Aprovar**.
+3. Volte à conta do abrigo, recarregue: o formulário libera. Cadastre, edite e exclua animais.
+4. Sem login, abra o catálogo (`/`): só aparecem animais de abrigos aprovados.
+5. Cadastre um **tutor** e tente abrir `/painel`: a tela barra o acesso (e a API também
+   devolveria 403).
+
+Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs`): use o botão
+**Authorize** com o e-mail e a senha de cada conta.
 
 ## Documentação
 
