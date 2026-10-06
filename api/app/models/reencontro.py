@@ -7,12 +7,12 @@ Esta é a área que o núcleo OpenCL (serviço C separado) consome e alimenta:
 """
 import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.animal import Foto
-from app.models.enums import Especie, GrauSemelhanca, Sexo, StatusBusca, TipoCorrespondencia
+from app.models.enums import Especie, GrauSemelhanca, Sexo, StatusBusca, TipoCorrespondencia, pg_enum
 
 
 class AnimalPerdido(Base):
@@ -23,11 +23,11 @@ class AnimalPerdido(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tutor_id: Mapped[int] = mapped_column(ForeignKey("tutores.usuario_id"))
-    especie: Mapped[Especie] = mapped_column(Enum(Especie, name="especie_perdido"))
+    especie: Mapped[Especie] = mapped_column(pg_enum(Especie, name="especie_perdido"))
     porte: Mapped[str] = mapped_column(String(20))
     cor_predominante: Mapped[str] = mapped_column(String(60))
     pelagem: Mapped[str | None] = mapped_column(String(60))
-    sexo: Mapped[Sexo] = mapped_column(Enum(Sexo, name="sexo_perdido"))
+    sexo: Mapped[Sexo] = mapped_column(pg_enum(Sexo, name="sexo_perdido"))
     sinais_particulares: Mapped[str | None] = mapped_column(String(500))
     # Área aproximada exibida no mapa — nunca o endereço exato (escopo, seção 9).
     latitude: Mapped[float] = mapped_column(Float)
@@ -48,11 +48,11 @@ class Avistamento(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
-    especie: Mapped[Especie] = mapped_column(Enum(Especie, name="especie_avistamento"))
+    especie: Mapped[Especie] = mapped_column(pg_enum(Especie, name="especie_avistamento"))
     porte: Mapped[str] = mapped_column(String(20))
     cor_predominante: Mapped[str] = mapped_column(String(60))
     pelagem: Mapped[str | None] = mapped_column(String(60))
-    sexo: Mapped[Sexo] = mapped_column(Enum(Sexo, name="sexo_avistamento"))
+    sexo: Mapped[Sexo] = mapped_column(pg_enum(Sexo, name="sexo_avistamento"))
     sinais_particulares: Mapped[str | None] = mapped_column(String(500))
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
@@ -93,7 +93,7 @@ class BuscaSalva(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tutor_id: Mapped[int] = mapped_column(ForeignKey("tutores.usuario_id"))
     animal_perdido_id: Mapped[int] = mapped_column(ForeignKey("animais_perdidos.id"))
-    status: Mapped[StatusBusca] = mapped_column(Enum(StatusBusca, name="status_busca"), default=StatusBusca.MONITORANDO)
+    status: Mapped[StatusBusca] = mapped_column(pg_enum(StatusBusca, name="status_busca"), default=StatusBusca.MONITORANDO)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     resolvida_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -110,11 +110,11 @@ class Correspondencia(Base):
     __tablename__ = "correspondencias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tipo: Mapped[TipoCorrespondencia] = mapped_column(Enum(TipoCorrespondencia, name="tipo_correspondencia"))
+    tipo: Mapped[TipoCorrespondencia] = mapped_column(pg_enum(TipoCorrespondencia, name="tipo_correspondencia"))
     animal_perdido_id: Mapped[int | None] = mapped_column(ForeignKey("animais_perdidos.id"))
     animal_id: Mapped[int | None] = mapped_column(ForeignKey("animais.id"))
     avistamento_id: Mapped[int | None] = mapped_column(ForeignKey("avistamentos.id"))
     score: Mapped[float] = mapped_column(Float)  # distância bruta calculada pelo núcleo
-    grau_semelhanca: Mapped[GrauSemelhanca] = mapped_column(Enum(GrauSemelhanca, name="grau_semelhanca"))
+    grau_semelhanca: Mapped[GrauSemelhanca] = mapped_column(pg_enum(GrauSemelhanca, name="grau_semelhanca"))
     notificado: Mapped[bool] = mapped_column(default=False)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

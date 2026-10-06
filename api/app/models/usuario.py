@@ -10,7 +10,6 @@ import datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum,
     Float,
     ForeignKey,
     String,
@@ -20,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import PapelEquipeAbrigo, StatusValidacao, TipoConta, TipoEstabelecimento
+from app.models.enums import PapelEquipeAbrigo, StatusValidacao, TipoConta, TipoEstabelecimento, pg_enum
 
 
 class Usuario(Base):
@@ -30,7 +29,7 @@ class Usuario(Base):
     nome: Mapped[str] = mapped_column(String(150))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
-    tipo_conta: Mapped[TipoConta] = mapped_column(Enum(TipoConta, name="tipo_conta"))
+    tipo_conta: Mapped[TipoConta] = mapped_column(pg_enum(TipoConta, name="tipo_conta"))
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -70,7 +69,7 @@ class Abrigo(Base):
     chave_doacao_financeira: Mapped[str | None] = mapped_column(String(140))
     documento_comprobatorio_url: Mapped[str | None] = mapped_column(String(500))
     status_validacao: Mapped[StatusValidacao] = mapped_column(
-        Enum(StatusValidacao, name="status_validacao"), default=StatusValidacao.PENDENTE
+        pg_enum(StatusValidacao, name="status_validacao"), default=StatusValidacao.PENDENTE
     )
     validado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     validado_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
@@ -90,7 +89,7 @@ class MembroEquipeAbrigo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     abrigo_id: Mapped[int] = mapped_column(ForeignKey("abrigos.usuario_id"))
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
-    papel: Mapped[PapelEquipeAbrigo] = mapped_column(Enum(PapelEquipeAbrigo, name="papel_equipe_abrigo"))
+    papel: Mapped[PapelEquipeAbrigo] = mapped_column(pg_enum(PapelEquipeAbrigo, name="papel_equipe_abrigo"))
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     abrigo: Mapped[Abrigo] = relationship(back_populates="membros")
@@ -111,13 +110,13 @@ class Apoiador(Base):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
     cnpj: Mapped[str] = mapped_column(String(18), unique=True)
     tipo_estabelecimento: Mapped[TipoEstabelecimento] = mapped_column(
-        Enum(TipoEstabelecimento, name="tipo_estabelecimento")
+        pg_enum(TipoEstabelecimento, name="tipo_estabelecimento")
     )
     endereco: Mapped[str] = mapped_column(String(255))
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
     status_validacao: Mapped[StatusValidacao] = mapped_column(
-        Enum(StatusValidacao, name="status_validacao_apoiador"), default=StatusValidacao.APROVADO
+        pg_enum(StatusValidacao, name="status_validacao_apoiador"), default=StatusValidacao.APROVADO
     )
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -1,11 +1,11 @@
 """Doações e reconhecimento — RF-30 a RF-35."""
 import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import StatusDoacao, StatusNecessidade, UrgenciaNecessidade
+from app.models.enums import StatusDoacao, StatusNecessidade, UrgenciaNecessidade, pg_enum
 
 
 class Necessidade(Base):
@@ -17,8 +17,8 @@ class Necessidade(Base):
     abrigo_id: Mapped[int] = mapped_column(ForeignKey("abrigos.usuario_id"))
     item: Mapped[str] = mapped_column(String(200))
     quantidade: Mapped[int] = mapped_column(Integer)
-    urgencia: Mapped[UrgenciaNecessidade] = mapped_column(Enum(UrgenciaNecessidade, name="urgencia_necessidade"))
-    status: Mapped[StatusNecessidade] = mapped_column(Enum(StatusNecessidade, name="status_necessidade"), default=StatusNecessidade.ABERTA)
+    urgencia: Mapped[UrgenciaNecessidade] = mapped_column(pg_enum(UrgenciaNecessidade, name="urgencia_necessidade"))
+    status: Mapped[StatusNecessidade] = mapped_column(pg_enum(StatusNecessidade, name="status_necessidade"), default=StatusNecessidade.ABERTA)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     doacoes: Mapped[list["Doacao"]] = relationship(back_populates="necessidade")
@@ -36,7 +36,7 @@ class Doacao(Base):
     necessidade_id: Mapped[int | None] = mapped_column(ForeignKey("necessidades.id"))
     item: Mapped[str] = mapped_column(String(200))
     quantidade: Mapped[int] = mapped_column(Integer)
-    status: Mapped[StatusDoacao] = mapped_column(Enum(StatusDoacao, name="status_doacao"), default=StatusDoacao.AGUARDANDO_CONFIRMACAO)
+    status: Mapped[StatusDoacao] = mapped_column(pg_enum(StatusDoacao, name="status_doacao"), default=StatusDoacao.AGUARDANDO_CONFIRMACAO)
     registrado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     confirmado_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 

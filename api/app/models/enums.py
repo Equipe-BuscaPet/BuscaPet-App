@@ -2,6 +2,8 @@
 cruzada com o MER e o modelo relacional (docs/schema.sql)."""
 import enum
 
+from sqlalchemy import Enum as SAEnum
+
 
 class TipoConta(str, enum.Enum):
     TUTOR = "tutor"
@@ -104,3 +106,10 @@ class StatusDenuncia(str, enum.Enum):
     ADVERTIDO = "advertido"
     BANIDO = "banido"
     IGNORADO = "ignorado"
+
+
+def pg_enum(classe: type[enum.Enum], name: str) -> SAEnum:
+    """Coluna Enum que grava o VALOR do enum ("admin"), não o nome do membro
+    ("ADMIN"). Os tipos criados no Postgres (migration 0001 e docs/schema.sql)
+    usam os valores em minúsculas; sem isso, todo INSERT falha no Postgres."""
+    return SAEnum(classe, name=name, values_callable=lambda e: [m.value for m in e])

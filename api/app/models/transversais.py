@@ -1,11 +1,11 @@
 """Transversais — RF-36 a RF-41."""
 import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.models.enums import StatusDenuncia
+from app.models.enums import StatusDenuncia, pg_enum
 
 
 class Notificacao(Base):
@@ -33,7 +33,7 @@ class Denuncia(Base):
     denunciante_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     animal_id: Mapped[int] = mapped_column(ForeignKey("animais.id"))
     motivo: Mapped[str] = mapped_column(String(1000))
-    status: Mapped[StatusDenuncia] = mapped_column(Enum(StatusDenuncia, name="status_denuncia"), default=StatusDenuncia.PENDENTE)
+    status: Mapped[StatusDenuncia] = mapped_column(pg_enum(StatusDenuncia, name="status_denuncia"), default=StatusDenuncia.PENDENTE)
     resolvido_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     resolvido_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
