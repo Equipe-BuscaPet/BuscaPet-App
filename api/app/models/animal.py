@@ -2,7 +2,7 @@
 import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -60,6 +60,7 @@ class Foto(Base):
     """
 
     __tablename__ = "fotos"
+    __table_args__ = (Index("ix_fotos_entidade", "entidade_tipo", "entidade_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     entidade_tipo: Mapped[str] = mapped_column(String(20))  # ver EntidadeFoto
