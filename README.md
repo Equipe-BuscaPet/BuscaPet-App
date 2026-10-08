@@ -70,7 +70,12 @@ npm run dev                            # abre em http://localhost:5173
 cp .env.example .env                                  # Windows: Copy-Item .env.example .env
 docker compose up -d --build db redis api frontend
 docker compose exec api alembic upgrade head          # cria o schema no Postgres do Docker
+docker compose exec api python -m app.scripts.popular_demo   # abrigos, animais e contas de exemplo (iguais para todo o time)
 ```
+
+O último comando carrega o mesmo cenário de demonstração em qualquer máquina (7 contas, 4 abrigos, 8 animais; senha de
+todas: `Senha1234!`; as contas estão listadas no topo de `api/app/scripts/popular_demo.py`). É seguro repetir e **só roda
+em banco local**: ele se recusa a rodar contra o Supabase.
 
 API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL
 (`http://localhost:8001`) ainda é placeholder, por isso não sobe junto. O Postgres do Docker
@@ -78,6 +83,9 @@ começa vazio e é local de cada pessoa (o volume `db_data` guarda os dados entr
 `docker compose down` mantém, `docker compose down -v` apaga). Para criar o admin nele:
 `docker compose exec api python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`.
 Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
+
+> Depois de puxar mudanças que alteram o `frontend/package.json` (dependência nova), renove o volume do
+> `node_modules` do container: `docker compose up -d --build -V frontend`. Sem isso o frontend não encontra o pacote.
 
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 

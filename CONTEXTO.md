@@ -47,7 +47,7 @@ Repositórios (organização `Equipe-BuscaPet`):
    - Sprint 3 — banco conectado, login, cadastro persistido, perfis/permissões, CRUD da entidade
      principal (animais), primeiro deploy local. *Entregue e enviada.*
    - **Sprint 4 — "primeiro módulo completo"** (fluxo completo, persistência, validações, mensagens
-     de erro claras, navegação coerente, commits organizados). **Em andamento.**
+     de erro claras, navegação coerente, commits organizados). *Entregue* (documento em `BuscaPet-Docs/sprints/sprint-4/`).
 2. **Plano interno** (`BuscaPet-Docs/planejamento/plano-sprints-equipe-3.md`): organiza o trabalho até
    05/12 e põe o **núcleo OpenCL** na sua "Sprint 3". Ele é independente da contagem oficial. O núcleo
    continua obrigatório para Tópicos Avançados, mas **está fora das entregas oficiais** de Fábrica.
@@ -63,11 +63,12 @@ Ao falar "Sprint N", diga qual das duas.
 - CRUD de animais pelo abrigo; catálogo público com busca e filtros (inclusive por abrigo); ficha do animal.
 - **Mapa de abrigos** (`/mapa`, OpenStreetMap + Leaflet): `GET /abrigos` público, com distância e filtro por raio
   a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
-- Fila do administrador para validar abrigos.
-- Migrations `0001` (schema) e `0002` (alinha models e banco). 37 testes automatizados passando.
+- Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender).
+- Interesse de adoção completo (API e telas: ficha do animal, Meus interesses, Interessados).
+- Migrations `0001` (schema), `0002` (alinha models e banco) e `0003` (interesse). 59 testes automatizados passando.
 - Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
 
-**Backend do interesse de adoção pronto (Sprint 4), sem tela ainda:** tutor registra interesse
+**Interesse de adoção (Sprint 4):** tutor registra interesse
 (`POST /animais/{id}/interesses`), lista os seus (`GET /interesses/meus`) e pode desistir
 (`DELETE /interesses/{id}`); o abrigo vê os recebidos com o contato do tutor (`GET /interesses/recebidos`)
 e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar põe o animal em
@@ -76,11 +77,9 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 
 **Existe só como modelo de dados, sem rota nem tela:** animal
 perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
-denúncia, notificação, log de auditoria. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
+denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
 
-**Próximo passo (Sprint 4 oficial): módulo Adoção.** Fluxo completo: abrigo cadastra animal → tutor vê
-no catálogo → tutor registra **interesse de adoção** → abrigo aceita ou recusa → status do animal muda.
-Inclui validações no frontend, mensagens de erro amigáveis e navegação coerente.
+**Próximo passo:** a Sprint 5 oficial da disciplina ainda não foi informada; confirmar o roteiro antes de planejar. Em paralelo segue obrigatório, para Tópicos Avançados, o núcleo OpenCL e o reencontro (RF-19 a RF-29). Pendências conhecidas: tela de notificações, doações e ranking (onde o selo Verificado passa a ser exigido).
 
 **Mudança da Sprint 4 (já implementada):** abrigo **não depende mais de aprovação humana para usar a
 conta**. Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
