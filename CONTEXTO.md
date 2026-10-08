@@ -73,10 +73,12 @@ denúncia, notificação, log de auditoria. O módulo `nucleo-opencl/` é só co
 no catálogo → tutor registra **interesse de adoção** → abrigo aceita ou recusa → status do animal muda.
 Inclui validações no frontend, mensagens de erro amigáveis e navegação coerente.
 
-**Mudança decidida para a Sprint 4:** abrigo **não depende mais de aprovação humana para usar a conta**.
-Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
-**Verificado**. O selo é exigido apenas para o que carrega risco de golpe: exibir a chave de doação
-financeira, aparecer no ranking e no mural de necessidades. O campo `status_validacao` já existe.
+**Mudança da Sprint 4 (já implementada):** abrigo **não depende mais de aprovação humana para usar a
+conta**. Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
+**Verificado**. Mapeamento no banco, sem migration: `pendente` = não verificado, `aprovado` = verificado,
+`rejeitado` = suspenso (some do catálogo e não publica). A API devolve `abrigo_verificado` em cada animal.
+O selo será exigido apenas para o que carrega risco de golpe: **exibir a chave de doação financeira,
+aparecer no ranking e no mural de necessidades** (ainda não implementados, então ainda não há o que bloquear).
 
 ## 5. Decisões de arquitetura já fechadas (não reabrir sem motivo novo)
 

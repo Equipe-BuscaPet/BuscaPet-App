@@ -112,7 +112,7 @@ export default function PainelAbrigo() {
   const [ok, setOk] = useState('')
 
   const status = usuario.perfil?.status_validacao
-  const aprovado = status === 'aprovado'
+  const ativo = status !== 'rejeitado'  // só o abrigo suspenso fica bloqueado
 
   const carregar = useCallback(async () => {
     try {
@@ -171,11 +171,11 @@ export default function PainelAbrigo() {
 
       {status === 'pendente' && (
         <div className="aviso aviso--atencao" role="status">
-          Seu abrigo está aguardando a validação do administrador. Você poderá cadastrar animais assim que for aprovado.
+          Seu abrigo ainda não tem o selo Verificado. Você já pode cadastrar animais; o selo, concedido pela administração, é o que libera a exibição da chave de doação e a entrada no ranking.
         </div>
       )}
       {status === 'rejeitado' && (
-        <div className="aviso aviso--erro" role="alert">A validação do seu abrigo foi rejeitada. Entre em contato com a equipe BuscaPet.</div>
+        <div className="aviso aviso--erro" role="alert">Seu abrigo foi suspenso pela administração e seus animais não aparecem no catálogo. Entre em contato com a equipe BuscaPet.</div>
       )}
       {ok && <div className="aviso aviso--ok" role="status">{ok}</div>}
       {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
@@ -185,7 +185,7 @@ export default function PainelAbrigo() {
           <h2 id="titulo-lista">Animais cadastrados ({animais.length})</h2>
           {carregando && <p className="estado">Carregando…</p>}
           {!carregando && animais.length === 0 && (
-            <p className="estado">{aprovado ? 'Nenhum animal cadastrado ainda. Use o formulário ao lado.' : 'Nenhum animal cadastrado.'}</p>
+            <p className="estado">{ativo ? 'Nenhum animal cadastrado ainda. Use o formulário ao lado.' : 'Nenhum animal cadastrado.'}</p>
           )}
           {animais.length > 0 && (
             <div className="cartao rolagem">
@@ -200,14 +200,14 @@ export default function PainelAbrigo() {
                       <td><span className={`etiqueta ${a.status === 'disponivel' ? 'etiqueta--ok' : ''}`}>{STATUS_ANIMAL[a.status]}</span></td>
                       <td>
                         <div className="acoes">
-                          <button className="botao botao--leve botao--pequeno" disabled={!aprovado} onClick={() => { setEditando(a); setOk('') }}>Editar</button>
+                          <button className="botao botao--leve botao--pequeno" disabled={!ativo} onClick={() => { setEditando(a); setOk('') }}>Editar</button>
                           {excluindo === a.id ? (
                             <>
                               <button className="botao botao--perigo botao--pequeno" onClick={() => excluir(a)}>Confirmar exclusão</button>
                               <button className="botao botao--leve botao--pequeno" onClick={() => setExcluindo(null)}>Cancelar</button>
                             </>
                           ) : (
-                            <button className="botao botao--leve botao--pequeno" disabled={!aprovado} onClick={() => setExcluindo(a.id)}>Excluir</button>
+                            <button className="botao botao--leve botao--pequeno" disabled={!ativo} onClick={() => setExcluindo(a.id)}>Excluir</button>
                           )}
                         </div>
                       </td>
@@ -223,7 +223,7 @@ export default function PainelAbrigo() {
           key={editando ? `editar-${editando.id}` : 'novo'}
           inicial={editando ? doAnimal(editando) : FORM_VAZIO}
           editando={Boolean(editando)}
-          desabilitado={!aprovado}
+          desabilitado={!ativo}
           onSalvar={salvar}
           onCancelar={() => setEditando(null)}
         />

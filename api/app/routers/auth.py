@@ -40,7 +40,7 @@ def cadastrar(dados: Cadastro, db: Session = Depends(get_db)) -> UsuarioOut:
     if isinstance(dados, CadastroTutor):
         usuario.tutor = Tutor(telefone=dados.telefone, cidade=dados.cidade)
     elif isinstance(dados, CadastroAbrigo):
-        # status_validacao nasce PENDENTE (default do model): só publica depois do admin.
+        # status_validacao nasce PENDENTE (default do model) = não verificado. Opera na hora; o selo vem do admin.
         usuario.abrigo = Abrigo(
             nome_abrigo=dados.nome_abrigo,
             endereco=dados.endereco,

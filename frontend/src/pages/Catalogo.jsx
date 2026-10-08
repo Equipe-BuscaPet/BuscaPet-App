@@ -14,7 +14,7 @@ export function CartaoAnimal({ animal }) {
         {ESPECIES[animal.especie]} · {PORTES[animal.porte]} · {SEXOS[animal.sexo]}
       </p>
       <p>{textoIdade(animal.idade_estimada_meses)}</p>
-      <p>{animal.nome_abrigo}</p>
+      <p>{animal.nome_abrigo}{animal.abrigo_verificado && <span className="etiqueta etiqueta--ok" style={{ marginLeft: '0.4rem' }}>Verificado</span>}</p>
     </Link>
   )
 }
@@ -53,7 +53,7 @@ export default function Catalogo() {
   return (
     <main className="pagina">
       <h1>Animais para adoção</h1>
-      <p className="subtitulo">Animais de abrigos e protetores validados pela plataforma.</p>
+      <p className="subtitulo">Animais de abrigos e protetores. O selo Verificado indica que a administração confirmou o abrigo.</p>
 
       <div className="filtros" role="search">
         <div className="campo">

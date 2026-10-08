@@ -1,9 +1,10 @@
 """CRUD de animais para adoção — RF-12 a RF-18 (entidade principal da Sprint 3).
 
 Regras de perfil:
-- Consultar (lista e detalhe): público. O visitante só vê animais de abrigos
-  APROVADOS e ativos; o dono (e o admin) enxergam também os seus/todos.
-- Cadastrar e atualizar: só abrigo APROVADO, e só os animais do próprio abrigo.
+- Consultar (lista e detalhe): público. O visitante vê animais de abrigos ativos e
+  não suspensos (verificados ou não: o selo aparece na resposta); o dono (e o admin)
+  enxergam também os seus/todos.
+- Cadastrar e atualizar: só abrigo não suspenso, e só os animais do próprio abrigo.
 - Excluir: o abrigo dono ou o administrador (moderação).
 """
 import datetime
@@ -13,7 +14,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.deps import exigir_tipo, get_abrigo_aprovado, get_usuario_opcional
+from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
 from app.models.animal import Animal, Foto, Interesse
 from app.models.enums import Especie, StatusAnimal, StatusValidacao, TipoConta
@@ -29,23 +30,24 @@ def _para_datetime(dia: datetime.date | None) -> datetime.datetime | None:
     return datetime.datetime.combine(dia, datetime.time.min, tzinfo=datetime.UTC) if dia else None
 
 
-def _saida(animal: Animal, nome_abrigo: str | None) -> AnimalOut:
+def _saida(animal: Animal, abrigo: Abrigo) -> AnimalOut:
     saida = AnimalOut.model_validate(animal)
-    saida.nome_abrigo = nome_abrigo
+    saida.nome_abrigo = abrigo.nome_abrigo
+    saida.abrigo_verificado = abrigo.status_validacao == StatusValidacao.APROVADO
     return saida
 
 
 def _publico_visivel(consulta):
-    """Filtro de visibilidade pública: abrigo aprovado e conta ativa."""
+    """Filtro de visibilidade pública: conta ativa e abrigo não suspenso."""
     return consulta.where(
-        Abrigo.status_validacao == StatusValidacao.APROVADO,
+        Abrigo.status_validacao != StatusValidacao.REJEITADO,
         Usuario.ativo.is_(True),
     )
 
 
 def _consulta_base():
     return (
-        select(Animal, Abrigo.nome_abrigo)
+        select(Animal, Abrigo)
         .join(Abrigo, Abrigo.usuario_id == Animal.abrigo_id)
         .join(Usuario, Usuario.id == Abrigo.usuario_id)
     )
@@ -54,7 +56,7 @@ def _consulta_base():
 @router.post("", response_model=AnimalOut, status_code=status.HTTP_201_CREATED)
 def cadastrar(
     dados: AnimalCreate,
-    abrigo: Abrigo = Depends(get_abrigo_aprovado),
+    abrigo: Abrigo = Depends(get_abrigo_operante),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
     campos = dados.model_dump()
@@ -63,7 +65,7 @@ def cadastrar(
     db.add(animal)
     db.commit()
     db.refresh(animal)
-    return _saida(animal, abrigo.nome_abrigo)
+    return _saida(animal, abrigo)
 
 
 @router.get("", response_model=list[AnimalOut])
@@ -94,7 +96,7 @@ def listar(
     linhas = db.execute(
         consulta.order_by(Animal.criado_em.desc(), Animal.id.desc()).limit(limite).offset(deslocamento)
     ).all()
-    return [_saida(animal, nome) for animal, nome in linhas]
+    return [_saida(animal, abrigo) for animal, abrigo in linhas]
 
 
 @router.get("/meus", response_model=list[AnimalOut])
@@ -106,22 +108,21 @@ def listar_meus(
     linhas = db.execute(
         _consulta_base().where(Animal.abrigo_id == usuario.id).order_by(Animal.criado_em.desc(), Animal.id.desc())
     ).all()
-    return [_saida(animal, nome) for animal, nome in linhas]
+    return [_saida(animal, abrigo) for animal, abrigo in linhas]
 
 
-def _buscar_visivel(animal_id: int, usuario: Usuario | None, db: Session) -> tuple[Animal, str]:
+def _buscar_visivel(animal_id: int, usuario: Usuario | None, db: Session) -> tuple[Animal, Abrigo]:
     linha = db.execute(_consulta_base().where(Animal.id == animal_id)).first()
     if linha is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Animal não encontrado.")
-    animal, nome_abrigo = linha
-    abrigo = db.get(Abrigo, animal.abrigo_id)
+    animal, abrigo = linha
     dono = usuario is not None and usuario.id == animal.abrigo_id
     admin = usuario is not None and usuario.tipo_conta == TipoConta.ADMIN
-    publico = abrigo.status_validacao == StatusValidacao.APROVADO and abrigo.usuario.ativo
+    publico = abrigo.status_validacao != StatusValidacao.REJEITADO and abrigo.usuario.ativo
     if not (publico or dono or admin):
-        # 404 (e não 403) para não confirmar a existência de cadastros ainda não validados.
+        # 404 (e não 403) para não confirmar a existência de cadastros suspensos ou desativados.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Animal não encontrado.")
-    return animal, nome_abrigo
+    return animal, abrigo
 
 
 @router.get("/{animal_id}", response_model=AnimalOut)
@@ -130,8 +131,8 @@ def consultar(
     usuario: Usuario | None = Depends(get_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
-    animal, nome_abrigo = _buscar_visivel(animal_id, usuario, db)
-    return _saida(animal, nome_abrigo)
+    animal, abrigo = _buscar_visivel(animal_id, usuario, db)
+    return _saida(animal, abrigo)
 
 
 def _animal_do_abrigo(animal_id: int, abrigo: Abrigo, db: Session) -> Animal:
@@ -147,7 +148,7 @@ def _animal_do_abrigo(animal_id: int, abrigo: Abrigo, db: Session) -> Animal:
 def atualizar(
     animal_id: int,
     dados: AnimalUpdate,
-    abrigo: Abrigo = Depends(get_abrigo_aprovado),
+    abrigo: Abrigo = Depends(get_abrigo_operante),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
     animal = _animal_do_abrigo(animal_id, abrigo, db)
@@ -162,7 +163,7 @@ def atualizar(
         setattr(animal, campo, valor)
     db.commit()
     db.refresh(animal)
-    return _saida(animal, abrigo.nome_abrigo)
+    return _saida(animal, abrigo)
 
 
 @router.delete("/{animal_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -180,8 +181,8 @@ def excluir(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Animal não encontrado.")
     if usuario.tipo_conta == TipoConta.ABRIGO and animal.abrigo_id != usuario.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Este animal pertence a outro abrigo.")
-    if usuario.tipo_conta == TipoConta.ABRIGO and (usuario.abrigo is None or usuario.abrigo.status_validacao != StatusValidacao.APROVADO):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Seu abrigo ainda não foi validado pelo administrador.")
+    if usuario.tipo_conta == TipoConta.ABRIGO and (usuario.abrigo is None or usuario.abrigo.status_validacao == StatusValidacao.REJEITADO):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Seu abrigo foi suspenso pela administração.")
 
     foto_ids = list(db.scalars(select(Foto.id).where(Foto.entidade_tipo == "animal", Foto.entidade_id == animal.id)))
     if foto_ids:

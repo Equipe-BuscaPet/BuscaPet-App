@@ -1,4 +1,7 @@
-"""Validação de abrigos pelo administrador — RF-06."""
+"""Verificação de abrigos pelo administrador — RF-06.
+
+Aprovado = abrigo verificado (selo). Pendente = ainda não verificado, mas opera.
+Rejeitado = suspenso: some do catálogo público e não publica."""
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,7 +24,7 @@ def listar_abrigos(
     _: Usuario = Depends(exigir_tipo(TipoConta.ADMIN)),
     db: Session = Depends(get_db),
 ) -> list[UsuarioOut]:
-    """Fila de validação: por padrão, os abrigos pendentes, do mais antigo ao mais novo."""
+    """Fila de verificação: por padrão, os abrigos ainda não verificados, do mais antigo ao mais novo."""
     usuarios = db.scalars(
         select(Usuario)
         .join(Abrigo, Abrigo.usuario_id == Usuario.id)

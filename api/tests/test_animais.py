@@ -1,8 +1,5 @@
 """Entregas 4 e 5 da Sprint 3: controle de perfis e CRUD de animais."""
-from sqlalchemy import select
 
-from app.models.animal import Animal
-from app.models.enums import Especie, Sexo
 from tests.conftest import cabecalho, dados_abrigo, dados_animal, dados_tutor
 
 
@@ -18,11 +15,25 @@ def test_tutor_nao_cadastra_animal(client):
     assert resp.status_code == 403
 
 
-def test_abrigo_pendente_nao_cadastra_animal(client):
-    client.post("/auth/cadastro", json=dados_abrigo())
-    resp = client.post("/animais", json=dados_animal(), headers=cabecalho(client, "abrigo@exemplo.com"))
-    assert resp.status_code == 403
-    assert "validado" in resp.json()["detail"]
+def test_abrigo_nao_verificado_ja_cadastra_animal_e_o_selo_aparece_depois(client, admin):
+    r = client.post("/auth/cadastro", json=dados_abrigo())
+    h = cabecalho(client, "abrigo@exemplo.com")
+    resp = client.post("/animais", json=dados_animal(), headers=h)
+    assert resp.status_code == 201
+    animal_id = resp.json()["id"]
+    assert resp.json()["abrigo_verificado"] is False
+    client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "aprovado"}, headers=admin)
+    assert client.get(f"/animais/{animal_id}").json()["abrigo_verificado"] is True
+
+
+def test_abrigo_suspenso_nao_cadastra_nem_exclui_animal(client, admin):
+    r = client.post("/auth/cadastro", json=dados_abrigo())
+    h = cabecalho(client, "abrigo@exemplo.com")
+    animal_id = client.post("/animais", json=dados_animal(), headers=h).json()["id"]
+    client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "rejeitado"}, headers=admin)
+    resp = client.post("/animais", json=dados_animal(), headers=h)
+    assert resp.status_code == 403 and "suspenso" in resp.json()["detail"]
+    assert client.delete(f"/animais/{animal_id}", headers=h).status_code == 403
 
 
 def test_so_admin_valida_abrigo(client):
@@ -41,8 +52,10 @@ def test_admin_lista_fila_e_aprova_ou_rejeita(client, admin):
     resp = client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "rejeitado"}, headers=admin)
     assert resp.status_code == 200 and resp.json()["perfil"]["status_validacao"] == "rejeitado"
     assert client.get("/admin/abrigos", headers=admin).json() == []
-    # Não dá para "devolver" para pendente por esta rota.
-    assert client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "pendente"}, headers=admin).status_code == 422
+    # O admin pode tirar o selo (voltar para "não verificado").
+    resp = client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "pendente"}, headers=admin)
+    assert resp.status_code == 200 and resp.json()["perfil"]["status_validacao"] == "pendente"
+    assert client.patch(f"/admin/abrigos/{r.json()['id']}/validacao", json={"status": "qualquer"}, headers=admin).status_code == 422
 
 
 # ---------- CRUD ----------
@@ -107,18 +120,13 @@ def test_admin_pode_excluir_animal_por_moderacao_mas_nao_editar(client, abrigo_a
 
 # ---------- visibilidade pública ----------
 
-def test_catalogo_publico_nao_mostra_animais_de_abrigo_pendente(client, abrigo_aprovado, sessao_factory):
-    client.post("/animais", json=dados_animal(nome="Visivel"), headers=abrigo_aprovado["headers"])
-    # Abrigo pendente não consegue cadastrar pela API, então o animal entra direto no banco.
-    pendente = client.post("/auth/cadastro", json=dados_abrigo("pendente@exemplo.com", nome_abrigo="Pendente")).json()
-    with sessao_factory() as db:
-        db.add(Animal(abrigo_id=pendente["id"], nome="Escondido", especie=Especie.CAO, porte="medio", sexo=Sexo.MACHO))
-        db.commit()
-        escondido_id = db.scalar(select(Animal.id).where(Animal.nome == "Escondido"))
+def test_catalogo_publico_mostra_abrigo_nao_verificado_com_o_selo_correto(client, abrigo_aprovado):
+    client.post("/animais", json=dados_animal(nome="Verificado"), headers=abrigo_aprovado["headers"])
+    client.post("/auth/cadastro", json=dados_abrigo("novo@exemplo.com", nome_abrigo="Novo"))
+    client.post("/animais", json=dados_animal(nome="NaoVerificado"), headers=cabecalho(client, "novo@exemplo.com"))
 
-    assert [a["nome"] for a in client.get("/animais").json()] == ["Visivel"]
-    assert client.get(f"/animais/{escondido_id}").status_code == 404
-    assert client.get(f"/animais/{escondido_id}", headers=cabecalho(client, "pendente@exemplo.com")).status_code == 200
+    selos = {a["nome"]: a["abrigo_verificado"] for a in client.get("/animais").json()}
+    assert selos == {"Verificado": True, "NaoVerificado": False}
 
 
 def test_animal_de_abrigo_rejeitado_some_do_publico_mas_nao_do_dono(client, abrigo_aprovado, admin):

@@ -15,7 +15,7 @@ export const TIPOS_ESTABELECIMENTO = {
   distribuidora: 'Distribuidora',
   pessoa_fisica: 'Pessoa física',
 }
-export const STATUS_VALIDACAO = { pendente: 'Pendente', aprovado: 'Aprovado', rejeitado: 'Rejeitado' }
+export const STATUS_VALIDACAO = { pendente: 'Não verificado', aprovado: 'Verificado', rejeitado: 'Suspenso' }
 
 export const EMOJI_ESPECIE = { cao: '🐶', gato: '🐱', outro: '🐾' }
 
