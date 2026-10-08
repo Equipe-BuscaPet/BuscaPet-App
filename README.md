@@ -79,6 +79,9 @@ começa vazio e é local de cada pessoa (o volume `db_data` guarda os dados entr
 `docker compose exec api python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`.
 Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 
+> Depois de puxar mudanças que alteram o `frontend/package.json` (dependência nova), renove o volume do
+> `node_modules` do container: `docker compose up -d --build -V frontend`. Sem isso o frontend não encontra o pacote.
+
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 
 1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais* e já pode
