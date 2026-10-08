@@ -22,10 +22,15 @@ export default function Cadastro() {
   const [tipo, setTipo] = useState('tutor')
   const [f, setF] = useState(VAZIO)
   const [erro, setErro] = useState('')
+  const [camposComErro, setCamposComErro] = useState({})
   const [aviso, setAviso] = useState('')
   const [enviando, setEnviando] = useState(false)
 
-  const campo = (nome) => ({ id: nome, value: f[nome], onChange: (e) => setF({ ...f, [nome]: e.target.value }) })
+  const campo = (nome) => ({
+    id: nome, value: f[nome], onChange: (e) => setF({ ...f, [nome]: e.target.value }),
+    'aria-invalid': camposComErro[nome] ? 'true' : undefined,
+    title: camposComErro[nome],
+  })
 
   function usarMinhaLocalizacao() {
     setAviso('')
@@ -54,6 +59,7 @@ export default function Cadastro() {
   async function enviar(e) {
     e.preventDefault()
     setErro('')
+    setCamposComErro({})
     setEnviando(true)
     try {
       await api('/auth/cadastro', { metodo: 'POST', corpo: montarCorpo() })
@@ -61,6 +67,7 @@ export default function Cadastro() {
       navegar(destinoPorTipo(usuario.tipo_conta))
     } catch (err) {
       setErro(err.message)
+      setCamposComErro(err.campos || {})
     } finally {
       setEnviando(false)
     }

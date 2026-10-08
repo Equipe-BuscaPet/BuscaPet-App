@@ -38,19 +38,26 @@ function paraApi(f) {
 function FormularioAnimal({ inicial, editando, desabilitado, onSalvar, onCancelar }) {
   const [f, setF] = useState(inicial)
   const [erro, setErro] = useState('')
+  const [camposComErro, setCamposComErro] = useState({})
   const [salvando, setSalvando] = useState(false)
 
-  const campo = (nome) => ({ id: nome, value: f[nome], onChange: (e) => setF({ ...f, [nome]: e.target.value }) })
+  const campo = (nome) => ({
+    id: nome, value: f[nome], onChange: (e) => setF({ ...f, [nome]: e.target.value }),
+    'aria-invalid': camposComErro[nome] ? 'true' : undefined,
+    title: camposComErro[nome],
+  })
   const marca = (nome) => ({ id: nome, checked: f[nome], onChange: (e) => setF({ ...f, [nome]: e.target.checked }) })
 
   async function enviar(e) {
     e.preventDefault()
     setErro('')
+    setCamposComErro({})
     setSalvando(true)
     try {
       await onSalvar(f)
     } catch (err) {
       setErro(err.message)
+      setCamposComErro(err.campos || {})
     } finally {
       setSalvando(false)
     }
