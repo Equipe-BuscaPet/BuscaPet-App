@@ -56,6 +56,7 @@ class AnimalOut(BaseModel):
     id: int
     abrigo_id: int
     nome_abrigo: str | None = None
+    abrigo_verificado: bool = False
     nome: str
     especie: Especie
     raca_aproximada: str | None

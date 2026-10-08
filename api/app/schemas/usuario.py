@@ -147,4 +147,4 @@ class TrocaSenha(BaseModel):
 
 
 class ValidacaoAbrigo(BaseModel):
-    status: Literal[StatusValidacao.APROVADO, StatusValidacao.REJEITADO]
+    status: Literal[StatusValidacao.PENDENTE, StatusValidacao.APROVADO, StatusValidacao.REJEITADO]

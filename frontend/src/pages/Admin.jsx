@@ -30,7 +30,7 @@ export default function Admin() {
     setOk('')
     try {
       await api(`/admin/abrigos/${abrigo.id}/validacao`, { metodo: 'PATCH', corpo: { status } })
-      setOk(`${abrigo.perfil.nome_abrigo} foi ${status === 'aprovado' ? 'aprovado' : 'rejeitado'}.`)
+      setOk(`${abrigo.perfil.nome_abrigo}: ${{ aprovado: 'selo Verificado concedido', rejeitado: 'abrigo suspenso', pendente: 'voltou para não verificado' }[status]}.`)
       await carregar()
     } catch (err) {
       setErro(err.message)
@@ -39,8 +39,8 @@ export default function Admin() {
 
   return (
     <main className="pagina">
-      <h1>Validação de abrigos</h1>
-      <p className="subtitulo">Só abrigos aprovados podem publicar animais e aparecem no catálogo público.</p>
+      <h1>Verificação de abrigos</h1>
+      <p className="subtitulo">Todo abrigo opera assim que se cadastra. Aqui você concede o selo Verificado (necessário para exibir chave de doação e entrar no ranking) ou suspende um abrigo suspeito, que some do catálogo.</p>
 
       <div className="acoes" role="tablist" aria-label="Situação" style={{ marginBottom: '1rem' }}>
         {ABAS.map((a) => (
@@ -76,8 +76,9 @@ export default function Admin() {
               </dl>
             </div>
             <div className="acoes" style={{ marginTop: '0.75rem' }}>
-              {u.perfil.status_validacao !== 'aprovado' && <button className="botao" onClick={() => decidir(u, 'aprovado')}>Aprovar</button>}
-              {u.perfil.status_validacao !== 'rejeitado' && <button className="botao botao--leve" onClick={() => decidir(u, 'rejeitado')}>Rejeitar</button>}
+              {u.perfil.status_validacao !== 'aprovado' && <button className="botao" onClick={() => decidir(u, 'aprovado')}>Verificar</button>}
+              {u.perfil.status_validacao !== 'rejeitado' && <button className="botao botao--leve" onClick={() => decidir(u, 'rejeitado')}>Suspender</button>}
+              {u.perfil.status_validacao !== 'pendente' && <button className="botao botao--leve" onClick={() => decidir(u, 'pendente')}>{u.perfil.status_validacao === 'aprovado' ? 'Remover selo' : 'Reativar'}</button>}
             </div>
           </article>
         ))}

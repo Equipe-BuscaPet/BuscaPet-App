@@ -15,7 +15,32 @@ export const TIPOS_ESTABELECIMENTO = {
   distribuidora: 'Distribuidora',
   pessoa_fisica: 'Pessoa física',
 }
-export const STATUS_VALIDACAO = { pendente: 'Pendente', aprovado: 'Aprovado', rejeitado: 'Rejeitado' }
+export const STATUS_VALIDACAO = { pendente: 'Não verificado', aprovado: 'Verificado', rejeitado: 'Suspenso' }
+
+export const STATUS_INTERESSE = {
+  aguardando: 'Aguardando resposta',
+  em_conversa: 'Em conversa',
+  aprovado: 'Aprovado',
+  recusado: 'Não seguiu',
+}
+
+// Nomes dos campos como a pessoa os conhece, para as mensagens de erro.
+export const ROTULO_CAMPO = {
+  nome: 'Nome', email: 'E-mail', senha: 'Senha', telefone: 'Telefone', cidade: 'Cidade',
+  nome_abrigo: 'Nome do abrigo', endereco: 'Endereço', latitude: 'Latitude', longitude: 'Longitude',
+  horario_funcionamento: 'Horário', descricao: 'Sobre o abrigo', cnpj: 'CNPJ',
+  tipo_estabelecimento: 'Tipo de estabelecimento', especie: 'Espécie', raca_aproximada: 'Raça',
+  porte: 'Porte', sexo: 'Sexo', idade_estimada_meses: 'Idade (meses)', temperamento: 'Temperamento',
+  historia_resgate: 'História do resgate', data_entrada: 'Data de entrada', condicao_chegada: 'Condição de chegada',
+  status: 'Situação', mensagem: 'Mensagem', senha_nova: 'Nova senha', senha_atual: 'Senha atual',
+}
+
+// Link do WhatsApp a partir de um telefone brasileiro (só dígitos; acrescenta o 55 se faltar).
+export function linkWhatsApp(telefone) {
+  const digitos = String(telefone || '').replace(/\D/g, '')
+  if (digitos.length < 10) return null
+  return `https://wa.me/${digitos.startsWith('55') && digitos.length >= 12 ? digitos : `55${digitos}`}`
+}
 
 export const EMOJI_ESPECIE = { cao: '🐶', gato: '🐱', outro: '🐾' }
 

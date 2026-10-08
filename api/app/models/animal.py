@@ -2,13 +2,14 @@
 import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import Especie, Sexo, StatusAnimal, StatusInteresse, pg_enum
 
 if TYPE_CHECKING:
+    from app.models.usuario import Tutor
     from app.models.reencontro import DescritorVisual
 
 
@@ -77,11 +78,15 @@ class Interesse(Base):
     o abrigo não sabe quantas pessoas se interessaram por cada animal."""
 
     __tablename__ = "interesses"
+    # Uma pessoa registra interesse uma única vez por animal.
+    __table_args__ = (UniqueConstraint("animal_id", "tutor_id", name="uq_interesses_animal_tutor"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     animal_id: Mapped[int] = mapped_column(ForeignKey("animais.id"))
     tutor_id: Mapped[int] = mapped_column(ForeignKey("tutores.usuario_id"))
+    mensagem: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[StatusInteresse] = mapped_column(pg_enum(StatusInteresse, name="status_interesse"), default=StatusInteresse.AGUARDANDO)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     animal: Mapped[Animal] = relationship(back_populates="interesses")
+    tutor: Mapped["Tutor"] = relationship()

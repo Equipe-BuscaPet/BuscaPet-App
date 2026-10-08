@@ -81,11 +81,11 @@ Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 
-1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais*, mas com o
-   formulário bloqueado: o abrigo nasce **pendente**.
-2. Crie o admin (comando acima), entre com ele: abre em *Validar abrigos*. Clique em **Aprovar**.
-3. Volte à conta do abrigo, recarregue: o formulário libera. Cadastre, edite e exclua animais.
-4. Sem login, abra o catálogo (`/`): só aparecem animais de abrigos aprovados.
+1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais* e já pode
+   cadastrar, editar e excluir animais: o abrigo nasce **não verificado**, mas opera na hora.
+2. Crie o admin (comando acima), entre com ele: abre em *Verificação de abrigos*. Clique em
+   **Verificar** para dar o selo (ou **Suspender**, que tira o abrigo do catálogo e bloqueia a publicação).
+3. Sem login, abra o catálogo (`/`): os animais aparecem com o selo *Verificado* ou *Não verificado*.
 5. Cadastre um **tutor** e tente abrir `/painel`: a tela barra o acesso (e a API também
    devolveria 403).
 

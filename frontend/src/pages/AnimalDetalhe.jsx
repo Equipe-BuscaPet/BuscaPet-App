@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
+import PainelInteresse from './PainelInteresse'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, STATUS_ANIMAL, textoIdade } from '../rotulos'
 
 const simNao = (v) => (v === null || v === undefined ? 'Não informado' : v ? 'Sim' : 'Não')
@@ -50,11 +51,14 @@ export default function AnimalDetalhe() {
             <dt>Vermifugado</dt><dd>{simNao(animal.vermifugado)}</dd>
             <dt>Convive com crianças</dt><dd>{simNao(animal.convivencia_criancas)}</dd>
             <dt>Convive com outros animais</dt><dd>{simNao(animal.convivencia_outros_animais)}</dd>
-            <dt>Abrigo</dt><dd>{animal.nome_abrigo}</dd>
+            <dt>Abrigo</dt><dd>{animal.nome_abrigo} <span className={`etiqueta ${animal.abrigo_verificado ? 'etiqueta--ok' : 'etiqueta--atencao'}`}>{animal.abrigo_verificado ? 'Verificado' : 'Não verificado'}</span></dd>
           </dl>
           {animal.temperamento && <section><h2>Temperamento</h2><p>{animal.temperamento}</p></section>}
           {animal.historia_resgate && <section><h2>História</h2><p>{animal.historia_resgate}</p></section>}
         </div>
+      </div>
+      <div style={{ marginTop: '1rem' }}>
+        <PainelInteresse animal={animal} />
       </div>
     </main>
   )

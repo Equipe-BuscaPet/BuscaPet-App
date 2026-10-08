@@ -55,12 +55,13 @@ def exigir_tipo(*tipos: TipoConta):
     return dependencia
 
 
-def get_abrigo_aprovado(usuario: Usuario = Depends(exigir_tipo(TipoConta.ABRIGO))) -> Abrigo:
-    """Abrigo só publica depois da validação do administrador (RF-06)."""
+def get_abrigo_operante(usuario: Usuario = Depends(exigir_tipo(TipoConta.ABRIGO))) -> Abrigo:
+    """Abrigo opera assim que cria a conta: a verificação do administrador (RF-06)
+    é um selo de confiança, não uma porta. Só um abrigo suspenso (rejeitado) é barrado."""
     abrigo = usuario.abrigo
-    if abrigo is None or abrigo.status_validacao != StatusValidacao.APROVADO:
+    if abrigo is None or abrigo.status_validacao == StatusValidacao.REJEITADO:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Seu abrigo ainda não foi validado pelo administrador.",
+            "Seu abrigo foi suspenso pela administração. Entre em contato com a equipe BuscaPet.",
         )
     return abrigo

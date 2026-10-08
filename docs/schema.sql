@@ -102,8 +102,10 @@ CREATE TABLE interesses (
     id         SERIAL PRIMARY KEY,
     animal_id  INTEGER NOT NULL REFERENCES animais(id),
     tutor_id   INTEGER NOT NULL REFERENCES tutores(usuario_id),
+    mensagem   VARCHAR(500),
     status     VARCHAR(15) NOT NULL DEFAULT 'aguardando' CHECK (status IN ('aguardando','em_conversa','aprovado','recusado')),
-    criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+    criado_em  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_interesses_animal_tutor UNIQUE (animal_id, tutor_id)
 );
 
 -- ===================== Reencontro — núcleo computacional (RF-19 a RF-29) =====================

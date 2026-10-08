@@ -65,7 +65,14 @@ Ao falar "Sprint N", diga qual das duas.
 - Migrations `0001` (schema) e `0002` (alinha models e banco). 37 testes automatizados passando.
 - Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
 
-**Existe só como modelo de dados, sem rota nem tela:** interesse de adoção (`Interesse`), animal
+**Backend do interesse de adoção pronto (Sprint 4), sem tela ainda:** tutor registra interesse
+(`POST /animais/{id}/interesses`), lista os seus (`GET /interesses/meus`) e pode desistir
+(`DELETE /interesses/{id}`); o abrigo vê os recebidos com o contato do tutor (`GET /interesses/recebidos`)
+e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar põe o animal em
+`em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
+`Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
+
+**Existe só como modelo de dados, sem rota nem tela:** animal
 perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
 denúncia, notificação, log de auditoria. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
 
@@ -73,10 +80,12 @@ denúncia, notificação, log de auditoria. O módulo `nucleo-opencl/` é só co
 no catálogo → tutor registra **interesse de adoção** → abrigo aceita ou recusa → status do animal muda.
 Inclui validações no frontend, mensagens de erro amigáveis e navegação coerente.
 
-**Mudança decidida para a Sprint 4:** abrigo **não depende mais de aprovação humana para usar a conta**.
-Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
-**Verificado**. O selo é exigido apenas para o que carrega risco de golpe: exibir a chave de doação
-financeira, aparecer no ranking e no mural de necessidades. O campo `status_validacao` já existe.
+**Mudança da Sprint 4 (já implementada):** abrigo **não depende mais de aprovação humana para usar a
+conta**. Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
+**Verificado**. Mapeamento no banco, sem migration: `pendente` = não verificado, `aprovado` = verificado,
+`rejeitado` = suspenso (some do catálogo e não publica). A API devolve `abrigo_verificado` em cada animal.
+O selo será exigido apenas para o que carrega risco de golpe: **exibir a chave de doação financeira,
+aparecer no ranking e no mural de necessidades** (ainda não implementados, então ainda não há o que bloquear).
 
 ## 5. Decisões de arquitetura já fechadas (não reabrir sem motivo novo)
 
