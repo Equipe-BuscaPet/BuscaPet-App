@@ -67,16 +67,17 @@ npm run dev                            # abre em http://localhost:5173
 ### B) Docker Compose
 
 ```bash
-cp .env.example .env
-docker compose up -d db redis
-cd api && alembic upgrade head   # cria o schema no Postgres local
-docker compose up
+cp .env.example .env                                  # Windows: Copy-Item .env.example .env
+docker compose up -d --build db redis api frontend
+docker compose exec api alembic upgrade head          # cria o schema no Postgres do Docker
 ```
 
 API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL
-(`http://localhost:8001`) ainda é placeholder, então para a Sprint 3 basta
-`docker compose up api db redis frontend`. Esse caminho não foi testado nesta máquina
-(sem Docker instalado); o caminho A é o validado.
+(`http://localhost:8001`) ainda é placeholder, por isso não sobe junto. O Postgres do Docker
+começa vazio e é local de cada pessoa (o volume `db_data` guarda os dados entre reinícios;
+`docker compose down` mantém, `docker compose down -v` apaga). Para criar o admin nele:
+`docker compose exec api python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`.
+Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 
