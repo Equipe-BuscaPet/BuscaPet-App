@@ -65,7 +65,14 @@ Ao falar "Sprint N", diga qual das duas.
 - Migrations `0001` (schema) e `0002` (alinha models e banco). 37 testes automatizados passando.
 - Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
 
-**Existe só como modelo de dados, sem rota nem tela:** interesse de adoção (`Interesse`), animal
+**Backend do interesse de adoção pronto (Sprint 4), sem tela ainda:** tutor registra interesse
+(`POST /animais/{id}/interesses`), lista os seus (`GET /interesses/meus`) e pode desistir
+(`DELETE /interesses/{id}`); o abrigo vê os recebidos com o contato do tutor (`GET /interesses/recebidos`)
+e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar põe o animal em
+`em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
+`Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
+
+**Existe só como modelo de dados, sem rota nem tela:** animal
 perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
 denúncia, notificação, log de auditoria. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
 
