@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.routers import admin, animais, auth, interesses, usuarios
+from app.routers import abrigos, admin, animais, auth, interesses, usuarios
 
 app = FastAPI(
     title="BuscaPet API",
     description="Backend da plataforma de adoção, reencontro e doação de animais.",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 app.add_middleware(
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(usuarios.router)
+app.include_router(abrigos.router)
 app.include_router(animais.router)
 app.include_router(interesses.router)
 app.include_router(admin.router)

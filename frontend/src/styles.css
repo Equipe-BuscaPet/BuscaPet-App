@@ -156,6 +156,10 @@ th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color
 .detalhe dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
 .detalhe dt { color: var(--ink-dim); font-weight: 600; }
 .detalhe dd { margin: 0; }
+.mapa { height: 480px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; z-index: 0; }
+@media (min-width: 900px) { .mapa { height: 560px; position: sticky; top: 1rem; } }
+.lista-abrigos { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #23201a; }
 .duas-colunas { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .duas-colunas { grid-template-columns: 1.3fr 1fr; align-items: start; } }
 .topo-pagina { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
