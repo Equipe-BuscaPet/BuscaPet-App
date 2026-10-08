@@ -10,6 +10,7 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | Rota | Quem acessa | O que faz |
 |---|---|---|
 | `/` | todos | Catálogo de animais para adoção, com busca e filtros |
+| `/mapa` | todos | Mapa de abrigos, com distância a partir da posição da pessoa |
 | `/animais/:id` | todos | Ficha completa do animal |
 | `/login` | visitante | Login único para todos os perfis |
 | `/cadastro` | visitante | Cadastro de tutor, abrigo ou apoiador |

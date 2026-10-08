@@ -60,7 +60,9 @@ Ao falar "Sprint N", diga qual das duas.
 - Cadastro e login (JWT) de tutor, abrigo e apoiador; admin criado só por script.
 - Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface
   apenas reflete).
-- CRUD de animais pelo abrigo; catálogo público com busca e filtros; ficha do animal.
+- CRUD de animais pelo abrigo; catálogo público com busca e filtros (inclusive por abrigo); ficha do animal.
+- **Mapa de abrigos** (`/mapa`, OpenStreetMap + Leaflet): `GET /abrigos` público, com distância e filtro por raio
+  a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
 - Fila do administrador para validar abrigos.
 - Migrations `0001` (schema) e `0002` (alinha models e banco). 37 testes automatizados passando.
 - Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).

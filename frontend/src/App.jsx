@@ -6,6 +6,7 @@ import Cadastro from './pages/Cadastro'
 import Catalogo from './pages/Catalogo'
 import Interessados from './pages/Interessados'
 import Login from './pages/Login'
+import Mapa from './pages/Mapa'
 import MeusInteresses from './pages/MeusInteresses'
 import PainelAbrigo from './pages/PainelAbrigo'
 
@@ -22,6 +23,7 @@ function Cabecalho() {
         </Link>
         <nav className="menu" aria-label="Principal">
           <NavLink to="/" end>Animais</NavLink>
+          <NavLink to="/mapa">Mapa</NavLink>
           {usuario?.tipo_conta === 'tutor' && <NavLink to="/interesses">Meus interesses</NavLink>}
           {usuario?.tipo_conta === 'abrigo' && <NavLink to="/painel">Meus animais</NavLink>}
           {usuario?.tipo_conta === 'abrigo' && <NavLink to="/interessados">Interessados</NavLink>}
@@ -70,6 +72,7 @@ export default function App() {
       <Cabecalho />
       <Routes>
         <Route path="/" element={<Catalogo />} />
+        <Route path="/mapa" element={<Mapa />} />
         <Route path="/animais/:id" element={<AnimalDetalhe />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />

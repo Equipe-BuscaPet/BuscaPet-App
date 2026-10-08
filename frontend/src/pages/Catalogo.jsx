@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, textoIdade } from '../rotulos'
 
@@ -20,6 +20,8 @@ export function CartaoAnimal({ animal }) {
 }
 
 export default function Catalogo() {
+  const [params, setParams] = useSearchParams()
+  const abrigoId = params.get('abrigo') || ''
   const [filtros, setFiltros] = useState({ busca: '', especie: '', porte: '' })
   const [animais, setAnimais] = useState([])
   const [temMais, setTemMais] = useState(false)
@@ -29,10 +31,11 @@ export default function Catalogo() {
   const buscar = useCallback(async (deslocamento) => {
     setCarregando(true)
     setErro('')
-    const params = new URLSearchParams({ limite: POR_PAGINA, deslocamento })
-    Object.entries(filtros).forEach(([k, v]) => v && params.set(k, v))
+    const consulta = new URLSearchParams({ limite: POR_PAGINA, deslocamento })
+    Object.entries(filtros).forEach(([k, v]) => v && consulta.set(k, v))
+    if (abrigoId) consulta.set('abrigo_id', abrigoId)
     try {
-      const lista = await api(`/animais?${params}`)
+      const lista = await api(`/animais?${consulta}`)
       setAnimais((atual) => (deslocamento === 0 ? lista : [...atual, ...lista]))
       setTemMais(lista.length === POR_PAGINA)
     } catch (err) {
@@ -40,7 +43,7 @@ export default function Catalogo() {
     } finally {
       setCarregando(false)
     }
-  }, [filtros])
+  }, [filtros, abrigoId])
 
   // Refaz a busca a cada mudança de filtro (com uma pequena espera para não consultar a cada tecla).
   useEffect(() => {
@@ -54,6 +57,14 @@ export default function Catalogo() {
     <main className="pagina">
       <h1>Animais para adoção</h1>
       <p className="subtitulo">Animais de abrigos e protetores. O selo Verificado indica que a administração confirmou o abrigo.</p>
+
+      {abrigoId && (
+        <div className="aviso aviso--atencao" role="status">
+          Mostrando só os animais de {animais[0]?.nome_abrigo || 'um abrigo'}.{' '}
+          <button className="botao botao--leve botao--pequeno" onClick={() => setParams({})}>Ver todos os abrigos</button>{' '}
+          <Link to="/mapa">Voltar ao mapa</Link>
+        </div>
+      )}
 
       <div className="filtros" role="search">
         <div className="campo">
