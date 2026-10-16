@@ -1,18 +1,49 @@
-# Imagem com PoCL (runtime OpenCL por software) — permite rodar o núcleo em
-# CPU, sem depender de GPU/driver específico, igual nas três máquinas do time.
-# Implementação do serviço (main.c, kernels .cl) é trabalho da Sprint 3.
-FROM debian:bookworm-slim
+# Núcleo OpenCL do BuscaPet — imagem em dois estágios.
+#
+# PoCL é um runtime OpenCL por software: roda os kernels na CPU, sem depender
+# de GPU nem de driver específico, igual nas máquinas do time, na CI e no deploy.
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    ocl-icd-opencl-dev \
-    pocl-opencl-icd \
-    clinfo \
+# ---------- Estágio 1: compilar e testar ----------
+FROM debian:bookworm-slim AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        ocl-icd-opencl-dev \
+        pocl-opencl-icd \
+        libmicrohttpd-dev \
+        libcjson-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /src
+COPY Makefile ./
 COPY src/ ./src/
+COPY kernels/ ./kernels/
 
-# Placeholder — substituir pelo binário real na Sprint 3 (compilar main.c
-# linkando -lOpenCL e servindo a API HTTP enxuta do contrato em README.md)
-CMD ["clinfo"]
+# O build só termina se o teste de equivalência passar: uma imagem com kernel
+# errado nunca chega a ser gerada.
+ENV POCL_CACHE_DIR=/tmp/pocl
+RUN make && make teste
+
+# ---------- Estágio 2: imagem final, só o necessário para rodar ----------
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ocl-icd-libopencl1 \
+        pocl-opencl-icd \
+        libmicrohttpd12 \
+        libcjson1 \
+        clinfo \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home nucleo
+
+WORKDIR /app
+COPY --from=build /src/build/nucleo-servidor /src/build/spike ./
+COPY kernels/ ./kernels/
+
+ENV PORTA=8001 \
+    NUCLEO_KERNELS=/app/kernels \
+    POCL_CACHE_DIR=/tmp/pocl
+
+USER nucleo
+EXPOSE 8001
+CMD ["./nucleo-servidor"]
