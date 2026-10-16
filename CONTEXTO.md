@@ -75,7 +75,7 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 `em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
 `Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
 
-**Animal perdido e avistamento (RF-19/RF-20) — só API, telas a fazer:** `POST /perdidos` (tutor) e
+**Animal perdido e avistamento (RF-19/RF-20) — API e telas:** `POST /perdidos` (tutor) e
 `POST /avistamentos` (qualquer conta logada) recebem um formulário multipart com as características, o
 local, a data e de 1 a 5 fotos (campo `fotos`). Consulta pública em `GET /perdidos` e `GET /avistamentos`
 (filtros de espécie, porte e raio a partir de `lat`/`lng`), `GET .../meus` e `DELETE` pelo autor ou admin.
@@ -83,6 +83,11 @@ Privacidade (escopo §9): a resposta pública não traz dados de quem registrou 
 (perdido ~1 km, avistamento ~100 m). Fotos: validadas e regravadas como JPEG **sem metadados** (remove o
 GPS da foto de celular), até 1280 px, nome aleatório, em `api/uploads/fotos/` (fora do Git), servidas por
 `GET /fotos/{nome}` (`app/core/fotos.py`). Nova dependência: `pillow` (no Docker: `docker compose up -d --build api`).
+Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/perdi` e `/encontrei` (5 etapas; o
+visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
+da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
+**Datas "do dia"** (`data_entrada`, `data_desaparecimento`, `data_avistamento`) são colunas `DateTime` gravadas como
+meia-noite UTC; a saída usa o tipo `DataDoDia` (`app/schemas/datas.py`) para não voltar um dia no Postgres em UTC-3.
 
 **Existe só como modelo de dados, sem rota nem tela:** busca salva, correspondência, necessidade, doação, ranking de apoiadores,
 denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
