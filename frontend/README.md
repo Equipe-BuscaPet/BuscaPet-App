@@ -10,7 +10,7 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | Rota | Quem acessa | O que faz |
 |---|---|---|
 | `/` | todos | Catálogo de animais para adoção, com busca e filtros, e destaque "Perdeu ou encontrou um animal?" |
-| `/mapa` | todos | **Primeiro item do menu.** Abas acima do mapa: **Abrigos** (mapa e lista lateral de abrigos) e **Perdidos e avistados** (mapa e lista dos animais, com filtro Perdidos/Avistados). A aba vai para a URL: `/mapa?ver=animais&mostrar=perdidos` (RF-07 a RF-09) |
+| `/mapa` | todos | **Primeiro item do menu.** Acima do mapa só as abas **Abrigos** e **Perdidos e avistados** (lista mista). Sobre a lista: contagem, **📍 Perto de mim** (liga/desliga) e **⚙️ Filtros**, um painel com tipo, espécie, porte, período e distância (animais) ou só verificados, só com animais e distância (abrigos). URL: `/mapa?ver=animais&mostrar=perdidos` (RF-07 a RF-09) |
 | `/animais/:id` | todos | Ficha completa do animal e registro de interesse de adoção |
 | `/reencontro` | todos | **Perdidos e achados**: animais perdidos e avistados na rua, com filtros e "perto de mim" (RF-19/20) |
 | `/reencontro/perdidos/:id`, `/reencontro/avistamentos/:id` | todos | Detalhe do registro: galeria, características e mapa da região aproximada |
@@ -65,7 +65,7 @@ cheia, como um app, sem passar por loja.
 | Manifesto | `public/manifest.webmanifest` | nome, cores, ícones, abre em `/mapa`, atalhos Perdi / Encontrei / Mapa |
 | Ícones | `public/icones/` | gerados do logo oficial: 192, 512, *maskable* (Android) e `apple-touch-icon` (iPhone) |
 | Service worker | `public/sw.js` | só em produção; guarda a casca da interface (abre sem internet) e os arquivos com hash; API e mapa passam direto |
-| Botão "Instalar app" | `src/componentes/BotaoInstalar.jsx` | Android/Chrome/Edge: usa o pedido do navegador; iPhone: mostra "Compartilhar → Adicionar à Tela de Início" |
+| Botão "Instalar app" (no rodapé, centralizado) | `src/componentes/BotaoInstalar.jsx` | Android/Chrome/Edge: usa o pedido do navegador; iPhone: mostra "Compartilhar → Adicionar à Tela de Início" |
 
 Para testar a instalação: `npm run build && npx vite preview`, abrir no Chrome e clicar em "Instalar app". O navegador só
 oferece instalar em `https://` ou `localhost`.
@@ -101,7 +101,7 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/autenticacao.spec.js` | cadastro pela interface, senha errada, menu por perfil e bloqueio de página, sair |
 | `e2e/adocao.spec.js` | tutor registra interesse e o abrigo vê o interessado; visitante é convidado a entrar |
 | `e2e/reencontro.spec.js` | assistente "Perdi" completo (validações, login na revisão, fotos mantidas, data sem erro de fuso), arquivo que não é imagem, aviso para abrigo, "Encontrei" achando o perdido próximo, abas da lista, privacidade do local, exclusão |
-| `e2e/mapa.spec.js` | Mapa primeiro no menu, abas Abrigos × Perdidos e avistados, lista mista com filtros (tipo, espécie, porte, período), Perto de mim com geolocalização simulada, balão leva ao registro, destaque da página inicial |
+| `e2e/mapa.spec.js` | Mapa primeiro no menu; só abas acima do mapa; Perto de mim e Filtros na linha da contagem, à direita; painel de filtros (animais e abrigos, fecha com Esc); lista mista; Perto de mim com geolocalização simulada; balão leva ao registro; Instalar app no rodapé |
 | `e2e/pwa.spec.js` | manifesto válido, ícones existem, dica de instalação no iPhone, botão escondido sem o pedido do navegador |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
@@ -120,7 +120,8 @@ src/
   App.jsx       cabeçalho, rotas e proteção por tipo de conta
   pages/        uma tela por arquivo
   componentes/  peças reaproveitadas entre telas (assistente do reencontro, seletor de fotos,
-                seletor de local no mapa, cartão de registro)
+                seletor de local no mapa, cartão de registro, menu de filtros, instalar app)
+  useUltimoPedido.js  descarta respostas velhas de buscas (evita condição de corrida ao trocar filtro/aba)
   styles.css    paleta e componentes (modo claro e escuro)
 e2e/            testes de ponta a ponta (Playwright); fotos de teste em e2e/fixtures/
 playwright.config.js   projetos computador/celular, servidores que o teste sobe sozinho
