@@ -14,6 +14,7 @@ from fastapi import UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import Especie, Sexo
+from app.schemas.datas import DataDoDia
 
 Porte = Literal["pequeno", "medio", "grande"]
 
@@ -85,9 +86,9 @@ class _RegistroOut(BaseModel):
 
 class PerdidoOut(_RegistroOut):
     raio_busca_km: float
-    data_desaparecimento: datetime.datetime
+    data_desaparecimento: DataDoDia
     resolvido: bool
 
 
 class AvistamentoOut(_RegistroOut):
-    data_avistamento: datetime.datetime
+    data_avistamento: DataDoDia

@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import Especie, Sexo, StatusAnimal
+from app.schemas.datas import DataDoDia
 
 Porte = Literal["pequeno", "medio", "grande"]
 
@@ -70,7 +71,7 @@ class AnimalOut(BaseModel):
     convivencia_criancas: bool | None
     convivencia_outros_animais: bool | None
     historia_resgate: str | None
-    data_entrada: datetime.datetime | None
+    data_entrada: DataDoDia | None
     condicao_chegada: str | None
     status: StatusAnimal
     criado_em: datetime.datetime
