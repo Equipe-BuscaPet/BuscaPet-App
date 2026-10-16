@@ -65,7 +65,7 @@ Ao falar "Sprint N", diga qual das duas.
   a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
 - Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender).
 - Interesse de adoção completo (API e telas: ficha do animal, Meus interesses, Interessados).
-- Migrations `0001` (schema), `0002` (alinha models e banco) e `0003` (interesse). 59 testes automatizados passando.
+- Migrations `0001` (schema), `0002` (alinha models e banco) e `0003` (interesse). 77 testes automatizados passando.
 - Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
 
 **Interesse de adoção (Sprint 4):** tutor registra interesse
@@ -75,8 +75,16 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 `em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
 `Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
 
-**Existe só como modelo de dados, sem rota nem tela:** animal
-perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
+**Animal perdido e avistamento (RF-19/RF-20) — só API, telas a fazer:** `POST /perdidos` (tutor) e
+`POST /avistamentos` (qualquer conta logada) recebem um formulário multipart com as características, o
+local, a data e de 1 a 5 fotos (campo `fotos`). Consulta pública em `GET /perdidos` e `GET /avistamentos`
+(filtros de espécie, porte e raio a partir de `lat`/`lng`), `GET .../meus` e `DELETE` pelo autor ou admin.
+Privacidade (escopo §9): a resposta pública não traz dados de quem registrou e o local sai arredondado
+(perdido ~1 km, avistamento ~100 m). Fotos: validadas e regravadas como JPEG **sem metadados** (remove o
+GPS da foto de celular), até 1280 px, nome aleatório, em `api/uploads/fotos/` (fora do Git), servidas por
+`GET /fotos/{nome}` (`app/core/fotos.py`). Nova dependência: `pillow` (no Docker: `docker compose up -d --build api`).
+
+**Existe só como modelo de dados, sem rota nem tela:** busca salva, correspondência, necessidade, doação, ranking de apoiadores,
 denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
 
 **Próximo passo:** a Sprint 5 oficial da disciplina ainda não foi informada; confirmar o roteiro antes de planejar. Em paralelo segue obrigatório, para Tópicos Avançados, o núcleo OpenCL e o reencontro (RF-19 a RF-29). Pendências conhecidas: tela de notificações, doações e ranking (onde o selo Verificado passa a ser exigido).
