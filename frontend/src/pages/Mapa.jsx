@@ -1,30 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from '../api'
 import { TIPOS_REGISTRO, resumoCaracteristicas } from '../componentes/CartaoRegistro'
-import { linkWhatsApp, textoData, textoKm } from '../rotulos'
+import { ESPECIES, PORTES, linkWhatsApp, textoData, textoHaQuanto, textoKm } from '../rotulos'
 
 // Mapa com abas acima dele (RF-07 a RF-09, protótipo da Sprint 2):
 //   Abrigos                → o mapa e a lista lateral mostram os abrigos;
-//   Perdidos e avistados   → o mapa e a lista mostram os animais, com filtro Perdidos / Avistados.
+//   Perdidos e avistados   → o mapa e uma lista MISTA mostram os animais, com filtros
+//                            (perdidos/avistados, espécie, porte e período).
 // OpenStreetMap (gratuito, sem chave de API). Centro padrão: Recife.
 const RECIFE = [-8.0476, -34.877]
 const RAIOS = [['', 'Qualquer distância'], ['5', 'Até 5 km'], ['10', 'Até 10 km'], ['25', 'Até 25 km']]
+const PERIODOS = [['', 'Qualquer data'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 3 meses']]
 const COR = { verificado: '#2f7d3a', comum: '#c4541a', voce: '#2b6cb0' }
 
 const ABAS = [
   { chave: 'abrigos', rotulo: 'Abrigos', icone: '🏠' },
   { chave: 'animais', rotulo: 'Perdidos e avistados', icone: '🐾' },
 ]
-// Filtro dentro da aba de animais.
 const TIPOS = [
-  { chave: 'perdidos', tipo: 'perdido', rotulo: 'Perdidos', titulo: 'Animais perdidos' },
-  { chave: 'avistamentos', tipo: 'avistamento', rotulo: 'Avistados', titulo: 'Animais avistados na rua' },
+  { chave: 'perdidos', tipo: 'perdido', rotulo: 'Perdidos' },
+  { chave: 'avistamentos', tipo: 'avistamento', rotulo: 'Avistados' },
 ]
 
 const texto = (n) => (n === 1 ? '1 animal disponível' : `${n} animais disponíveis`)
+
+// Data do registro (sumiu em / visto em) já está ≥ hoje − N dias?
+function dentroDoPeriodo(r, dias) {
+  if (!dias) return true
+  const t = TIPOS_REGISTRO[r.tipo]
+  const limite = new Date()
+  limite.setDate(limite.getDate() - Number(dias))
+  return String(r[t.campoData]).slice(0, 10) >= limite.toISOString().slice(0, 10)
+}
 
 // Balões montados com nós de texto (nunca HTML), porque os textos são digitados por usuários.
 function caixaBalao(titulo, linhas, botao) {
@@ -50,7 +60,7 @@ function caixaBalao(titulo, linhas, botao) {
 export default function Mapa() {
   const navegar = useNavigate()
   const [params, setParams] = useSearchParams()
-  // A aba e o filtro ficam na URL (/mapa?ver=animais&mostrar=perdidos), para dar para compartilhar o link.
+  // A aba e o tipo ficam na URL (/mapa?ver=animais&mostrar=perdidos), para dar para compartilhar o link.
   const aba = params.get('ver') === 'animais' ? 'animais' : 'abrigos'
   const mostrarParam = params.get('mostrar')
   const tiposAtivos = TIPOS.map((t) => t.chave).filter((c) => !mostrarParam || mostrarParam === c)
@@ -59,6 +69,7 @@ export default function Mapa() {
   const camada = useRef(null)
   const marcadores = useRef(new Map())
   const [dados, setDados] = useState({ abrigos: [], perdidos: [], avistamentos: [] })
+  const [filtros, setFiltros] = useState({ especie: '', porte: '', periodo: '' })
   const [posicao, setPosicao] = useState(null)
   const [raio, setRaio] = useState('')
   const [carregando, setCarregando] = useState(true)
@@ -78,7 +89,7 @@ export default function Mapa() {
     return () => { m.remove(); mapa.current = null }
   }, [])
 
-  // Busca só o que a aba mostra (com a distância, se a pessoa informou onde está).
+  // Busca só o que a aba mostra. Espécie e porte são filtrados na API; tipo e período, aqui na tela.
   useEffect(() => {
     setCarregando(true)
     setErro('')
@@ -93,14 +104,30 @@ export default function Mapa() {
       busca = api(`/abrigos${consulta.size ? `?${consulta}` : ''}`).then((abrigos) => ({ abrigos, perdidos: [], avistamentos: [] }))
     } else {
       consulta.set('limite', 100)
+      if (filtros.especie) consulta.set('especie', filtros.especie)
+      if (filtros.porte) consulta.set('porte', filtros.porte)
       busca = Promise.all([api(`/perdidos?${consulta}`), api(`/avistamentos?${consulta}`)])
         .then(([perdidos, avistamentos]) => ({ abrigos: [], perdidos, avistamentos }))
     }
     busca.then(setDados).catch((e) => setErro(e.message)).finally(() => setCarregando(false))
-  }, [aba, posicao, raio])
+  }, [aba, posicao, raio, filtros.especie, filtros.porte])
+
+  // Lista mista: perdidos e avistados juntos, do mais perto ao mais longe (com posição) ou do mais recente.
+  const chaveTipos = tiposAtivos.join(',')
+  const animais = useMemo(() => {
+    const ativos = chaveTipos.split(',')
+    const lista = TIPOS.filter((t) => ativos.includes(t.chave))
+      .flatMap((t) => dados[t.chave].map((r) => ({ ...r, tipo: t.tipo })))
+      .filter((r) => dentroDoPeriodo(r, filtros.periodo))
+    return lista.sort((a, b) => (a.distancia_km != null ? a.distancia_km - b.distancia_km : String(b.criado_em).localeCompare(String(a.criado_em))))
+  }, [dados, chaveTipos, filtros.periodo])
+  const contagem = useMemo(() => {
+    const c = { perdidos: 0, avistamentos: 0 }
+    for (const t of TIPOS) c[t.chave] = dados[t.chave].filter((r) => dentroDoPeriodo({ ...r, tipo: t.tipo }, filtros.periodo)).length
+    return c
+  }, [dados, filtros.periodo])
 
   // Redesenha os marcadores da aba atual e ajusta o enquadramento.
-  const chaveTipos = tiposAtivos.join(',')
   useEffect(() => {
     const m = mapa.current
     if (!m) return
@@ -120,26 +147,22 @@ export default function Mapa() {
       pontos.push([a.latitude, a.longitude])
     })
 
-    const ativos = chaveTipos.split(',')
-    for (const { chave, tipo } of TIPOS) {
-      if (!ativos.includes(chave)) continue
-      const t = TIPOS_REGISTRO[tipo]
-      dados[chave].forEach((r) => {
-        // Losango: diferencia registro de abrigo também para quem não distingue cores.
-        // O Leaflet posiciona o ícone pelo transform do próprio elemento; quem gira é o filho.
-        const marcador = L.marker([r.latitude, r.longitude], {
-          icon: L.divIcon({ className: `pino pino--${tipo}`, html: '<span class="pino__losango"></span>', iconSize: [20, 20], iconAnchor: [10, 10] }),
-          title: t.titulo(r.especie),
-        })
-        marcador.bindPopup(() => caixaBalao(t.titulo(r.especie), [
-          resumoCaracteristicas(r), `${t.rotuloData} ${textoData(r[t.campoData])}`, 'Local aproximado',
-          r.distancia_km != null && `A ${textoKm(r.distancia_km)} de você`,
-        ], { texto: 'Ver registro', acao: () => ir(`${t.caminhoTela}/${r.id}`) }))
-        marcador.addTo(camada.current)
-        marcadores.current.set(`${tipo}-${r.id}`, marcador)
-        pontos.push([r.latitude, r.longitude])
+    animais.forEach((r) => {
+      const t = TIPOS_REGISTRO[r.tipo]
+      // Losango: diferencia registro de abrigo também para quem não distingue cores.
+      // O Leaflet posiciona o ícone pelo transform do próprio elemento; quem gira é o filho.
+      const marcador = L.marker([r.latitude, r.longitude], {
+        icon: L.divIcon({ className: `pino pino--${r.tipo}`, html: '<span class="pino__losango"></span>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+        title: t.titulo(r.especie),
       })
-    }
+      marcador.bindPopup(() => caixaBalao(t.titulo(r.especie), [
+        resumoCaracteristicas(r), `${t.rotuloData} ${textoData(r[t.campoData])}`, 'Local aproximado',
+        r.distancia_km != null && `A ${textoKm(r.distancia_km)} de você`,
+      ], { texto: 'Ver registro', acao: () => ir(`${t.caminhoTela}/${r.id}`) }))
+      marcador.addTo(camada.current)
+      marcadores.current.set(`${r.tipo}-${r.id}`, marcador)
+      pontos.push([r.latitude, r.longitude])
+    })
 
     if (posicao) {
       L.circleMarker([posicao.lat, posicao.lng], { radius: 8, color: '#fff', weight: 2, fillColor: COR.voce, fillOpacity: 1 })
@@ -148,19 +171,22 @@ export default function Mapa() {
     }
     if (pontos.length > 1) m.fitBounds(pontos, { padding: [40, 40], maxZoom: 15 })
     else if (pontos.length === 1) m.setView(pontos[0], 14)
-  }, [dados, posicao, ir, chaveTipos])
+  }, [dados, animais, posicao, ir])
 
   function trocarAba(chave) {
     setParams(chave === 'animais' ? { ver: 'animais' } : {}, { replace: true })
   }
 
-  // Liga/desliga Perdidos ou Avistados. Desligar o último religa os dois: mapa vazio não ajuda ninguém.
+  // Liga/desliga Perdidos ou Avistados. Desligar o último religa os dois: lista vazia não ajuda ninguém.
   function alternarTipo(chave) {
     const novos = tiposAtivos.includes(chave) ? tiposAtivos.filter((c) => c !== chave) : [...tiposAtivos, chave]
     const proximo = { ver: 'animais' }
     if (novos.length === 1) proximo.mostrar = novos[0]
     setParams(proximo, { replace: true })
   }
+
+  const mudarFiltro = (nome) => (e) => setFiltros((f) => ({ ...f, [nome]: e.target.value }))
+  const filtrosAtivos = Boolean(filtros.especie || filtros.porte || filtros.periodo || mostrarParam)
 
   function perto() {
     setAvisoLocal('')
@@ -178,17 +204,38 @@ export default function Mapa() {
     elementoMapa.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  const registrosVisiveis = TIPOS.filter((t) => tiposAtivos.includes(t.chave)).reduce((n, t) => n + dados[t.chave].length, 0)
-  const vazio = !carregando && !erro && (aba === 'abrigos' ? dados.abrigos.length === 0 : registrosVisiveis === 0)
+  const vazio = !carregando && !erro && (aba === 'abrigos' ? dados.abrigos.length === 0 : animais.length === 0)
+
+  const localizacao = posicao ? (
+    <div className="acoes" style={{ flexWrap: 'nowrap' }}>
+      <label className="sr-only" htmlFor="raio">Distância máxima</label>
+      <select id="raio" value={raio} onChange={(e) => setRaio(e.target.value)} style={{ width: 'auto' }}>
+        {RAIOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+      </select>
+      <button className="botao botao--leve" onClick={() => { setPosicao(null); setRaio('') }}>Limpar local</button>
+    </div>
+  ) : (
+    <button className="botao botao--leve" onClick={perto}>📍 Perto de mim</button>
+  )
 
   return (
     <main className="pagina">
-      <h1>Mapa</h1>
-      <p className="subtitulo">
-        {aba === 'abrigos'
-          ? 'Abrigos e protetores perto de você. Verde: abrigo verificado pela administração; laranja: ainda não verificado.'
-          : 'Animais procurados pelos tutores e animais vistos na rua. O local é aproximado, para proteger quem registrou.'}
-      </p>
+      <div className="topo-pagina" style={{ marginBottom: 0 }}>
+        <div>
+          <h1>Mapa</h1>
+          <p className="subtitulo">
+            {aba === 'abrigos'
+              ? 'Abrigos e protetores perto de você. Verde: abrigo verificado pela administração; laranja: ainda não verificado.'
+              : 'Animais procurados pelos tutores e animais vistos na rua. O local é aproximado, para proteger quem registrou.'}
+          </p>
+        </div>
+        {aba === 'animais' && (
+          <div className="acoes">
+            <Link className="botao" to="/perdi">Perdi meu animal</Link>
+            <Link className="botao botao--leve" to="/encontrei">Encontrei um animal</Link>
+          </div>
+        )}
+      </div>
 
       <div className="abas abas--mapa" role="tablist" aria-label="O que ver no mapa">
         {ABAS.map((a) => (
@@ -201,40 +248,46 @@ export default function Mapa() {
         ))}
       </div>
 
+      {/* Ordem combinada: primeiro "Perto de mim", depois os filtros. */}
       <div className="mapa-ferramentas">
+        {localizacao}
         {aba === 'animais' && (
-          <div className="camadas" role="group" aria-label="Mostrar no mapa">
-            {TIPOS.map((t) => {
-              const ligado = tiposAtivos.includes(t.chave)
-              return (
-                <button key={t.chave} type="button" className={`camada${ligado ? ' camada--ligada' : ''}`} aria-pressed={ligado} onClick={() => alternarTipo(t.chave)}>
-                  <span className={`camada__marca camada__marca--${t.chave}`} aria-hidden="true" />
-                  {t.rotulo}
-                  {!carregando && <span className="camada__total">{dados[t.chave].length}</span>}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        <div className="acoes">
-          {posicao ? (
-            <>
-              <label className="sr-only" htmlFor="raio">Distância máxima</label>
-              <select id="raio" value={raio} onChange={(e) => setRaio(e.target.value)} style={{ width: 'auto' }}>
-                {RAIOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+          <>
+            <div className="camadas" role="group" aria-label="Mostrar no mapa">
+              {TIPOS.map((t) => {
+                const ligado = tiposAtivos.includes(t.chave)
+                return (
+                  <button key={t.chave} type="button" className={`camada${ligado ? ' camada--ligada' : ''}`} aria-pressed={ligado} onClick={() => alternarTipo(t.chave)}>
+                    <span className={`camada__marca camada__marca--${t.chave}`} aria-hidden="true" />
+                    {t.rotulo}
+                    {!carregando && <span className="camada__total">{contagem[t.chave]}</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="filtros-mapa" role="search" aria-label="Filtrar animais">
+              <label className="sr-only" htmlFor="f-especie">Espécie</label>
+              <select id="f-especie" value={filtros.especie} onChange={mudarFiltro('especie')}>
+                <option value="">Todas as espécies</option>
+                {Object.entries(ESPECIES).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
               </select>
-              <button className="botao botao--leve" onClick={() => { setPosicao(null); setRaio('') }}>Mostrar tudo</button>
-            </>
-          ) : (
-            <button className="botao botao--leve" onClick={perto}>📍 Perto de mim</button>
-          )}
-          {aba === 'animais' && (
-            <>
-              <Link className="botao" to="/perdi">Perdi meu animal</Link>
-              <Link className="botao botao--leve" to="/encontrei">Encontrei um animal</Link>
-            </>
-          )}
-        </div>
+              <label className="sr-only" htmlFor="f-porte">Porte</label>
+              <select id="f-porte" value={filtros.porte} onChange={mudarFiltro('porte')}>
+                <option value="">Todos os portes</option>
+                {Object.entries(PORTES).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+              </select>
+              <label className="sr-only" htmlFor="f-periodo">Período</label>
+              <select id="f-periodo" value={filtros.periodo} onChange={mudarFiltro('periodo')}>
+                {PERIODOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+              </select>
+              {filtrosAtivos && (
+                <button type="button" className="botao botao--leve botao--pequeno" onClick={() => { setFiltros({ especie: '', porte: '', periodo: '' }); setParams({ ver: 'animais' }, { replace: true }) }}>
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {avisoLocal && <div className="aviso aviso--atencao" role="status">{avisoLocal}</div>}
@@ -246,7 +299,9 @@ export default function Mapa() {
           {carregando && <p className="estado">Carregando…</p>}
           {vazio && (
             <p className="estado">
-              {posicao && raio ? 'Nada nessa distância. Tente aumentar o raio.' : aba === 'abrigos' ? 'Nenhum abrigo cadastrado ainda.' : 'Nenhum animal perdido ou avistado registrado.'}
+              {aba === 'abrigos'
+                ? (posicao && raio ? 'Nenhum abrigo nessa distância. Tente aumentar o raio.' : 'Nenhum abrigo cadastrado ainda.')
+                : 'Nenhum animal com esses filtros. Tente limpar os filtros ou aumentar a distância.'}
             </p>
           )}
 
@@ -277,30 +332,35 @@ export default function Mapa() {
             </ul>
           )}
 
-          {aba === 'animais' && !carregando && TIPOS.filter((t) => tiposAtivos.includes(t.chave) && dados[t.chave].length > 0).map(({ chave, tipo, titulo }) => {
-            const t = TIPOS_REGISTRO[tipo]
-            return (
-              <section key={chave} aria-labelledby={`titulo-${chave}`} className="mapa-secao">
-                <h2 id={`titulo-${chave}`} className="mapa-secao__titulo">{titulo}</h2>
-                <ul className="lista-abrigos">
-                  {dados[chave].map((r) => (
-                    <li key={r.id} className="cartao registro-mini">
-                      <span className={`camada__marca camada__marca--${chave}`} aria-hidden="true" />
+          {aba === 'animais' && !carregando && animais.length > 0 && (
+            <>
+              <p className="mapa-secao__titulo">
+                {animais.length} {animais.length === 1 ? 'animal' : 'animais'} · {posicao ? 'do mais perto ao mais longe' : 'mais recentes primeiro'}
+              </p>
+              <ul className="lista-abrigos" aria-label="Animais perdidos e avistados">
+                {animais.map((r) => {
+                  const t = TIPOS_REGISTRO[r.tipo]
+                  return (
+                    <li key={`${r.tipo}-${r.id}`} className="cartao registro-mini">
+                      <span className={`camada__marca camada__marca--${r.tipo === 'perdido' ? 'perdidos' : 'avistamentos'}`} aria-hidden="true" />
                       <div>
-                        <Link to={`${t.caminhoTela}/${r.id}`}><strong>{t.titulo(r.especie)}</strong></Link>
+                        <div className="registro-mini__topo">
+                          <Link to={`${t.caminhoTela}/${r.id}`}><strong>{t.titulo(r.especie)}</strong></Link>
+                          <span className={`etiqueta ${t.etiqueta[1]}`}>{t.etiqueta[0]}</span>
+                        </div>
                         <p>{resumoCaracteristicas(r)}</p>
                         <p>
                           {t.rotuloData} {textoData(r[t.campoData])}
-                          {r.distancia_km != null && <> · <strong>{textoKm(r.distancia_km)}</strong></>}
+                          {r.distancia_km != null ? <> · <strong>{textoKm(r.distancia_km)}</strong></> : <> · publicado {textoHaQuanto(r.criado_em)}</>}
                         </p>
                       </div>
-                      <button className="botao botao--leve botao--pequeno" onClick={() => focar(`${tipo}-${r.id}`, r.latitude, r.longitude)}>Ver no mapa</button>
+                      <button className="botao botao--leve botao--pequeno" onClick={() => focar(`${r.tipo}-${r.id}`, r.latitude, r.longitude)}>Ver no mapa</button>
                     </li>
-                  ))}
-                </ul>
-              </section>
-            )
-          })}
+                  )
+                })}
+              </ul>
+            </>
+          )}
         </div>
       </div>
     </main>
