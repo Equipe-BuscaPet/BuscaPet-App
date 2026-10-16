@@ -46,8 +46,11 @@ export default function BotaoInstalar() {
       </button>
       {dicaIOS && (
         <div className="instalar__dica" role="dialog" aria-label="Como instalar no iPhone">
-          No Safari, toque em <strong>Compartilhar</strong> <span aria-hidden="true">(□↑)</span> e depois em{' '}
-          <strong>Adicionar à Tela de Início</strong>.
+          {/* Um parágrafo só: o painel é grid, e cada pedaço solto de texto viraria uma linha. */}
+          <p style={{ margin: 0 }}>
+            No Safari, toque em <strong>Compartilhar</strong> <span aria-hidden="true">(□↑)</span> e depois em{' '}
+            <strong>Adicionar à Tela de Início</strong>.
+          </p>
           <button type="button" className="botao botao--leve botao--pequeno" onClick={() => setDicaIOS(false)}>Entendi</button>
         </div>
       )}
