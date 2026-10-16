@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     nucleo_opencl_url: str = "http://nucleo-opencl:8001"
     redis_url: str = "redis://redis:6379/0"
     cors_origens: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # Fotos do reencontro (RF-19/RF-20). Pasta fora do Git; ver app/core/fotos.py.
+    pasta_fotos: Path = ENV_FILE.parent / "uploads" / "fotos"
+    foto_tamanho_max_mb: int = 8
 
 
 settings = Settings()
