@@ -100,6 +100,25 @@ Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs`): use o botão
 **Authorize** com o e-mail e a senha de cada conta.
 
+## Testes e integração contínua
+
+| Camada | Ferramenta | O que garante | Comando |
+|---|---|---|---|
+| Estilo do código Python | `ruff` | padrão de código e erros comuns | `cd api && ruff check .` |
+| API (unidade e integração) | `pytest` | regras de negócio e permissões de cada rota (SQLite em memória) | `cd api && pytest` |
+| Interface | `vite build` | a interface compila | `cd frontend && npm run build` |
+| **Ponta a ponta (E2E)** | **Playwright** | um navegador de verdade usa as telas contra a API e um **Postgres real**: cadastro, login, perfis, adoção, perdidos e achados, celular | `cd frontend && npm run e2e` |
+| Núcleo OpenCL | `make teste` | saída paralela igual à sequencial | `docker compose build nucleo-opencl` |
+
+Os testes E2E criam as próprias contas, com e-mail único, e por isso rodam em qualquer banco sem depender dos dados
+de demonstração. O `npm run e2e` sobe sozinho a API e a interface, se ainda não estiverem no ar, e precisa do banco
+com as migrations aplicadas. `npm run e2e:ver` abre a janela do Playwright para acompanhar passo a passo, e
+`npm run e2e:relatorio` mostra o relatório com captura, vídeo e *trace* das falhas.
+
+A **CI** (`.github/workflows/ci.yml`) roda tudo isso a cada Pull Request. O job `e2e` só começa depois que lint,
+testes da API e build passam, sobe um Postgres 16 com a sessão no fuso de Recife (onde o defeito das datas
+aparecia) e publica o relatório do Playwright como artefato.
+
 ## Documentação
 
 - [`docs/schema.sql`](docs/schema.sql) — modelo relacional (neste repositório)

@@ -55,6 +55,27 @@ Para apontar para outra API: `VITE_API_URL=http://meu-servidor:8000 npm run dev`
 
 `npm run build` gera a versão de produção em `dist/`.
 
+## Testes de ponta a ponta (Playwright)
+
+```bash
+npm run e2e            # roda tudo (sobe API e interface se precisar)
+npm run e2e:ver        # modo visual, passo a passo
+npm run e2e:relatorio  # relatório HTML da última execução
+```
+
+| Arquivo | Cobre |
+|---|---|
+| `e2e/navegacao.spec.js` | catálogo, menu, página inexistente, rota protegida → login → volta, retorno do login só para dentro do site, menu do celular |
+| `e2e/autenticacao.spec.js` | cadastro pela interface, senha errada, menu por perfil e bloqueio de página, sair |
+| `e2e/adocao.spec.js` | tutor registra interesse e o abrigo vê o interessado; visitante é convidado a entrar |
+| `e2e/reencontro.spec.js` | assistente "Perdi" completo (validações, login na revisão, fotos mantidas, data sem erro de fuso), arquivo que não é imagem, aviso para abrigo, "Encontrei" achando o perdido próximo, abas da lista, privacidade do local, exclusão |
+| `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
+
+Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador
+é `America/Recife`. Falhas guardam captura, vídeo e *trace* em `test-results/` (fora do Git).
+
+> Requer Playwright 1.56 ou mais novo no Node 24: a versão 1.48 trava ao carregar os testes.
+
 ## Estrutura
 
 ```
@@ -67,4 +88,6 @@ src/
   componentes/  peças reaproveitadas entre telas (assistente do reencontro, seletor de fotos,
                 seletor de local no mapa, cartão de registro)
   styles.css    paleta e componentes (modo claro e escuro)
+e2e/            testes de ponta a ponta (Playwright); fotos de teste em e2e/fixtures/
+playwright.config.js   projetos computador/celular, servidores que o teste sobe sozinho
 ```
