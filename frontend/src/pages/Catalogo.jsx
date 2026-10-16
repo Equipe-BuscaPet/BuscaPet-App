@@ -65,6 +65,7 @@ export default function Catalogo() {
             <Link className="botao" to="/perdi">Perdi meu animal</Link>
             <Link className="botao botao--leve" to="/encontrei">Encontrei um animal</Link>
             <Link className="botao botao--leve" to="/reencontro">Ver perdidos e achados</Link>
+            <Link className="botao botao--leve" to="/mapa?ver=animais">Ver no mapa</Link>
           </div>
         </section>
       )}

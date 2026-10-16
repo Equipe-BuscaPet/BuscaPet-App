@@ -26,8 +26,8 @@ function Cabecalho() {
           Busca<span>Pet</span>
         </Link>
         <nav className="menu" aria-label="Principal">
-          <NavLink to="/" end>Animais</NavLink>
           <NavLink to="/mapa">Mapa</NavLink>
+          <NavLink to="/" end>Animais</NavLink>
           <NavLink to="/reencontro">Perdidos e achados</NavLink>
           {usuario?.tipo_conta === 'tutor' && <NavLink to="/interesses">Meus interesses</NavLink>}
           {usuario?.tipo_conta === 'abrigo' && <NavLink to="/painel">Meus animais</NavLink>}

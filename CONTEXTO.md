@@ -61,7 +61,7 @@ Ao falar "Sprint N", diga qual das duas.
 - Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface
   apenas reflete).
 - CRUD de animais pelo abrigo; catálogo público com busca e filtros (inclusive por abrigo); ficha do animal.
-- **Mapa com camadas** (`/mapa`, OpenStreetMap + Leaflet; RF-07/08): abrigos, animais perdidos e avistados, cada camada liga e desliga (`?camadas=`). Abrigos: `GET /abrigos` público, com distância e filtro por raio
+- **Mapa** (`/mapa`, primeiro item do menu; OpenStreetMap + Leaflet; RF-07 a RF-09): abas acima do mapa, **Abrigos** e **Perdidos e avistados** (com filtro Perdidos/Avistados), e a lista lateral acompanha a aba (`?ver=animais&mostrar=`). Abrigos: `GET /abrigos` público, com distância e filtro por raio
   a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
 - Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender).
 - Interesse de adoção completo (API e telas: ficha do animal, Meus interesses, Interessados).
