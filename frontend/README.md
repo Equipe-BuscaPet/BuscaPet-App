@@ -55,6 +55,38 @@ Para apontar para outra API: `VITE_API_URL=http://meu-servidor:8000 npm run dev`
 
 `npm run build` gera a versão de produção em `dist/`.
 
+## Instalar como app (PWA)
+
+O BuscaPet é um **PWA** (*Progressive Web App*): o mesmo site pode ser instalado na tela inicial e abre em tela
+cheia, como um app, sem passar por loja.
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Manifesto | `public/manifest.webmanifest` | nome, cores, ícones, abre em `/mapa`, atalhos Perdi / Encontrei / Mapa |
+| Ícones | `public/icones/` | gerados do logo oficial: 192, 512, *maskable* (Android) e `apple-touch-icon` (iPhone) |
+| Service worker | `public/sw.js` | só em produção; guarda a casca da interface (abre sem internet) e os arquivos com hash; API e mapa passam direto |
+| Botão "Instalar app" | `src/componentes/BotaoInstalar.jsx` | Android/Chrome/Edge: usa o pedido do navegador; iPhone: mostra "Compartilhar → Adicionar à Tela de Início" |
+
+Para testar a instalação: `npm run build && npx vite preview`, abrir no Chrome e clicar em "Instalar app". O navegador só
+oferece instalar em `https://` ou `localhost`.
+
+### E o OpenCL, quando a pessoa usa pelo celular?
+
+O celular **não roda OpenCL**. Ele só tira a foto e a envia; a comparação acontece **no servidor**:
+
+```
+celular (PWA)            API (FastAPI)                 núcleo OpenCL (C + PoCL, CPU do servidor)
+  foto + local  ──────▶  valida, grava, pede  ──────▶  extrai descritores e compara em paralelo
+  candidatos    ◀──────  ordena e devolve     ◀──────  com milhares de registros
+```
+
+- O núcleo é um serviço separado (CONTEXTO §5) que roda onde a API roda: no computador de quem desenvolve, no Docker
+  e, na demonstração, no servidor de hospedagem. Os "núcleos trabalhando" são os da **CPU do servidor**, via PoCL.
+- Por isso o resultado é o mesmo em qualquer aparelho, de um celular simples a um computador: o aparelho não precisa de
+  GPU, de driver nem de app nativo, e a bateria do celular não é gasta com o cálculo pesado.
+- Rodar no aparelho exigiria OpenCL instalado nele, coisa que celulares e navegadores não oferecem. Além disso,
+  a comparação precisa da base inteira de registros, que fica no servidor.
+
 ## Testes de ponta a ponta (Playwright)
 
 ```bash
@@ -69,7 +101,8 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/autenticacao.spec.js` | cadastro pela interface, senha errada, menu por perfil e bloqueio de página, sair |
 | `e2e/adocao.spec.js` | tutor registra interesse e o abrigo vê o interessado; visitante é convidado a entrar |
 | `e2e/reencontro.spec.js` | assistente "Perdi" completo (validações, login na revisão, fotos mantidas, data sem erro de fuso), arquivo que não é imagem, aviso para abrigo, "Encontrei" achando o perdido próximo, abas da lista, privacidade do local, exclusão |
-| `e2e/mapa.spec.js` | Mapa primeiro no menu, abas Abrigos × Perdidos e avistados (mapa e lista trocam), filtro Perdidos/Avistados, balão leva ao registro, destaque da página inicial |
+| `e2e/mapa.spec.js` | Mapa primeiro no menu, abas Abrigos × Perdidos e avistados, lista mista com filtros (tipo, espécie, porte, período), Perto de mim com geolocalização simulada, balão leva ao registro, destaque da página inicial |
+| `e2e/pwa.spec.js` | manifesto válido, ícones existem, dica de instalação no iPhone, botão escondido sem o pedido do navegador |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
 Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador
