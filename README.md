@@ -17,8 +17,10 @@ Interdisciplinares de Extensão IV.
 buscapet/
   api/              backend web — FastAPI + SQLAlchemy/Alembic (Python)
   nucleo-opencl/    serviço de comparação por similaridade visual — C + OpenCL (PoCL)
-  frontend/         interface web
+  frontend/         interface web — React + Vite, instalável como app (PWA)
+  frontend/e2e/     testes de ponta a ponta (Playwright)
   docs/schema.sql   modelo relacional (DDL), espelha api/app/models/
+  .github/workflows CI: api, frontend, e2e, nucleo-opencl
   docker-compose.yml
 ```
 
@@ -89,13 +91,20 @@ Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 
-1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais* e já pode
-   cadastrar, editar e excluir animais: o abrigo nasce **não verificado**, mas opera na hora.
-2. Crie o admin (comando acima), entre com ele: abre em *Verificação de abrigos*. Clique em
-   **Verificar** para dar o selo (ou **Suspender**, que tira o abrigo do catálogo e bloqueia a publicação).
-3. Sem login, abra o catálogo (`/`): os animais aparecem com o selo *Verificado* ou *Não verificado*.
-5. Cadastre um **tutor** e tente abrir `/painel`: a tela barra o acesso (e a API também
-   devolveria 403).
+Com os dados de demonstração (`popular_demo`; senha de todas as contas: `Senha1234!`):
+
+1. **Mapa** (primeiro item do menu): aba *Abrigos* com os abrigos de Recife e região; aba *Perdidos e avistados*
+   com a lista mista. Teste **📍 Perto de mim** e o botão **⚙️ Filtros**.
+2. **Perdi meu animal** (página inicial ou *Perdidos e achados*): preencha o assistente **sem conta** e entre na
+   etapa *Revisar* com `maria@exemplo.com`. As fotos continuam lá. Publique e veja os avistamentos próximos.
+3. Entre como `joao@exemplo.com`, abra a ficha de um animal e clique em **Tenho interesse**.
+4. Entre como `patinhas@exemplo.com` (abrigo): o **sino 🔔** mostra o aviso do interesse; clique para ir a
+   *Interessados* e responder. Em *Meus animais*, cadastre, edite ou exclua animais.
+5. Entre como `admin@exemplo.com`: em *Validar abrigos*, dê ou retire o selo **Verificado** (o abrigo é avisado
+   pelo sino) ou **Suspenda** (some do catálogo e não publica).
+6. Tente abrir `/painel` com um tutor: a tela barra o acesso (e a API também devolveria 403).
+7. No rodapé, **📲 Instalar app** (Chrome/Edge; no iPhone, o passo a passo do Safari). Em produção
+   (`npm run build && npx vite preview`), o app instalado abre até sem internet.
 
 Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs`): use o botão
 **Authorize** com o e-mail e a senha de cada conta.

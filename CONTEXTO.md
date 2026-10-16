@@ -54,19 +54,34 @@ Repositórios (organização `Equipe-BuscaPet`):
 
 Ao falar "Sprint N", diga qual das duas.
 
-## 4. Onde estamos (2026-10-08)
+## 4. Onde estamos (2026-10-16)
 
-**Funciona, validado no banco real:**
-- Cadastro e login (JWT) de tutor, abrigo e apoiador; admin criado só por script.
-- Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface
-  apenas reflete).
+> Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
+> #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
+> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes`. Independente:
+> `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
+
+**Funciona, validado no Postgres local e por testes automatizados:**
+- Cadastro e login (JWT) de tutor, abrigo e apoiador; admin criado só por script. Login volta para a página que o
+  pediu (`?voltar=`, só caminhos internos).
+- Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface apenas reflete).
 - CRUD de animais pelo abrigo; catálogo público com busca e filtros (inclusive por abrigo); ficha do animal.
-- **Mapa** (`/mapa`, primeiro item do menu; OpenStreetMap + Leaflet; RF-07 a RF-09): abas acima do mapa, **Abrigos** e **Perdidos e avistados** (com filtro Perdidos/Avistados), e a lista lateral acompanha a aba (`?ver=animais&mostrar=`). Abrigos: `GET /abrigos` público, com distância e filtro por raio
-  a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
-- Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender).
+- **Mapa** (`/mapa`, primeiro item do menu; OpenStreetMap + Leaflet; RF-07 a RF-09): acima do mapa só as abas
+  **Abrigos** e **Perdidos e avistados**; sobre a lista, contagem, **Perto de mim** e **Filtros** (painel: tipo,
+  espécie, porte, período e distância para animais; só verificados, só com animais e distância para abrigos).
+  A lista acompanha a aba (mista para animais). URL: `?ver=animais&mostrar=perdidos`.
+- Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender), com aviso ao abrigo.
 - Interesse de adoção completo (API e telas: ficha do animal, Meus interesses, Interessados).
-- Migrations `0001` (schema), `0002` (alinha models e banco) e `0003` (interesse). 77 testes automatizados passando.
-- Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
+- **Perdidos e achados (RF-19/RF-20)**: API e telas (detalhes abaixo).
+- **Notificações (RF-36)**: `GET /notificacoes`, `GET /notificacoes/contagem`, `PATCH /notificacoes/{id}/lida`,
+  `POST /notificacoes/marcar-todas-lidas`. Cada uma traz o `destino` (tela que abre). Sino com contador no cabeçalho
+  e página `/notificacoes`. Geradas hoje por: interesse de adoção (cada passo) e mudança do selo do abrigo.
+- **PWA**: instalável na tela inicial (manifesto, ícones do logo oficial, service worker só em produção, botão
+  "Instalar app" no rodapé). O celular não roda OpenCL: só envia a foto; o núcleo roda no servidor.
+- **Núcleo OpenCL** (PR `feature/nucleo-spike-servico`): spike `soma_vetores` com teste de equivalência
+  (gate da Sprint 1 interna), serviço HTTP em C com `GET /saude`; descritores e comparação ainda a fazer.
+- Migrations `0001` a `0003`. **Testes:** 87 na API (`pytest`) e 42 de ponta a ponta (Playwright, banco `buscapet_e2e`
+  isolado). CI: `api`, `frontend`, `e2e` e `nucleo-opencl`.
 
 **Interesse de adoção (Sprint 4):** tutor registra interesse
 (`POST /animais/{id}/interesses`), lista os seus (`GET /interesses/meus`) e pode desistir
@@ -75,24 +90,26 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 `em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
 `Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
 
-**Animal perdido e avistamento (RF-19/RF-20) — API e telas:** `POST /perdidos` (tutor) e
+**Animal perdido e avistamento (RF-19/RF-20):** `POST /perdidos` (tutor) e
 `POST /avistamentos` (qualquer conta logada) recebem um formulário multipart com as características, o
 local, a data e de 1 a 5 fotos (campo `fotos`). Consulta pública em `GET /perdidos` e `GET /avistamentos`
 (filtros de espécie, porte e raio a partir de `lat`/`lng`), `GET .../meus` e `DELETE` pelo autor ou admin.
 Privacidade (escopo §9): a resposta pública não traz dados de quem registrou e o local sai arredondado
 (perdido ~1 km, avistamento ~100 m). Fotos: validadas e regravadas como JPEG **sem metadados** (remove o
 GPS da foto de celular), até 1280 px, nome aleatório, em `api/uploads/fotos/` (fora do Git), servidas por
-`GET /fotos/{nome}` (`app/core/fotos.py`). Nova dependência: `pillow` (no Docker: `docker compose up -d --build api`).
+`GET /fotos/{nome}` (`app/core/fotos.py`). Dependência: `pillow` (no Docker: `docker compose up -d --build api`).
 Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/perdi` e `/encontrei` (5 etapas; o
 visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
 da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
 **Datas "do dia"** (`data_entrada`, `data_desaparecimento`, `data_avistamento`) são colunas `DateTime` gravadas como
 meia-noite UTC; a saída usa o tipo `DataDoDia` (`app/schemas/datas.py`) para não voltar um dia no Postgres em UTC-3.
 
-**Existe só como modelo de dados, sem rota nem tela:** busca salva, correspondência, necessidade, doação, ranking de apoiadores,
-denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
+**Existe só como modelo de dados, sem rota nem tela:** busca salva, correspondência, descritor visual, necessidade,
+doação, pontuação/ranking de apoiadores, denúncia, log de auditoria, membros da equipe do abrigo.
 
-**Próximo passo:** a Sprint 5 oficial da disciplina ainda não foi informada; confirmar o roteiro antes de planejar. Em paralelo segue obrigatório, para Tópicos Avançados, o núcleo OpenCL e o reencontro (RF-19 a RF-29). Pendências conhecidas: tela de notificações, doações e ranking (onde o selo Verificado passa a ser exigido).
+**Próximo passo:** confirmar o roteiro da **Sprint 5 oficial** (entrega no Teams). Pelo plano interno: núcleo
+(descritores e comparação, com o Nivaldo) → busca por foto (RF-21 a 23) → busca salva e alertas (RF-24 a 27) →
+doações e ranking (RF-30 a 34, onde o selo Verificado passa a ser exigido) → painel admin e relatórios → deploy.
 
 **Mudança da Sprint 4 (já implementada):** abrigo **não depende mais de aprovação humana para usar a
 conta**. Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
@@ -132,7 +149,9 @@ Detalhes completos no `README.md`. Resumo:
 - **Python direto (usado na demonstração):** venv em `api/`, `api/.env` com `DATABASE_URL` e
   `JWT_SECRET`, `alembic upgrade head`, `uvicorn app.main:app --reload`; front com `npm install && npm run dev`.
 - **Testes:** `cd api && pytest` (SQLite em memória). **Atenção:** SQLite não pega tudo — o bug dos enums
-  da Sprint 3 só apareceu no Postgres. Valide mudanças de banco num Postgres real (o do Docker serve).
+  da Sprint 3 e o das datas "um dia antes" (fuso) só apareceram no Postgres. Valide mudanças de banco num
+  Postgres real. **Ponta a ponta:** `cd frontend && npm run e2e` (Playwright; cria e usa o banco `buscapet_e2e`,
+  API :8100 e interface :5174, sem sujar o banco de desenvolvimento).
 - O login da API usa formulário OAuth2 (`username` = e-mail, `password`), não JSON.
 - Criar administrador: `python -m app.scripts.criar_admin --nome "..." --email ...`.
 
@@ -164,7 +183,7 @@ pausa após ~1 semana sem uso; quem tem acesso restaura pelo painel.
 2. Características da ficha do animal (definir com o abrigo parceiro).
 3. Peso exato volume × regularidade no ranking.
 4. Abrangência inicial: uma cidade ou a região metropolitana.
-5. Visitante completa os assistentes "Perdi/Encontrei" e só é barrado na ação final? (recomendado: sim)
+5. ~~Visitante completa os assistentes "Perdi/Encontrei" e só é barrado na ação final?~~ **Decidido (16/10): sim**, com login dentro da etapa de revisão, sem perder as fotos.
 6. "Encontrei um animal" tem monitoramento contínuo ou só publica avistamento? (recomendado: só avistamento)
 7. Apoiador precisa de verificação (CNPJ falso entra no ranking)? Encaixa no novo modelo de selo.
 8. Data da oficina de capacitação com a instituição parceira (Extensão IV).

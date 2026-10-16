@@ -17,6 +17,7 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | `/perdi` | todos preenchem; **tutor** publica | Assistente "Perdi meu animal" em 5 etapas (RF-19) |
 | `/encontrei` | todos preenchem; **qualquer conta** publica | Assistente "Encontrei um animal" em 5 etapas (RF-20) |
 | `/meus-registros` | tutor, abrigo, apoiador | Os próprios registros de perdido/avistamento, com exclusão |
+| `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36) |
 | `/interesses` | tutor | Interesses de adoção que a pessoa registrou |
 | `/interessados` | abrigo | Interessados nos animais do abrigo, com a decisão de cada caso |
 | `/painel` | abrigo | CRUD dos animais do abrigo (opera na hora; o selo Verificado é dado pelo administrador) |
@@ -103,6 +104,7 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/reencontro.spec.js` | assistente "Perdi" completo (validações, login na revisão, fotos mantidas, data sem erro de fuso), arquivo que não é imagem, aviso para abrigo, "Encontrei" achando o perdido próximo, abas da lista, privacidade do local, exclusão |
 | `e2e/mapa.spec.js` | Mapa primeiro no menu; só abas acima do mapa; Perto de mim e Filtros na linha da contagem, à direita; painel de filtros (animais e abrigos, fecha com Esc); lista mista; Perto de mim com geolocalização simulada; balão leva ao registro; Instalar app no rodapé |
 | `e2e/pwa.spec.js` | manifesto válido, ícones existem, dica de instalação no iPhone, botão escondido sem o pedido do navegador |
+| `e2e/notificacoes.spec.js` | sino acende para o abrigo e leva aos interessados; página com filtro e marcar todas; visitante sem sino |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
 Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador
@@ -120,7 +122,7 @@ src/
   App.jsx       cabeçalho, rotas e proteção por tipo de conta
   pages/        uma tela por arquivo
   componentes/  peças reaproveitadas entre telas (assistente do reencontro, seletor de fotos,
-                seletor de local no mapa, cartão de registro, menu de filtros, instalar app)
+                seletor de local no mapa, cartão de registro, menu de filtros, instalar app, sino)
   useUltimoPedido.js  descarta respostas velhas de buscas (evita condição de corrida ao trocar filtro/aba)
   styles.css    paleta e componentes (modo claro e escuro)
 e2e/            testes de ponta a ponta (Playwright); fotos de teste em e2e/fixtures/
