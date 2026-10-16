@@ -1,6 +1,7 @@
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth'
 import AssistenteRegistro from './componentes/AssistenteRegistro'
+import BotaoInstalar from './componentes/BotaoInstalar'
 import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
 import Cadastro from './pages/Cadastro'
@@ -36,6 +37,7 @@ function Cabecalho() {
           {usuario && usuario.tipo_conta !== 'admin' && <NavLink to="/meus-registros">Meus registros</NavLink>}
         </nav>
         <div className="conta">
+          <BotaoInstalar />
           {usuario ? (
             <>
               <span className="conta__nome">

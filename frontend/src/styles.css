@@ -310,3 +310,12 @@ button.miniatura { cursor: pointer; }
 }
 .chamada-reencontro h2 { margin: 0 0 0.2rem; }
 .chamada-reencontro p { margin: 0; color: var(--ink-dim); }
+
+/* Instalar app (PWA) */
+.instalar { position: relative; }
+.instalar__dica {
+  position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 1000; width: min(280px, 80vw);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 0.8rem; font-size: 0.9rem; display: grid; gap: 0.5rem;
+}
+@media (max-width: 700px) { .instalar .botao { padding: 0.3rem 0.5rem; } }

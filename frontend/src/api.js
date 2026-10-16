@@ -92,7 +92,11 @@ export async function api(caminho, { metodo = 'GET', corpo, formulario, multipar
   try {
     resposta = await fetch(`${BASE}${caminho}`, { method: metodo, headers, body })
   } catch {
-    throw new ApiError(0, 'Não foi possível falar com o servidor. Verifique se a API está rodando.')
+    // Sem internet (comum no celular, e o app instalado abre mesmo assim) × servidor fora do ar.
+    if (navigator.onLine === false) {
+      throw new ApiError(0, 'Você está sem internet. Assim que a conexão voltar, tente de novo.')
+    }
+    throw new ApiError(0, 'Não foi possível falar com o servidor. Tente de novo em instantes.')
   }
 
   if (resposta.status === 204) return null
