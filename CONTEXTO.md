@@ -77,7 +77,7 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 
 **Existe só como modelo de dados, sem rota nem tela:** animal
 perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
-denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
+denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` tem o spike (kernel de soma de vetores com teste de equivalência, gate da Sprint 1 interna) e o serviço HTTP em C com `GET /saude`; as rotas de descritor, comparação e benchmark ainda respondem `501`.
 
 **Próximo passo:** a Sprint 5 oficial da disciplina ainda não foi informada; confirmar o roteiro antes de planejar. Em paralelo segue obrigatório, para Tópicos Avançados, o núcleo OpenCL e o reencontro (RF-19 a RF-29). Pendências conhecidas: tela de notificações, doações e ranking (onde o selo Verificado passa a ser exigido).
 
