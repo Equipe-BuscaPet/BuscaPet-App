@@ -108,12 +108,16 @@ test.describe('Encontrei um animal', () => {
 })
 
 test.describe('Lista, detalhe e privacidade', () => {
-  test('a lista pública alterna entre perdidos e avistados', async ({ page, request }) => {
+  test('a lista pública alterna entre perdidos e avistados e filtra por espécie', async ({ page, request }) => {
+    // Espécie "outro" + porte grande só é usada aqui: o registro não se perde entre os de outros testes
+    // (a lista mostra 12 por página e o banco de testes acumula registros entre execuções).
     const tutor = await criarConta(request, 'tutor')
-    const avistamento = await criarAvistamento(request, tutor)
+    const avistamento = await criarAvistamento(request, tutor, { especie: 'outro', porte: 'grande' })
     await page.goto('/reencontro')
     await page.getByRole('tab', { name: 'Avistados na rua' }).click()
     await expect(page).toHaveURL(/aba=avistamento/)
+    await page.getByLabel('Espécie').selectOption('outro')
+    await page.getByLabel('Porte').selectOption('grande')
     await expect(page.locator(`a[href="/reencontro/avistamentos/${avistamento.id}"]`)).toBeVisible()
   })
 

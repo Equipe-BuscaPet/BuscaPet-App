@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, textoIdade } from '../rotulos'
+import { useUltimoPedido } from '../useUltimoPedido'
 
 const POR_PAGINA = 12
 
@@ -28,7 +29,10 @@ export default function Catalogo() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
+  const novoPedido = useUltimoPedido()
+
   const buscar = useCallback(async (deslocamento) => {
+    const atual = novoPedido()
     setCarregando(true)
     setErro('')
     const consulta = new URLSearchParams({ limite: POR_PAGINA, deslocamento })
@@ -36,14 +40,15 @@ export default function Catalogo() {
     if (abrigoId) consulta.set('abrigo_id', abrigoId)
     try {
       const lista = await api(`/animais?${consulta}`)
-      setAnimais((atual) => (deslocamento === 0 ? lista : [...atual, ...lista]))
+      if (!atual()) return // chegou depois de um pedido mais novo: descarta
+      setAnimais((anteriores) => (deslocamento === 0 ? lista : [...anteriores, ...lista]))
       setTemMais(lista.length === POR_PAGINA)
     } catch (err) {
-      setErro(err.message)
+      if (atual()) setErro(err.message)
     } finally {
-      setCarregando(false)
+      if (atual()) setCarregando(false)
     }
-  }, [filtros, abrigoId])
+  }, [filtros, abrigoId, novoPedido])
 
   // Refaz a busca a cada mudança de filtro (com uma pequena espera para não consultar a cada tecla).
   useEffect(() => {

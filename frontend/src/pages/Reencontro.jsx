@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import CartaoRegistro, { TIPOS_REGISTRO } from '../componentes/CartaoRegistro'
 import { ESPECIES, PORTES } from '../rotulos'
+import { useUltimoPedido } from '../useUltimoPedido'
 
 // Vitrine pública do reencontro: animais perdidos (RF-19) e avistados na rua (RF-20).
 const POR_PAGINA = 12
@@ -20,7 +21,10 @@ export default function Reencontro() {
   const [erro, setErro] = useState('')
   const [avisoLocal, setAvisoLocal] = useState('')
 
+  const novoPedido = useUltimoPedido()
+
   const buscar = useCallback(async (deslocamento) => {
+    const atual = novoPedido()
     setCarregando(true)
     setErro('')
     const consulta = new URLSearchParams({ limite: POR_PAGINA, deslocamento })
@@ -33,14 +37,15 @@ export default function Reencontro() {
     }
     try {
       const lista = await api(`${TIPOS_REGISTRO[aba].caminhoApi}?${consulta}`)
-      setRegistros((atual) => (deslocamento === 0 ? lista : [...atual, ...lista]))
+      if (!atual()) return // chegou depois de um pedido mais novo: descarta
+      setRegistros((anteriores) => (deslocamento === 0 ? lista : [...anteriores, ...lista]))
       setTemMais(lista.length === POR_PAGINA)
     } catch (err) {
-      setErro(err.message)
+      if (atual()) setErro(err.message)
     } finally {
-      setCarregando(false)
+      if (atual()) setCarregando(false)
     }
-  }, [aba, filtros, posicao])
+  }, [aba, filtros, posicao, novoPedido])
 
   useEffect(() => { setRegistros([]) }, [aba]) // não mostra cartões de uma aba com o formato da outra
   useEffect(() => { buscar(0) }, [buscar])
