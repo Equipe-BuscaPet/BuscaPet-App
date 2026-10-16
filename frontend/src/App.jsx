@@ -2,6 +2,7 @@ import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from
 import { useAuth } from './auth'
 import AssistenteRegistro from './componentes/AssistenteRegistro'
 import BotaoInstalar from './componentes/BotaoInstalar'
+import Sino from './componentes/Sino'
 import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
 import Cadastro from './pages/Cadastro'
@@ -11,6 +12,7 @@ import Login from './pages/Login'
 import Mapa from './pages/Mapa'
 import MeusInteresses from './pages/MeusInteresses'
 import MeusRegistros from './pages/MeusRegistros'
+import Notificacoes from './pages/Notificacoes'
 import PainelAbrigo from './pages/PainelAbrigo'
 import Reencontro from './pages/Reencontro'
 import RegistroDetalhe from './pages/RegistroDetalhe'
@@ -39,6 +41,7 @@ function Cabecalho() {
         <div className="conta">
           {usuario ? (
             <>
+              <Sino />
               <span className="conta__nome">
                 {usuario.nome} <small>{ROTULO_TIPO[usuario.tipo_conta]}</small>
               </span>
@@ -100,6 +103,7 @@ export default function App() {
         <Route path="/encontrei" element={<AssistenteRegistro key="avistamento" tipo="avistamento" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/notificacoes" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador', 'admin']}><Notificacoes /></Protegido>} />
         <Route path="/meus-registros" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador']}><MeusRegistros /></Protegido>} />
         <Route path="/interesses" element={<Protegido tipos={['tutor']}><MeusInteresses /></Protegido>} />
         <Route path="/interessados" element={<Protegido tipos={['abrigo']}><Interessados /></Protegido>} />
