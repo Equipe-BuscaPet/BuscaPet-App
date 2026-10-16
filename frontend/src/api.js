@@ -2,7 +2,7 @@
 // backend rodando localmente.
 import { ROTULO_CAMPO } from './rotulos'
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const CHAVE_TOKEN = 'buscapet_token'
 
 export const token = {
@@ -69,13 +69,19 @@ function interpretarErro(status, detail) {
   return { mensagem: status >= 500 ? ERRO_GENERICO : 'Não foi possível concluir a ação. Tente novamente.', campos: {} }
 }
 
-export async function api(caminho, { metodo = 'GET', corpo, formulario } = {}) {
+// As fotos vêm da API como caminho relativo (/fotos/abc.jpg); o navegador precisa do endereço completo.
+export const urlFoto = (url) => (/^https?:\/\//.test(url) ? url : `${BASE}${url}`)
+
+// `multipart` recebe um FormData (campos + arquivos); o navegador monta o Content-Type sozinho.
+export async function api(caminho, { metodo = 'GET', corpo, formulario, multipart } = {}) {
   const headers = {}
   const jwt = token.ler()
   if (jwt) headers.Authorization = `Bearer ${jwt}`
 
   let body
-  if (formulario) {
+  if (multipart) {
+    body = multipart
+  } else if (formulario) {
     body = new URLSearchParams(formulario)
   } else if (corpo !== undefined) {
     headers['Content-Type'] = 'application/json'

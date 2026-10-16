@@ -33,6 +33,9 @@ export const ROTULO_CAMPO = {
   porte: 'Porte', sexo: 'Sexo', idade_estimada_meses: 'Idade (meses)', temperamento: 'Temperamento',
   historia_resgate: 'História do resgate', data_entrada: 'Data de entrada', condicao_chegada: 'Condição de chegada',
   status: 'Situação', mensagem: 'Mensagem', senha_nova: 'Nova senha', senha_atual: 'Senha atual',
+  cor_predominante: 'Cor predominante', pelagem: 'Pelagem', sinais_particulares: 'Sinais particulares',
+  data_desaparecimento: 'Data em que sumiu', data_avistamento: 'Data em que foi visto',
+  raio_busca_km: 'Raio de busca', fotos: 'Fotos',
 }
 
 // Link do WhatsApp a partir de um telefone brasileiro (só dígitos; acrescenta o 55 se faltar).
@@ -57,3 +60,24 @@ export function textoIdade(meses) {
 export function limpar(objeto) {
   return Object.fromEntries(Object.entries(objeto).filter(([, v]) => v !== '' && v !== undefined && v !== null))
 }
+
+// "2026-10-12T00:00:00" → "12/10/2026". Lê só a parte da data para não "voltar um dia" por causa do fuso.
+export const textoData = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : '')
+
+// Data de hoje no fuso de quem usa, no formato do <input type="date">.
+export function hojeISO() {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
+const relativo = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
+// "hoje", "ontem", "há 3 dias", "há 2 semanas"…
+export function textoHaQuanto(iso) {
+  if (!iso) return ''
+  const dias = Math.round((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (dias < 7) return relativo.format(-Math.max(dias, 0), 'day')
+  if (dias < 60) return relativo.format(-Math.round(dias / 7), 'week')
+  return relativo.format(-Math.round(dias / 30), 'month')
+}
+
+export const textoKm = (km) => `${String(km).replace('.', ',')} km`

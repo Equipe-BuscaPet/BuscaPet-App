@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { destinoPorTipo, useAuth } from '../auth'
 
 export default function Login() {
   const { entrar } = useAuth()
   const navegar = useNavigate()
+  const [params] = useSearchParams()
+  // Volta para a página que pediu login. Só caminhos internos ("/..."), para o link não levar a outro site.
+  const voltar = params.get('voltar')
+  const destinoSeguro = voltar && voltar.startsWith('/') && !voltar.startsWith('//') ? voltar : null
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
@@ -16,7 +20,7 @@ export default function Login() {
     setEnviando(true)
     try {
       const usuario = await entrar(email, senha)
-      navegar(destinoPorTipo(usuario.tipo_conta))
+      navegar(destinoSeguro || destinoPorTipo(usuario.tipo_conta))
     } catch (err) {
       setErro(err.message)
     } finally {
