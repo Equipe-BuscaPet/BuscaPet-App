@@ -1,7 +1,8 @@
-import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './auth'
 import AssistenteRegistro from './componentes/AssistenteRegistro'
 import BotaoInstalar from './componentes/BotaoInstalar'
+import MenuConta, { ROTULO_TIPO } from './componentes/MenuConta'
 import Sino from './componentes/Sino'
 import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
@@ -12,16 +13,15 @@ import Login from './pages/Login'
 import Mapa from './pages/Mapa'
 import MeusInteresses from './pages/MeusInteresses'
 import MeusRegistros from './pages/MeusRegistros'
+import MinhaConta from './pages/MinhaConta'
 import Notificacoes from './pages/Notificacoes'
 import PainelAbrigo from './pages/PainelAbrigo'
 import Reencontro from './pages/Reencontro'
 import RegistroDetalhe from './pages/RegistroDetalhe'
 
-const ROTULO_TIPO = { tutor: 'Tutor', abrigo: 'Abrigo', apoiador: 'Apoiador', admin: 'Administrador' }
-
+// Menu principal só com o que é de todos; o que é da conta fica no menu ☰ (componentes/MenuConta.jsx).
 function Cabecalho() {
-  const { usuario, sair } = useAuth()
-  const navegar = useNavigate()
+  const { usuario } = useAuth()
   return (
     <header className="cabecalho">
       <div className="cabecalho__interno">
@@ -32,20 +32,12 @@ function Cabecalho() {
           <NavLink to="/mapa">Mapa</NavLink>
           <NavLink to="/" end>Animais</NavLink>
           <NavLink to="/reencontro">Perdidos e achados</NavLink>
-          {usuario?.tipo_conta === 'tutor' && <NavLink to="/interesses">Meus interesses</NavLink>}
-          {usuario?.tipo_conta === 'abrigo' && <NavLink to="/painel">Meus animais</NavLink>}
-          {usuario?.tipo_conta === 'abrigo' && <NavLink to="/interessados">Interessados</NavLink>}
-          {usuario?.tipo_conta === 'admin' && <NavLink to="/admin">Validar abrigos</NavLink>}
-          {usuario && usuario.tipo_conta !== 'admin' && <NavLink to="/meus-registros">Meus registros</NavLink>}
         </nav>
         <div className="conta">
           {usuario ? (
             <>
               <Sino />
-              <span className="conta__nome">
-                {usuario.nome} <small>{ROTULO_TIPO[usuario.tipo_conta]}</small>
-              </span>
-              <button className="botao botao--leve" onClick={() => { sair(); navegar('/') }}>Sair</button>
+              <MenuConta />
             </>
           ) : (
             <>
@@ -103,6 +95,7 @@ export default function App() {
         <Route path="/encontrei" element={<AssistenteRegistro key="avistamento" tipo="avistamento" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/conta" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador', 'admin']}><MinhaConta /></Protegido>} />
         <Route path="/notificacoes" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador', 'admin']}><Notificacoes /></Protegido>} />
         <Route path="/meus-registros" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador']}><MeusRegistros /></Protegido>} />
         <Route path="/interesses" element={<Protegido tipos={['tutor']}><MeusInteresses /></Protegido>} />

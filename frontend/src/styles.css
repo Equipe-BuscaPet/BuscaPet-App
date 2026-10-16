@@ -374,3 +374,36 @@ button.miniatura { cursor: pointer; }
 .notificacao-linha .notificacao__ponto { top: 50%; transform: translateY(-50%); left: 0.75rem; }
 .notificacao-linha p { margin: 0 0 0.15rem; }
 .notificacao-linha__texto { flex: 1 1 300px; }
+
+/* ---------- Menu da conta (☰) ---------- */
+.menu-conta { position: relative; }
+.menu-conta__botao {
+  display: inline-flex; align-items: center; gap: 0.4rem; height: 40px; padding: 0 0.6rem 0 0.25rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font: inherit; color: var(--ink);
+}
+.menu-conta__botao:hover, .menu-conta__botao[aria-expanded="true"] { background: var(--surface); border-color: var(--ink-dim); }
+.menu-conta__inicial {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--navy); color: var(--surface); font-weight: 800; font-size: 0.95rem;
+}
+.menu-conta__hamburguer { font-size: 1.15rem; line-height: 1; }
+.menu-conta__painel {
+  position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 1200; width: min(300px, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 0.4rem 0;
+}
+.menu-conta__painel ul { list-style: none; margin: 0; padding: 0; }
+.menu-conta__quem { display: grid; padding: 0.6rem 1rem 0.7rem; border-bottom: 1px solid var(--line); margin-bottom: 0.3rem; }
+.menu-conta__quem small { color: var(--ink-dim); overflow-wrap: anywhere; }
+.menu-conta__item {
+  display: flex; gap: 0.6rem; align-items: center; width: 100%; padding: 0.55rem 1rem; text-decoration: none; color: var(--ink);
+  font: inherit; font-weight: 600; background: none; border: 0; text-align: left; cursor: pointer;
+}
+.menu-conta__item:hover, .menu-conta__item.active { background: var(--surface-2); }
+.menu-conta__item--breve { color: var(--ink-dim); font-weight: 500; cursor: default; }
+.menu-conta__item--breve:hover { background: none; }
+.menu-conta__secao { margin: 0.4rem 1rem 0.1rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); }
+.menu-conta__sair { border-top: 1px solid var(--line); margin-top: 0.3rem; color: var(--erro-ink); }
+@media (max-width: 700px) {
+  .menu-conta { position: static; }
+  .menu-conta__painel { left: 16px; right: 16px; top: calc(100% + 0.25rem); width: auto; }
+}
