@@ -41,7 +41,7 @@ export default function BotaoInstalar() {
 
   return (
     <div className="instalar">
-      <button type="button" className="botao botao--leve botao--pequeno" onClick={instalar} aria-expanded={pedido ? undefined : dicaIOS}>
+      <button type="button" className="botao" onClick={instalar} aria-expanded={pedido ? undefined : dicaIOS}>
         <span aria-hidden="true">📲</span> Instalar app
       </button>
       {dicaIOS && (

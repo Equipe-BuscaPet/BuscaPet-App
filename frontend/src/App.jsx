@@ -37,7 +37,6 @@ function Cabecalho() {
           {usuario && usuario.tipo_conta !== 'admin' && <NavLink to="/meus-registros">Meus registros</NavLink>}
         </nav>
         <div className="conta">
-          <BotaoInstalar />
           {usuario ? (
             <>
               <span className="conta__nome">
@@ -54,6 +53,17 @@ function Cabecalho() {
         </div>
       </div>
     </header>
+  )
+}
+
+function Rodape() {
+  return (
+    <footer className="rodape">
+      <div className="rodape__interno">
+        <BotaoInstalar />
+        <p>BuscaPet · adoção, reencontro e doações · projeto acadêmico UNINASSAU</p>
+      </div>
+    </footer>
   )
 }
 
@@ -97,6 +107,7 @@ export default function App() {
         <Route path="/admin" element={<Protegido tipos={['admin']}><Admin /></Protegido>} />
         <Route path="*" element={<main className="pagina"><p className="estado">Página não encontrada.</p></main>} />
       </Routes>
+      <Rodape />
     </>
   )
 }
