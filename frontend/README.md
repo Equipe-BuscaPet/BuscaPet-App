@@ -9,8 +9,8 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 
 | Rota | Quem acessa | O que faz |
 |---|---|---|
-| `/` | todos | Catálogo de animais para adoção, com busca e filtros |
-| `/mapa` | todos | Mapa de abrigos, com distância a partir da posição da pessoa |
+| `/` | todos | Catálogo de animais para adoção, com busca e filtros, e destaque "Perdeu ou encontrou um animal?" |
+| `/mapa` | todos | Mapa com **camadas alternáveis**: abrigos, perdidos e avistados (RF-07/08); a escolha fica na URL (`?camadas=perdidos`) |
 | `/animais/:id` | todos | Ficha completa do animal e registro de interesse de adoção |
 | `/reencontro` | todos | **Perdidos e achados**: animais perdidos e avistados na rua, com filtros e "perto de mim" (RF-19/20) |
 | `/reencontro/perdidos/:id`, `/reencontro/avistamentos/:id` | todos | Detalhe do registro: galeria, características e mapa da região aproximada |
@@ -58,7 +58,7 @@ Para apontar para outra API: `VITE_API_URL=http://meu-servidor:8000 npm run dev`
 ## Testes de ponta a ponta (Playwright)
 
 ```bash
-npm run e2e            # roda tudo (sobe API e interface se precisar)
+npm run e2e            # roda tudo num ambiente isolado (banco buscapet_e2e, API :8100, interface :5174)
 npm run e2e:ver        # modo visual, passo a passo
 npm run e2e:relatorio  # relatório HTML da última execução
 ```
@@ -69,6 +69,7 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/autenticacao.spec.js` | cadastro pela interface, senha errada, menu por perfil e bloqueio de página, sair |
 | `e2e/adocao.spec.js` | tutor registra interesse e o abrigo vê o interessado; visitante é convidado a entrar |
 | `e2e/reencontro.spec.js` | assistente "Perdi" completo (validações, login na revisão, fotos mantidas, data sem erro de fuso), arquivo que não é imagem, aviso para abrigo, "Encontrei" achando o perdido próximo, abas da lista, privacidade do local, exclusão |
+| `e2e/mapa.spec.js` | camadas do mapa (ligar/desligar, link com camadas, balão leva ao registro) e o destaque da página inicial |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
 Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador

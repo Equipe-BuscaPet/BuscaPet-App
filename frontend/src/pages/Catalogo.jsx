@@ -55,6 +55,20 @@ export default function Catalogo() {
 
   return (
     <main className="pagina">
+      {!abrigoId && (
+        <section className="cartao chamada-reencontro" aria-labelledby="titulo-chamada">
+          <div>
+            <h2 id="titulo-chamada">🐾 Perdeu ou encontrou um animal?</h2>
+            <p>Registre com fotos e local. Veja os animais perdidos e os avistados na rua perto de você.</p>
+          </div>
+          <div className="acoes">
+            <Link className="botao" to="/perdi">Perdi meu animal</Link>
+            <Link className="botao botao--leve" to="/encontrei">Encontrei um animal</Link>
+            <Link className="botao botao--leve" to="/reencontro">Ver perdidos e achados</Link>
+          </div>
+        </section>
+      )}
+
       <h1>Animais para adoção</h1>
       <p className="subtitulo">Animais de abrigos e protetores. O selo Verificado indica que a administração confirmou o abrigo.</p>
 

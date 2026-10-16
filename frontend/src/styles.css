@@ -263,3 +263,43 @@ button.miniatura { cursor: pointer; }
   padding: 0.6rem 0.9rem; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
 }
 .abas__item--ativa { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ---------- Mapa com camadas (RF-07/08) ---------- */
+.camadas { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.camada {
+  display: inline-flex; align-items: center; gap: 0.45rem; font: inherit; font-weight: 700; cursor: pointer;
+  padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-dim);
+}
+.camada--ligada { background: var(--surface); color: var(--ink); border-color: var(--ink-dim); box-shadow: var(--shadow); }
+.camada:not(.camada--ligada) .camada__marca { opacity: 0.35; }
+.camada__total {
+  font-size: 0.75rem; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+/* Marcas da legenda iguais às do mapa: círculo para abrigo, losango para perdido e avistado. */
+.camada__marca { width: 12px; height: 12px; border-radius: 50%; background: var(--cor, #2f7d3a); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); flex: none; }
+.camada__marca--perdidos, .camada__marca--avistamentos { border-radius: 2px; transform: rotate(45deg); width: 11px; height: 11px; }
+.camada__marca--perdidos { background: #c0262d; }
+.camada__marca--avistamentos { background: #7b3fa0; }
+.pino { background: none; border: 0; }
+.pino__losango {
+  display: block; width: 14px; height: 14px; margin: 3px; border: 2px solid #fff; border-radius: 3px;
+  transform: rotate(45deg); box-shadow: 0 1px 4px rgba(0,0,0,.45);
+}
+.pino--perdido .pino__losango { background: #c0262d; }
+.pino--avistamento .pino__losango { background: #7b3fa0; }
+.mapa-secao { margin-bottom: 1.25rem; }
+/* No computador a lista rola ao lado do mapa, na mesma altura; no celular ela segue abaixo do mapa. */
+@media (min-width: 900px) { .mapa-lista { max-height: 560px; overflow-y: auto; padding-right: 0.4rem; scrollbar-gutter: stable; } }
+.mapa-secao__titulo { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); margin-bottom: 0.5rem; }
+.registro-mini { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; align-items: center; padding: 0.8rem 1rem; }
+.registro-mini p { margin: 0; color: var(--ink-dim); font-size: 0.9rem; }
+
+/* Destaque do reencontro na página inicial */
+.chamada-reencontro {
+  display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  margin-bottom: 1.5rem; border-left: 5px solid var(--accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface));
+}
+.chamada-reencontro h2 { margin: 0 0 0.2rem; }
+.chamada-reencontro p { margin: 0; color: var(--ink-dim); }
