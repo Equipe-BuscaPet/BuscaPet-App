@@ -58,7 +58,7 @@ Ao falar "Sprint N", diga qual das duas.
 
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
-> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes`. Independente:
+> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta`. Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -76,11 +76,14 @@ Ao falar "Sprint N", diga qual das duas.
 - **Notificações (RF-36)**: `GET /notificacoes`, `GET /notificacoes/contagem`, `PATCH /notificacoes/{id}/lida`,
   `POST /notificacoes/marcar-todas-lidas`. Cada uma traz o `destino` (tela que abre). Sino com contador no cabeçalho
   e página `/notificacoes`. Geradas hoje por: interesse de adoção (cada passo) e mudança do selo do abrigo.
+- **Cabeçalho com menu ☰ da conta** (`feature/menu-conta`): menu principal só com Mapa, Animais e Perdidos e achados;
+  o resto (Minha conta, itens do perfil, Meus registros, Notificações, "Em breve", Sair) fica no ☰. Página
+  **Minha conta** (`/conta`, RF-37) usando a API `/usuarios/eu` que já existia: editar dados/perfil e trocar senha.
 - **PWA**: instalável na tela inicial (manifesto, ícones do logo oficial, service worker só em produção, botão
   "Instalar app" no rodapé). O celular não roda OpenCL: só envia a foto; o núcleo roda no servidor.
 - **Núcleo OpenCL** (PR `feature/nucleo-spike-servico`): spike `soma_vetores` com teste de equivalência
   (gate da Sprint 1 interna), serviço HTTP em C com `GET /saude`; descritores e comparação ainda a fazer.
-- Migrations `0001` a `0003`. **Testes:** 87 na API (`pytest`) e 42 de ponta a ponta (Playwright, banco `buscapet_e2e`
+- Migrations `0001` a `0003`. **Testes:** 87 na API (`pytest`) e 50 de ponta a ponta (Playwright, banco `buscapet_e2e`
   isolado). CI: `api`, `frontend`, `e2e` e `nucleo-opencl`.
 
 **Interesse de adoção (Sprint 4):** tutor registra interesse

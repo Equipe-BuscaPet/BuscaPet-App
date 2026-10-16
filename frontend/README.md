@@ -17,6 +17,7 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | `/perdi` | todos preenchem; **tutor** publica | Assistente "Perdi meu animal" em 5 etapas (RF-19) |
 | `/encontrei` | todos preenchem; **qualquer conta** publica | Assistente "Encontrei um animal" em 5 etapas (RF-20) |
 | `/meus-registros` | tutor, abrigo, apoiador | Os próprios registros de perdido/avistamento, com exclusão |
+| `/conta` | qualquer conta logada | **Minha conta** (RF-37): dados da conta e do perfil (abrigo edita o perfil público, inclusive horário e chave PIX), troca de senha e atalhos |
 | `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36) |
 | `/interesses` | tutor | Interesses de adoção que a pessoa registrou |
 | `/interessados` | abrigo | Interessados nos animais do abrigo, com a decisão de cada caso |
@@ -37,6 +38,11 @@ Segue o protótipo da Sprint 2 (escopo §4.2): **Fotos → Características → 
 - **Resultados:** enquanto o núcleo OpenCL não compara as fotos, a tela mostra registros **reais** da outra base
   (perdido → avistamentos; avistamento → perdidos), da mesma espécie e perto do local, por distância, com um aviso
   claro de que a comparação por foto está em construção. Nenhum dado é inventado.
+
+**Cabeçalho:** o menu principal tem só o que é de todos (Mapa, Animais, Perdidos e achados). O que é da conta fica
+no **menu ☰** à direita (`componentes/MenuConta.jsx`): Minha conta, os itens do perfil (Meus animais e Interessados
+para abrigo; Meus interesses para tutor; Validar abrigos para admin), Meus registros, Notificações, a seção
+"Em breve" (ranking, pedidos de doação) e Sair. Itens novos entram ali.
 
 O controle de perfil também vale no menu: cada tipo de conta só vê os links a que
 tem direito. A regra de verdade fica na API; a interface só reflete.
@@ -105,6 +111,7 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/mapa.spec.js` | Mapa primeiro no menu; só abas acima do mapa; Perto de mim e Filtros na linha da contagem, à direita; painel de filtros (animais e abrigos, fecha com Esc); lista mista; Perto de mim com geolocalização simulada; balão leva ao registro; Instalar app no rodapé |
 | `e2e/pwa.spec.js` | manifesto válido, ícones existem, dica de instalação no iPhone, botão escondido sem o pedido do navegador |
 | `e2e/notificacoes.spec.js` | sino acende para o abrigo e leva aos interessados; página com filtro e marcar todas; visitante sem sino |
+| `e2e/conta.spec.js` | menu ☰ por perfil (Em breve, Sair no fim, fecha com Esc e ao navegar), Minha conta (dados persistem, abrigo edita perfil, troca de senha com erros e sucesso) |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
 Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador
@@ -122,7 +129,7 @@ src/
   App.jsx       cabeçalho, rotas e proteção por tipo de conta
   pages/        uma tela por arquivo
   componentes/  peças reaproveitadas entre telas (assistente do reencontro, seletor de fotos,
-                seletor de local no mapa, cartão de registro, menu de filtros, instalar app, sino)
+                seletor de local no mapa, cartão de registro, menu de filtros, instalar app, sino, menu da conta)
   useUltimoPedido.js  descarta respostas velhas de buscas (evita condição de corrida ao trocar filtro/aba)
   styles.css    paleta e componentes (modo claro e escuro)
 e2e/            testes de ponta a ponta (Playwright); fotos de teste em e2e/fixtures/
