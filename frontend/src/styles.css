@@ -68,6 +68,17 @@ h2 { font-size: 1.25rem; font-weight: 700; }
 .conta { display: flex; align-items: center; gap: 0.5rem; }
 .conta__nome { font-weight: 600; }
 .conta__nome small { color: var(--ink-dim); font-weight: 500; margin-left: 0.25rem; }
+/* Celular: marca e conta na primeira linha; o menu vai para a segunda, numa faixa que rola para o lado. */
+@media (max-width: 700px) {
+  .cabecalho__interno { gap: 0.5rem 1rem; padding-bottom: 0.4rem; }
+  .conta { margin-left: auto; }
+  .conta__nome small { display: none; }
+  .menu {
+    order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 12px;
+    scrollbar-width: none;
+  }
+  .menu a { white-space: nowrap; }
+}
 
 /* Estrutura */
 .pagina { max-width: 1100px; margin: 0 auto; padding: 1.5rem 16px 3rem; }
@@ -165,3 +176,90 @@ th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color
 .topo-pagina { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Reencontro: perdidos e achados (RF-19/RF-20) ---------- */
+
+/* Assistente em etapas */
+.etapas {
+  list-style: none; margin: 0 0 1rem; padding: 0; display: flex; gap: 0.25rem; flex-wrap: wrap; counter-reset: etapa;
+}
+.etapas li {
+  display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.75rem 0.35rem 0.4rem; border-radius: 999px;
+  color: var(--ink-dim); font-weight: 600; font-size: 0.9rem; background: var(--surface-2); border: 1px solid var(--line);
+}
+.etapas__numero {
+  display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line); font-size: 0.8rem;
+}
+.etapas li.atual { color: var(--ink); border-color: var(--accent); background: var(--surface); }
+.etapas li.atual .etapas__numero { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.etapas li.feita { color: var(--ok-ink); background: var(--ok-bg); border-color: transparent; }
+.etapas li.feita .etapas__numero { background: var(--ok-ink); color: var(--surface); border-color: transparent; }
+@media (max-width: 600px) {
+  .etapas li:not(.atual) .etapas__nome { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+.assistente h2:focus { outline: none; }
+.assistente__navegacao { justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 1rem; }
+.campo__rotulo { font-weight: 600; font-size: 0.9rem; }
+.revisao { display: grid; gap: 1rem; }
+.detalhe-lista { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
+.detalhe-lista dt { color: var(--ink-dim); font-weight: 600; }
+.detalhe-lista dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Fotos: zona de envio e miniaturas */
+.zona-fotos {
+  border: 2px dashed var(--line); border-radius: 14px; padding: 1rem; background: var(--surface-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.zona-fotos--ativa { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+.zona-fotos--erro { border-color: var(--erro-ink); }
+.zona-fotos__dica { margin: 0.75rem 0 0; color: var(--ink-dim); font-size: 0.9rem; }
+.miniaturas { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.miniatura {
+  position: relative; width: 104px; height: 104px; border-radius: 12px; overflow: hidden; padding: 0;
+  border: 1px solid var(--line); background: var(--surface); display: block;
+}
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.miniatura { cursor: pointer; }
+.miniatura--atual { outline: 3px solid var(--accent); outline-offset: 1px; }
+.miniatura--adicionar {
+  display: grid; place-content: center; justify-items: center; gap: 0.1rem; color: var(--accent); font: inherit;
+  border-style: dashed; border-width: 2px;
+}
+.miniatura--adicionar span { font-size: 2rem; line-height: 1; font-weight: 300; }
+.miniatura--adicionar small { font-weight: 700; color: var(--ink-dim); }
+.miniatura__principal {
+  position: absolute; left: 4px; bottom: 4px; background: rgba(0, 0, 0, 0.65); color: #fff;
+  font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 999px;
+}
+.miniatura__remover {
+  position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 1.1rem; line-height: 1; display: grid; place-items: center;
+}
+
+/* Mapas do reencontro */
+.mapa--seletor { height: 340px; cursor: crosshair; }
+.mapa--pequeno { height: 240px; margin-bottom: 0.25rem; }
+/* Estes mapas não são "grudentos" como o de abrigos: sem o top herdado, o Leaflet (position: relative) não desloca o desenho. */
+@media (min-width: 900px) { .mapa--seletor, .mapa--pequeno { position: relative; top: auto; } .mapa--seletor { height: 380px; } .mapa--pequeno { height: 260px; } }
+.mapa--erro { border-color: var(--erro-ink); }
+.legenda { display: block; margin-top: 0.4rem; color: var(--ink-dim); }
+
+/* Cartões e galeria */
+.animal__foto--img { width: 100%; object-fit: cover; display: block; background: var(--surface-2); }
+.registro { padding: 0; overflow: hidden; }
+.registro__link { display: grid; gap: 0.4rem; padding: 1rem; text-decoration: none; color: inherit; }
+.registro__topo { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.registro__acoes { padding: 0 1rem 1rem; }
+.galeria { display: grid; gap: 0.75rem; align-content: start; }
+.galeria__principal {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2);
+}
+
+/* Abas */
+.abas { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin: 1.25rem 0 1rem; overflow-x: auto; }
+.abas__item {
+  font: inherit; font-weight: 700; color: var(--ink-dim); background: none; border: 0; cursor: pointer;
+  padding: 0.6rem 0.9rem; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.abas__item--ativa { color: var(--ink); border-bottom-color: var(--accent); }

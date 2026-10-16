@@ -1,5 +1,6 @@
-import { Link, NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth'
+import AssistenteRegistro from './componentes/AssistenteRegistro'
 import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
 import Cadastro from './pages/Cadastro'
@@ -8,7 +9,10 @@ import Interessados from './pages/Interessados'
 import Login from './pages/Login'
 import Mapa from './pages/Mapa'
 import MeusInteresses from './pages/MeusInteresses'
+import MeusRegistros from './pages/MeusRegistros'
 import PainelAbrigo from './pages/PainelAbrigo'
+import Reencontro from './pages/Reencontro'
+import RegistroDetalhe from './pages/RegistroDetalhe'
 
 const ROTULO_TIPO = { tutor: 'Tutor', abrigo: 'Abrigo', apoiador: 'Apoiador', admin: 'Administrador' }
 
@@ -24,10 +28,12 @@ function Cabecalho() {
         <nav className="menu" aria-label="Principal">
           <NavLink to="/" end>Animais</NavLink>
           <NavLink to="/mapa">Mapa</NavLink>
+          <NavLink to="/reencontro">Perdidos e achados</NavLink>
           {usuario?.tipo_conta === 'tutor' && <NavLink to="/interesses">Meus interesses</NavLink>}
           {usuario?.tipo_conta === 'abrigo' && <NavLink to="/painel">Meus animais</NavLink>}
           {usuario?.tipo_conta === 'abrigo' && <NavLink to="/interessados">Interessados</NavLink>}
           {usuario?.tipo_conta === 'admin' && <NavLink to="/admin">Validar abrigos</NavLink>}
+          {usuario && usuario.tipo_conta !== 'admin' && <NavLink to="/meus-registros">Meus registros</NavLink>}
         </nav>
         <div className="conta">
           {usuario ? (
@@ -52,8 +58,9 @@ function Cabecalho() {
 // Só deixa passar quem está logado com um dos tipos de conta permitidos (controle de perfil).
 function Protegido({ tipos, children }) {
   const { usuario, carregando } = useAuth()
+  const { pathname } = useLocation()
   if (carregando) return <p className="estado">Carregando…</p>
-  if (!usuario) return <Navigate to="/login" replace />
+  if (!usuario) return <Navigate to={`/login?voltar=${encodeURIComponent(pathname)}`} replace />
   if (!tipos.includes(usuario.tipo_conta)) {
     return (
       <main className="pagina">
@@ -74,8 +81,14 @@ export default function App() {
         <Route path="/" element={<Catalogo />} />
         <Route path="/mapa" element={<Mapa />} />
         <Route path="/animais/:id" element={<AnimalDetalhe />} />
+        <Route path="/reencontro" element={<Reencontro />} />
+        <Route path="/reencontro/perdidos/:id" element={<RegistroDetalhe key="perdido" tipo="perdido" />} />
+        <Route path="/reencontro/avistamentos/:id" element={<RegistroDetalhe key="avistamento" tipo="avistamento" />} />
+        <Route path="/perdi" element={<AssistenteRegistro key="perdido" tipo="perdido" />} />
+        <Route path="/encontrei" element={<AssistenteRegistro key="avistamento" tipo="avistamento" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/meus-registros" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador']}><MeusRegistros /></Protegido>} />
         <Route path="/interesses" element={<Protegido tipos={['tutor']}><MeusInteresses /></Protegido>} />
         <Route path="/interessados" element={<Protegido tipos={['abrigo']}><Interessados /></Protegido>} />
         <Route path="/painel" element={<Protegido tipos={['abrigo']}><PainelAbrigo /></Protegido>} />
