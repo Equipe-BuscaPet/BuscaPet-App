@@ -41,12 +41,12 @@ test.describe('Navegação', () => {
     await expect(page.getByRole('heading', { name: 'Meus registros' })).toBeVisible()
   })
 
-  test('o retorno do login não leva para fora do site', async ({ page, request }) => {
+  test('o retorno do login não leva para fora do site', async ({ page, request, baseURL }) => {
     const tutor = await criarConta(request, 'tutor')
     await page.goto('/login?voltar=//exemplo-malicioso.com')
     await page.getByLabel('E-mail').fill(tutor.email)
     await page.getByLabel('Senha').fill(SENHA)
     await page.getByRole('button', { name: 'Entrar' }).click()
-    await expect(page).toHaveURL('http://localhost:5173/')
+    await expect(page).toHaveURL(`${baseURL}/`) // ficou no próprio site, na página inicial
   })
 })

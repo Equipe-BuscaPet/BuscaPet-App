@@ -110,14 +110,15 @@ Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs
 | **Ponta a ponta (E2E)** | **Playwright** | um navegador de verdade usa as telas contra a API e um **Postgres real**: cadastro, login, perfis, adoção, perdidos e achados, celular | `cd frontend && npm run e2e` |
 | Núcleo OpenCL | `make teste` | saída paralela igual à sequencial | `docker compose build nucleo-opencl` |
 
-Os testes E2E criam as próprias contas, com e-mail único, e por isso rodam em qualquer banco sem depender dos dados
-de demonstração. O `npm run e2e` sobe sozinho a API e a interface, se ainda não estiverem no ar, e precisa do banco
-com as migrations aplicadas. `npm run e2e:ver` abre a janela do Playwright para acompanhar passo a passo, e
+Os testes E2E rodam num **ambiente só deles**, para não sujar o banco de desenvolvimento: banco `buscapet_e2e`
+(criado e migrado sozinho por `app/scripts/preparar_banco_teste.py`, que só aceita banco local terminado em `_e2e`),
+API na porta 8100 e interface na 5174. O `npm run e2e` sobe tudo isso sozinho; basta o Postgres local estar ligado.
+Cada teste cria as próprias contas, com e-mail único, e não depende dos dados de demonstração. `npm run e2e:ver` abre a janela do Playwright para acompanhar passo a passo, e
 `npm run e2e:relatorio` mostra o relatório com captura, vídeo e *trace* das falhas.
 
 A **CI** (`.github/workflows/ci.yml`) roda tudo isso a cada Pull Request. O job `e2e` só começa depois que lint,
-testes da API e build passam, sobe um Postgres 16 com a sessão no fuso de Recife (onde o defeito das datas
-aparecia) e publica o relatório do Playwright como artefato.
+testes da API e build passam, sobe um Postgres 16, roda a API com a sessão no fuso de Recife (onde o defeito das
+datas aparecia) e publica o relatório do Playwright como artefato.
 
 ## Documentação
 

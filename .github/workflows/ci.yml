@@ -36,9 +36,8 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U buscapet" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql+psycopg://buscapet:buscapet@localhost:5432/buscapet
+      # O Playwright cria e migra sozinho o banco buscapet_e2e neste Postgres (ver frontend/playwright.config.js).
       JWT_SECRET: segredo-somente-para-a-ci
-      PGTZ: America/Recife # sessão do banco no fuso dos usuários, como na máquina do time
       PYTHON: python
     steps:
       - uses: actions/checkout@v4
@@ -52,11 +51,9 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Dependências e banco
+      - name: Dependências da API
         working-directory: api
-        run: |
-          pip install -r requirements.txt
-          alembic upgrade head
+        run: pip install -r requirements.txt
       - name: Dependências da interface e navegador
         working-directory: frontend
         run: |

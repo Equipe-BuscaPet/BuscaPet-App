@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 
-export const API = process.env.API_URL || 'http://localhost:8000'
+export const API = process.env.API_URL || 'http://localhost:8100' // API de teste (playwright.config.js)
 export const SENHA = 'Senha1234!'
 export const RECIFE = { latitude: -8.0476, longitude: -34.877 } // centro inicial dos mapas
 
