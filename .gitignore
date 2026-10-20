@@ -2,6 +2,8 @@
 registro-sessoes/
 api/uploads/
 api/caixa-de-saida/
+.coverage
+htmlcov/
 __pycache__/
 *.pyc
 .venv/

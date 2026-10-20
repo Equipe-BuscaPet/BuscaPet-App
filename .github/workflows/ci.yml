@@ -18,7 +18,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: ruff check .
-      - run: pytest
+      # Sprint 9: mede a cobertura e falha se cair abaixo de 90% (estava em 94% ao fechar a sprint).
+      - run: pytest --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=90
 
   # Ponta a ponta: API + interface + Postgres de verdade, com um navegador (Playwright) usando as telas.
   # Só roda se lint, testes da API e build passarem (falha rápida e barata primeiro).
