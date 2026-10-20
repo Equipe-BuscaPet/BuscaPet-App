@@ -63,12 +63,26 @@ class RelatorioAbrigoOut(BaseModel):
     interesses: list[Contagem]  # por situação, criados no período
     adocoes_aprovadas: int
     tempo_medio_adocao_dias: float | None  # do cadastro/entrada do animal até a aprovação
-    origem_interessados: list[Contagem]  # cidade do tutor
+    origem_interessados: list[Contagem]  # cidade do tutor (só as primeiras; ver totais_listas)
     doacoes: list[Contagem]  # por situação, registradas no período
-    por_apoiador: list[ApoiadorDoAbrigo]  # confirmadas no período
-    por_item: list[Contagem]  # quantidade confirmada no período
+    por_apoiador: list[ApoiadorDoAbrigo]  # confirmadas no período (só os primeiros)
+    por_item: list[Contagem]  # quantidade confirmada no período (só os primeiros)
+    totais_listas: dict[str, int]  # quantas linhas cada lista tem: origem, apoiadores, itens
     necessidades: list[Contagem]  # aberta / atendida (hoje)
     serie_mensal: list[PontoMensal]
+
+
+class LinhaRelatorio(BaseModel):
+    rotulo: str
+    valores: list[int]
+
+
+class PaginaLinhas(BaseModel):
+    """Uma lista do relatório completa, em páginas (carregada só quando a pessoa pede para ver tudo)."""
+
+    total: int
+    colunas: list[str]
+    itens: list[LinhaRelatorio]
 
 
 class UsuarioResumoOut(BaseModel):

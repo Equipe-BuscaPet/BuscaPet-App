@@ -156,3 +156,22 @@ def test_navegador_consegue_ler_o_nome_do_arquivo_csv(client, cenario):
     # A interface roda em outra origem: o CORS precisa expor o Content-Disposition (achado no teste E2E).
     r = client.get("/admin/logs.csv", headers={**cenario["admin"], "Origin": "http://localhost:5173"})
     assert "content-disposition" in r.headers.get("access-control-expose-headers", "").lower()
+
+
+def test_listas_longas_vem_resumidas_e_completas_sob_demanda(client, cenario):
+    # Situação real: muitos itens doados. O relatório traz só os 5 primeiros e o total; o resto vem em páginas.
+    apoiador = cabecalho(client, "petshop@exemplo.com")
+    for i in range(6):
+        d = client.post("/doacoes", json={"abrigo_id": cenario["abrigo_id"], "item": f"Item {i}", "quantidade": 10 - i}, headers=apoiador).json()
+        client.patch(f"/doacoes/{d['id']}", json={"status": "confirmada"}, headers=cenario["abrigo"])
+    r = client.get("/relatorios/abrigo", headers=cenario["abrigo"]).json()
+    assert len(r["por_item"]) == 5 and r["totais_listas"]["itens"] == 7  # 6 novos + a Ração
+    assert r["por_item"][0] == {"chave": "Item 0", "total": 10}
+
+    pagina = client.get("/relatorios/abrigo/lista/itens", params={"limite": 4, "deslocamento": 4}, headers=cenario["abrigo"]).json()
+    assert pagina["total"] == 7 and pagina["colunas"] == ["Item", "Quantidade"]
+    assert [linha["rotulo"] for linha in pagina["itens"]] == ["Item 4", "Item 5", "Ração"]  # 6, 5 e 3 unidades
+    apoiadores = client.get("/relatorios/abrigo/lista/apoiadores", headers=cenario["abrigo"]).json()
+    assert apoiadores["itens"] == [{"rotulo": "Pet Shop Amigo", "valores": [7, 48]}]
+    assert client.get("/relatorios/abrigo/lista/outra", headers=cenario["abrigo"]).status_code == 422
+    assert client.get("/relatorios/abrigo/lista/itens", headers=cenario["tutor"]).status_code == 403

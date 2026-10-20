@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, baixarArquivo } from '../api'
+import CartaoLista from '../componentes/CartaoLista'
 import FiltroPeriodo, { periodoPadrao } from '../componentes/FiltroPeriodo'
 import GraficoMensal, { TabelaMensal } from '../componentes/GraficoMensal'
 import HistoricoOperacoes from '../componentes/HistoricoOperacoes'
@@ -10,23 +11,6 @@ import { useUltimoPedido } from '../useUltimoPedido'
 const STATUS_NECESSIDADE = { aberta: 'Em aberto', atendida: 'Atendida' }
 const soma = (lista) => lista.reduce((t, c) => t + c.total, 0)
 const de = (lista, chave) => lista.find((c) => c.chave === chave)?.total ?? 0
-
-function TabelaSimples({ titulo, cabecalho, linhas, vazio = 'Nada no período.' }) {
-  return (
-    <div>
-      <h3>{titulo}</h3>
-      <div className="cartao rolagem">
-        <table>
-          <thead><tr>{cabecalho.map((c, i) => <th key={c} style={i > 0 ? { textAlign: 'right' } : undefined}>{c}</th>)}</tr></thead>
-          <tbody>
-            {linhas.length === 0 && <tr><td colSpan={cabecalho.length}>{vazio}</td></tr>}
-            {linhas.map((l) => <tr key={l[0]}>{l.map((v, i) => <td key={i} style={i > 0 ? { textAlign: 'right', fontWeight: 700 } : undefined}>{v}</td>)}</tr>)}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
 
 function Relatorio() {
   const [periodo, setPeriodo] = useState(periodoPadrao)
@@ -45,6 +29,7 @@ function Relatorio() {
     try { await baixarArquivo(`/relatorios/abrigo/${arquivo}${comPeriodo ? `?de=${periodo.de}&ate=${periodo.ate}` : ''}`, arquivo) } catch (e) { setErro(e.message) }
   }
   const serie = (chave) => r.serie_mensal.map((p) => ({ mes: p.mes, valor: p[chave] }))
+  const q = `de=${periodo.de}&ate=${periodo.ate}`
 
   return (
     <section aria-label="Relatório do abrigo">
@@ -83,13 +68,16 @@ function Relatorio() {
           )}
 
           <div className="duas-tabelas" style={{ marginTop: '1.5rem' }}>
-            <TabelaSimples titulo="De onde vêm os interessados" cabecalho={['Cidade', 'Interesses']} linhas={r.origem_interessados.map((c) => [c.chave, c.total])} />
-            <TabelaSimples titulo="Interesses por situação" cabecalho={['Situação', 'Total']} linhas={r.interesses.map((c) => [STATUS_INTERESSE[c.chave], c.total])} />
-            <TabelaSimples titulo="Doações por apoiador (confirmadas)" cabecalho={['Apoiador', 'Doações', 'Itens']} linhas={r.por_apoiador.map((a) => [a.nome, a.doacoes, a.quantidade])} />
-            <TabelaSimples titulo="O que foi recebido" cabecalho={['Item', 'Quantidade']} linhas={r.por_item.map((c) => [c.chave, c.total])} />
-            <TabelaSimples titulo="Doações por situação (registradas no período)" cabecalho={['Situação', 'Total']} linhas={r.doacoes.map((c) => [STATUS_DOACAO[c.chave], c.total])} />
-            <TabelaSimples titulo="Animais por situação (hoje)" cabecalho={['Situação', 'Animais']} linhas={r.animais.map((c) => [STATUS_ANIMAL[c.chave], c.total])} vazio="Nenhum animal cadastrado." />
-            <TabelaSimples titulo="Necessidades (hoje)" cabecalho={['Situação', 'Total']} linhas={r.necessidades.map((c) => [STATUS_NECESSIDADE[c.chave], c.total])} vazio="Nenhuma necessidade publicada." />
+            <CartaoLista titulo="De onde vêm os interessados" cabecalho={['Cidade', 'Interesses']} linhas={r.origem_interessados.map((c) => [c.chave, c.total])}
+              total={r.totais_listas.origem} rotaCompleta={`/relatorios/abrigo/lista/origem?${q}`} />
+            <CartaoLista titulo="Doações por apoiador (confirmadas)" cabecalho={['Apoiador', 'Doações', 'Itens']} linhas={r.por_apoiador.map((a) => [a.nome, a.doacoes, a.quantidade])}
+              total={r.totais_listas.apoiadores} rotaCompleta={`/relatorios/abrigo/lista/apoiadores?${q}`} />
+            <CartaoLista titulo="O que foi recebido" cabecalho={['Item', 'Quantidade']} linhas={r.por_item.map((c) => [c.chave, c.total])}
+              total={r.totais_listas.itens} rotaCompleta={`/relatorios/abrigo/lista/itens?${q}`} />
+            <CartaoLista titulo="Interesses por situação" cabecalho={['Situação', 'Total']} linhas={r.interesses.map((c) => [STATUS_INTERESSE[c.chave], c.total])} />
+            <CartaoLista titulo="Doações por situação (registradas no período)" cabecalho={['Situação', 'Total']} linhas={r.doacoes.map((c) => [STATUS_DOACAO[c.chave], c.total])} />
+            <CartaoLista titulo="Animais por situação (hoje)" cabecalho={['Situação', 'Animais']} linhas={r.animais.map((c) => [STATUS_ANIMAL[c.chave], c.total])} vazio="Nenhum animal cadastrado." />
+            <CartaoLista titulo="Necessidades (hoje)" cabecalho={['Situação', 'Total']} linhas={r.necessidades.map((c) => [STATUS_NECESSIDADE[c.chave], c.total])} vazio="Nenhuma necessidade publicada." />
           </div>
         </>
       )}

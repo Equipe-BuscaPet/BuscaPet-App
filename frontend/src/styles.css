@@ -471,3 +471,18 @@ button.miniatura { cursor: pointer; }
 .duas-tabelas h3 { margin: 0 0 0.5rem; font-size: 1rem; }
 .historico td small { color: var(--ink-dim); display: block; }
 .paginacao { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.75rem; }
+/* Cartões de lista do relatório: altura fixa (5 linhas), nomes longos com "…"; "Ver todos" abre a lista completa. */
+.cartao-lista h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.cartao-lista__caixa { height: 17rem; display: flex; flex-direction: column; overflow: hidden; }
+.cartao-lista__caixa table { width: 100%; table-layout: fixed; }
+.cartao-lista__caixa .colunas-2 th:not(:first-child), .cartao-lista__caixa .colunas-2 td:not(:first-child) { width: 6.75rem; }
+.cartao-lista__caixa .colunas-3 th:not(:first-child), .cartao-lista__caixa .colunas-3 td:not(:first-child) { width: 4.4rem; }
+.cartao-lista__rotulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cartao-lista__mais { margin-top: auto; align-self: flex-start; }
+.dialogo-lista { width: min(640px, 92vw); max-height: 82vh; border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.25rem;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.dialogo-lista::backdrop { background: rgba(20, 18, 14, 0.45); }
+.dialogo-lista__topo { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.dialogo-lista__topo h2 { margin: 0; font-size: 1.15rem; }
+.dialogo-lista__corpo { max-height: 55vh; overflow-y: auto; }
+.dialogo-lista__corpo table { width: 100%; }

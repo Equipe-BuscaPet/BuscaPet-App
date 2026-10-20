@@ -14,6 +14,7 @@ import csv
 import datetime
 import io
 from collections import Counter
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
@@ -31,7 +32,9 @@ from app.models.usuario import Abrigo, Apoiador, Tutor, Usuario
 from app.schemas.relatorio import (
     ApoiadorDoAbrigo,
     Contagem,
+    LinhaRelatorio,
     LogOut,
+    PaginaLinhas,
     PaginaLogs,
     PainelAdminOut,
     Periodo,
@@ -324,6 +327,50 @@ def _tempo_medio_adocao(db: Session, abrigo_id: int, p: Periodo) -> tuple[int, f
     return len(aprovacoes), (round(sum(dias) / len(dias), 1) if dias else None)
 
 
+PREVIA = 5  # linhas de cada lista no relatório; o resto vem de /relatorios/abrigo/lista/{lista}
+
+
+def _confirmadas(aid: int, p: Periodo):
+    return (Doacao.abrigo_id == aid) & (Doacao.status == StatusDoacao.CONFIRMADA) & _no(Doacao.confirmado_em, p)
+
+
+def _origem(db: Session, aid: int, p: Periodo) -> list[tuple[str, int]]:
+    """Cidade dos interessados. Agrupa pela coluna e trata a cidade vazia aqui: agrupar por coalesce(cidade, '...')
+    passa no SQLite mas o PostgreSQL recusa (cada cópia do texto vira um parâmetro diferente)."""
+    por_cidade = Counter()
+    for cidade, total in db.execute(
+        select(Tutor.cidade, func.count())
+        .select_from(Interesse).join(Animal, Animal.id == Interesse.animal_id).join(Tutor, Tutor.usuario_id == Interesse.tutor_id)
+        .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(Tutor.cidade)
+    ):
+        por_cidade[(cidade or "").strip() or "Não informada"] += total
+    return sorted(por_cidade.items(), key=lambda c: (-c[1], c[0]))
+
+
+def _apoiadores(db: Session, aid: int, p: Periodo) -> list[tuple[str, int, int]]:
+    linhas = db.execute(
+        select(Usuario.nome, func.count(Doacao.id), func.sum(Doacao.quantidade)).join(Usuario, Usuario.id == Doacao.apoiador_id)
+        .where(_confirmadas(aid, p)).group_by(Usuario.id, Usuario.nome).order_by(func.count(Doacao.id).desc(), Usuario.nome)
+    ).all()
+    return [(n, int(c), int(q or 0)) for n, c, q in linhas]
+
+
+def _itens(db: Session, aid: int, p: Periodo) -> list[tuple[str, int]]:
+    linhas = db.execute(
+        select(Doacao.item, func.sum(Doacao.quantidade)).where(_confirmadas(aid, p))
+        .group_by(Doacao.item).order_by(func.sum(Doacao.quantidade).desc(), Doacao.item)
+    ).all()
+    return [(i, int(q or 0)) for i, q in linhas]
+
+
+# Listas do relatório que podem crescer sem limite: colunas e a função que calcula a lista inteira, ordenada.
+LISTAS = {
+    "origem": (["Cidade", "Interesses"], _origem),
+    "apoiadores": (["Apoiador", "Doações", "Itens"], _apoiadores),
+    "itens": (["Item", "Quantidade"], _itens),
+}
+
+
 @router.get("/relatorios/abrigo", response_model=RelatorioAbrigoOut)
 def relatorio_abrigo(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> RelatorioAbrigoOut:
     aid = abrigo.usuario_id
@@ -333,27 +380,10 @@ def relatorio_abrigo(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get
         .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(Interesse.status)
     ).all()
     aprovadas, tempo = _tempo_medio_adocao(db, aid, p)
-    # Agrupa pela coluna e trata a cidade vazia aqui: agrupar por coalesce(cidade, '...') passa no SQLite mas o
-    # PostgreSQL recusa (cada cópia do texto vira um parâmetro diferente) — achado no teste contra o Postgres.
-    por_cidade = Counter()
-    for cidade, total in db.execute(
-        select(Tutor.cidade, func.count())
-        .select_from(Interesse).join(Animal, Animal.id == Interesse.animal_id).join(Tutor, Tutor.usuario_id == Interesse.tutor_id)
-        .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(Tutor.cidade)
-    ):
-        por_cidade[(cidade or "").strip() or "Não informada"] += total
-    origem = sorted(por_cidade.items(), key=lambda c: (-c[1], c[0]))
     doacoes = db.execute(
         select(Doacao.status, func.count()).where(Doacao.abrigo_id == aid, _no(Doacao.registrado_em, p)).group_by(Doacao.status)
     ).all()
-    confirmadas = (Doacao.abrigo_id == aid) & (Doacao.status == StatusDoacao.CONFIRMADA) & _no(Doacao.confirmado_em, p)
-    por_apoiador = db.execute(
-        select(Usuario.nome, func.count(Doacao.id), func.sum(Doacao.quantidade)).join(Usuario, Usuario.id == Doacao.apoiador_id)
-        .where(confirmadas).group_by(Usuario.nome).order_by(func.count(Doacao.id).desc(), Usuario.nome)
-    ).all()
-    por_item = db.execute(
-        select(Doacao.item, func.sum(Doacao.quantidade)).where(confirmadas).group_by(Doacao.item).order_by(func.sum(Doacao.quantidade).desc())
-    ).all()
+    origem, apoiadores, itens = (LISTAS[nome][1](db, aid, p) for nome in ("origem", "apoiadores", "itens"))
     necessidades = db.execute(select(Necessidade.status, func.count()).where(Necessidade.abrigo_id == aid).group_by(Necessidade.status)).all()
 
     desde = _inicio_serie(p)
@@ -368,9 +398,28 @@ def relatorio_abrigo(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get
     )
     return RelatorioAbrigoOut(
         periodo=p, animais=_contagem(animais), interesses=_contagem(interesses), adocoes_aprovadas=aprovadas,
-        tempo_medio_adocao_dias=tempo, origem_interessados=_contagem(origem), doacoes=_contagem(doacoes),
-        por_apoiador=[ApoiadorDoAbrigo(nome=n, doacoes=c, quantidade=int(q or 0)) for n, c, q in por_apoiador],
-        por_item=_contagem(por_item), necessidades=_contagem(necessidades), serie_mensal=serie,
+        tempo_medio_adocao_dias=tempo, origem_interessados=_contagem(origem[:PREVIA]), doacoes=_contagem(doacoes),
+        por_apoiador=[ApoiadorDoAbrigo(nome=n, doacoes=c, quantidade=q) for n, c, q in apoiadores[:PREVIA]],
+        por_item=_contagem(itens[:PREVIA]), necessidades=_contagem(necessidades), serie_mensal=serie,
+        totais_listas={"origem": len(origem), "apoiadores": len(apoiadores), "itens": len(itens)},
+    )
+
+
+@router.get("/relatorios/abrigo/lista/{lista}", response_model=PaginaLinhas)
+def lista_completa(
+    lista: Literal["origem", "apoiadores", "itens"],
+    p: Periodo = Depends(periodo),
+    limite: int = Query(default=20, ge=1, le=100),
+    deslocamento: int = Query(default=0, ge=0),
+    abrigo: Abrigo = Depends(get_abrigo_operante),
+    db: Session = Depends(get_db),
+) -> PaginaLinhas:
+    """Uma lista do relatório inteira, em páginas: a tela mostra só as primeiras e busca o resto quando pedem."""
+    colunas, calcular = LISTAS[lista]
+    linhas = calcular(db, abrigo.usuario_id, p)
+    return PaginaLinhas(
+        total=len(linhas), colunas=colunas,
+        itens=[LinhaRelatorio(rotulo=str(r[0]), valores=[int(v) for v in r[1:]]) for r in linhas[deslocamento:deslocamento + limite]],
     )
 
 

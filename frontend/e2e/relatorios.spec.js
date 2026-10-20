@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { API, contaAdmin, criarAnimal, criarConta, entrarComo } from './apoio'
+import { API, contaAdmin, criarAnimal, criarConta, entrarComo, verificarAbrigo } from './apoio'
 
 // Sprint 7: painel da administração (RF-38), histórico de operações (RF-39), relatórios do abrigo (RF-40),
 // pesquisa, filtros e exportação CSV.
@@ -98,5 +98,30 @@ test.describe('Relatórios do abrigo', () => {
     await page.getByLabel('Até', { exact: true }).fill('2025-12-31')
     await page.getByLabel('De', { exact: true }).fill('2025-01-01')
     await expect(page.locator('.indicador', { hasText: 'adoções aprovadas' }).locator('strong')).toHaveText('0')
+  })
+
+  test('listas longas mostram as 5 primeiras e abrem a lista completa sob demanda', async ({ page, request }) => {
+    const abrigo = await criarConta(request, 'abrigo')
+    await verificarAbrigo(request, abrigo)
+    const apoiador = await criarConta(request, 'apoiador')
+    for (let i = 0; i < 6; i++) {
+      const d = await request.post(`${API}/doacoes`, {
+        headers: { Authorization: `Bearer ${apoiador.token}` }, data: { abrigo_id: abrigo.usuario.id, item: `Item com um nome bem comprido número ${i}`, quantidade: 10 - i },
+      })
+      const id = (await d.json()).id
+      await request.patch(`${API}/doacoes/${id}`, { headers: { Authorization: `Bearer ${abrigo.token}` }, data: { status: 'confirmada' } })
+    }
+    await entrarComo(page, abrigo)
+    await page.goto('/relatorios')
+    const cartao = page.locator('.cartao-lista', { hasText: 'O que foi recebido' })
+    await expect(cartao.locator('tbody tr')).toHaveCount(5)
+    const alturas = await page.locator('.cartao-lista__caixa').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))
+    expect(new Set(alturas).size).toBe(1) // todos os cartões com a mesma altura, com poucos ou muitos dados
+    await cartao.getByRole('button', { name: 'Ver todos (6)' }).click()
+    const dialogo = page.getByRole('dialog', { name: 'O que foi recebido' })
+    await expect(dialogo.getByRole('status')).toHaveText('Mostrando 6 de 6')
+    await expect(dialogo.locator('tbody tr')).toHaveCount(6)
+    await page.keyboard.press('Escape')
+    await expect(dialogo).toHaveCount(0)
   })
 })
