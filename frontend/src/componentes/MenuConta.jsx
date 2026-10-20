@@ -11,10 +11,11 @@ function itensDoPerfil(usuario) {
     tutor: [['/interesses', '❤️', 'Meus interesses de adoção']],
     abrigo: [
       ['/painel', '🐾', 'Meus animais'], ['/interessados', '📋', 'Interessados'],
-      ['/doacoes', '📦', 'Necessidades e doações'], [`/abrigos/${usuario.id}`, '🏠', 'Perfil público do abrigo'],
+      ['/doacoes', '📦', 'Necessidades e doações'], ['/relatorios', '📊', 'Relatórios'],
+      [`/abrigos/${usuario.id}`, '🏠', 'Perfil público do abrigo'],
     ],
     apoiador: [['/minhas-doacoes', '📦', 'Minhas doações'], [`/apoiadores/${usuario.id}`, '🏆', 'Meu perfil público']],
-    admin: [['/admin', '✅', 'Validar abrigos']],
+    admin: [['/admin', '📊', 'Painel da administração'], ['/admin?aba=abrigos', '✅', 'Validar abrigos'], ['/admin?aba=historico', '🧾', 'Histórico de operações']],
   }[usuario.tipo_conta]
 }
 

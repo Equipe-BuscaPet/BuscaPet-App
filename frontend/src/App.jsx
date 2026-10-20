@@ -22,6 +22,7 @@ import PerfilAbrigo from './pages/PerfilAbrigo'
 import PerfilApoiador from './pages/PerfilApoiador'
 import QuemApoia from './pages/QuemApoia'
 import Reencontro from './pages/Reencontro'
+import RelatoriosAbrigo from './pages/RelatoriosAbrigo'
 import RegistroDetalhe from './pages/RegistroDetalhe'
 
 // Menu principal só com o que é de todos; o que é da conta fica no menu ☰ (componentes/MenuConta.jsx).
@@ -99,6 +100,7 @@ export default function App() {
         <Route path="/abrigos/:id" element={<PerfilAbrigo />} />
         <Route path="/apoiadores/:id" element={<PerfilApoiador />} />
         <Route path="/doacoes" element={<Protegido tipos={['abrigo']}><DoacoesAbrigo /></Protegido>} />
+        <Route path="/relatorios" element={<Protegido tipos={['abrigo']}><RelatoriosAbrigo /></Protegido>} />
         <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador']}><MinhasDoacoes /></Protegido>} />
         <Route path="/reencontro/perdidos/:id" element={<RegistroDetalhe key="perdido" tipo="perdido" />} />
         <Route path="/reencontro/avistamentos/:id" element={<RegistroDetalhe key="avistamento" tipo="avistamento" />} />

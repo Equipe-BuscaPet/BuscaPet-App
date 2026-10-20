@@ -206,7 +206,10 @@ export default function PainelAbrigo() {
           <h1>Meus animais</h1>
           <p className="subtitulo" style={{ margin: 0 }}>{usuario.perfil?.nome_abrigo}</p>
         </div>
-        <Link className="botao botao--leve" to={`/abrigos/${usuario.id}`}>Ver perfil público</Link>
+        <div className="acoes">
+          <Link className="botao botao--leve" to="/relatorios">Relatórios</Link>
+          <Link className="botao botao--leve" to={`/abrigos/${usuario.id}`}>Ver perfil público</Link>
+        </div>
       </div>
 
       {ativo && <ResumoHoje animais={animais} />}

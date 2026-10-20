@@ -446,3 +446,28 @@ button.miniatura { cursor: pointer; }
 .resumo-hoje strong { font-size: 1.8rem; line-height: 1; }
 .resumo-hoje span { color: var(--ink-dim); font-size: 0.9rem; }
 .resumo-hoje .resumo-hoje--acao strong { color: var(--accent); }
+
+/* ---------- Painel, relatórios e histórico (Sprint 7: RF-38 a RF-40) ---------- */
+/* Cores das séries: paleta categórica validada (daltonismo e contraste) para estas superfícies, uma por módulo. */
+:root { --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; }
+@media (prefers-color-scheme: dark) { :root { --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; } }
+.filtro-periodo { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: end; margin-bottom: 1.25rem; }
+.filtro-periodo .campo { min-width: 150px; }
+.indicadores { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-bottom: 1.5rem; }
+.indicador { display: grid; gap: 0.15rem; }
+.indicador strong { font-size: 1.8rem; line-height: 1.1; }
+.indicador span { color: var(--ink-dim); font-size: 0.88rem; }
+.indicador small { color: var(--ink-dim); font-size: 0.78rem; }
+.graficos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 0.5rem; }
+.grafico { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0.75rem 0.9rem 0.5rem; }
+.grafico__titulo { font-weight: 700; font-size: 0.92rem; margin-bottom: 0.25rem; }
+.grafico__area svg { width: 100%; height: auto; display: block; overflow: visible; }
+.grafico__base { stroke: var(--line); stroke-width: 1; }
+.grafico__mes { font-size: 11px; fill: var(--ink-dim); }
+.grafico__valor { font-size: 12px; font-weight: 700; fill: var(--ink); }
+.grafico__area rect:focus { outline: none; }
+.grafico__area rect:focus-visible { stroke: var(--ink); stroke-width: 1.5; }
+.duas-tabelas { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 1.5rem; }
+.duas-tabelas h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.historico td small { color: var(--ink-dim); display: block; }
+.paginacao { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.75rem; }

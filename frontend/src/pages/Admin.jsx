@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import HistoricoOperacoes from '../componentes/HistoricoOperacoes'
 import { STATUS_VALIDACAO } from '../rotulos'
+import PainelAdmin from './PainelAdmin'
+import PesquisaContas from './PesquisaContas'
 
 const ABAS = ['pendente', 'aprovado', 'rejeitado']
 
-export default function Admin() {
+function VerificarAbrigos() {
   const [aba, setAba] = useState('pendente')
   const [abrigos, setAbrigos] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -38,9 +42,8 @@ export default function Admin() {
   }
 
   return (
-    <main className="pagina">
-      <h1>Verificação de abrigos</h1>
-      <p className="subtitulo">Todo abrigo opera assim que se cadastra. Aqui você concede o selo Verificado (necessário para exibir chave de doação e entrar no ranking) ou suspende um abrigo suspeito, que some do catálogo.</p>
+    <section aria-label="Verificação de abrigos">
+      <p className="subtitulo">Todo abrigo opera assim que se cadastra. Aqui você concede o selo Verificado (necessário para publicar no mural, receber doações e exibir a chave PIX) ou suspende um abrigo suspeito, que some do catálogo.</p>
 
       <div className="acoes" role="tablist" aria-label="Situação" style={{ marginBottom: '1rem' }}>
         {ABAS.map((a) => (
@@ -83,6 +86,36 @@ export default function Admin() {
           </article>
         ))}
       </div>
+    </section>
+  )
+}
+
+const ABAS_ADMIN = [
+  ['painel', 'Painel'],
+  ['abrigos', 'Verificar abrigos'],
+  ['historico', 'Histórico de operações'],
+  ['contas', 'Contas'],
+]
+
+// Área da administração (RF-38, RF-39): painel com indicadores, verificação de abrigos, histórico e pesquisa de contas.
+export default function Admin() {
+  const [params, setParams] = useSearchParams()
+  const aba = ABAS_ADMIN.some(([v]) => v === params.get('aba')) ? params.get('aba') : 'painel'
+  return (
+    <main className="pagina">
+      <h1>Administração</h1>
+      <div className="abas" role="tablist" aria-label="Área da administração" style={{ marginBottom: '1.25rem' }}>
+        {ABAS_ADMIN.map(([valor, rotulo]) => (
+          <button key={valor} role="tab" aria-selected={aba === valor} className={`abas__item${aba === valor ? ' abas__item--ativa' : ''}`}
+            onClick={() => setParams(valor === 'painel' ? {} : { aba: valor })}>
+            {rotulo}
+          </button>
+        ))}
+      </div>
+      {aba === 'painel' && <PainelAdmin />}
+      {aba === 'abrigos' && <VerificarAbrigos />}
+      {aba === 'historico' && <HistoricoOperacoes rota="/admin/logs" rotaCsv="/admin/logs.csv" />}
+      {aba === 'contas' && <PesquisaContas />}
     </main>
   )
 }

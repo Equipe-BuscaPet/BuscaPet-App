@@ -108,3 +108,22 @@ export async function api(caminho, { metodo = 'GET', corpo, formulario, multipar
   }
   return dados
 }
+
+// Baixa um arquivo da API (ex.: relatório CSV) com o token de login e salva com o nome que a API sugerir.
+export async function baixarArquivo(caminho, nomePadrao = 'relatorio.csv') {
+  const headers = {}
+  const jwt = token.ler()
+  if (jwt) headers.Authorization = `Bearer ${jwt}`
+  const resposta = await fetch(`${BASE}${caminho}`, { headers })
+  if (!resposta.ok) {
+    const dados = await resposta.json().catch(() => null)
+    throw new ApiError(resposta.status, interpretarErro(resposta.status, dados?.detail).mensagem)
+  }
+  const nome = /filename="([^"]+)"/.exec(resposta.headers.get('Content-Disposition') || '')?.[1] || nomePadrao
+  const url = URL.createObjectURL(await resposta.blob())
+  const link = Object.assign(document.createElement('a'), { href: url, download: nome })
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
