@@ -6,13 +6,19 @@
  * paralela devolve exatamente os mesmos números que a sequencial em C
  * (src/descritor.c), e o teste de equivalência pode exigir igualdade bit a bit.
  *
- * Etapas (uma chamada de kernel cada, todas por pixel e independentes):
+ * Etapas (três kernels; cada item de trabalho cuida de LINHAS, não de pixels):
  *   1. redimensionar   foto de qualquer tamanho → 128×128 (bilinear em ponto fixo)
  *   2. somar_canais    soma de R, G, B da imagem inteira e da moldura (fundo)
- *   3. classificar     corrige a iluminação (cor e brilho), calcula o tom (HSV),
- *                      o cinza e separa o animal do fundo (máscara)
- *   4. lbp             textura: padrão binário local (LBP "riu2", 10 classes)
- *   5. histogramas     contagens por região/tom, textura e o retângulo do animal
+ *   3. descrever       para um bloco de 8 linhas: corrige a iluminação (cor e
+ *                      brilho), calcula o tom (HSV), o cinza, separa o animal do
+ *                      fundo, a textura (LBP "riu2") e conta tudo num histograma
+ *                      particular, somado ao da imagem só no fim
+ *
+ * Por que linhas e não pixels: na CPU, 16 mil itens de trabalho minúsculos por
+ * foto, todos disputando os mesmos contadores, custam mais que a própria conta
+ * (medido: o kernel de histogramas por pixel levava 40 ms para 100 fotos e não
+ * ganhava do sequencial). Com blocos, cada núcleo faz bastante conta seguida e a
+ * disputa acontece uma vez por bloco.
  *
  * As constantes abaixo são as mesmas de src/descritor.h (o host passa -D na
  * compilação para garantir isso).
@@ -27,6 +33,8 @@
 #define TONS 52            /* 12 matizes × 2 saturações × 2 brilhos + 4 tons de cinza */
 #define REGIOES 4
 #define CLASSES_LBP 10
+#define LINHAS_BLOCO 8
+#define BLOCOS (LADO / LINHAS_BLOCO)
 
 /* Posições do vetor de somas (por imagem). */
 #define S_R 0
@@ -54,61 +62,55 @@
 
 /* ---------------------------------------------------------------- 1 */
 /* origem: bytes RGB de todas as imagens, uma atrás da outra; info[i] =
- * (deslocamento, largura, altura) da imagem i. destino: LADO×LADO×3 por imagem. */
+ * (deslocamento, largura, altura) da imagem i. destino: LADO×LADO×3 por imagem.
+ * NDRange: (linha, imagem). */
 __kernel void redimensionar(__global const uchar *origem, __global const int *info,
                             __global uchar *destino) {
-    const int p = get_global_id(0);
+    const int y = get_global_id(0);
     const int img = get_global_id(1);
-    if (p >= PIXELS) return;
+    if (y >= LADO) return;
     const int desloc = info[3 * img], w = info[3 * img + 1], h = info[3 * img + 2];
-    const int x = p % LADO, y = p / LADO;
+    __global const uchar *o = origem + desloc;
 
-    /* centro do pixel de destino no espaço da origem, com 8 bits de fração */
-    int fx = ((2 * x + 1) * w * 256) / (2 * LADO) - 128;
     int fy = ((2 * y + 1) * h * 256) / (2 * LADO) - 128;
-    fx = max(fx, 0);
     fy = max(fy, 0);
-    const int x0 = min(fx >> 8, w - 1), y0 = min(fy >> 8, h - 1);
-    const int x1 = min(x0 + 1, w - 1), y1 = min(y0 + 1, h - 1);
-    const int ax = fx & 255, ay = fy & 255;
-
-    for (int c = 0; c < 3; c++) {
-        const int p00 = origem[desloc + (y0 * w + x0) * 3 + c];
-        const int p01 = origem[desloc + (y0 * w + x1) * 3 + c];
-        const int p10 = origem[desloc + (y1 * w + x0) * 3 + c];
-        const int p11 = origem[desloc + (y1 * w + x1) * 3 + c];
-        const int cima = p00 * (256 - ax) + p01 * ax;
-        const int baixo = p10 * (256 - ax) + p11 * ax;
-        destino[(img * PIXELS + p) * 3 + c] = (uchar)((cima * (256 - ay) + baixo * ay + 32768) >> 16);
+    const int y0 = min(fy >> 8, h - 1), y1 = min(y0 + 1, h - 1), ay = fy & 255;
+    for (int x = 0; x < LADO; x++) {
+        /* centro do pixel de destino no espaço da origem, com 8 bits de fração */
+        int fx = ((2 * x + 1) * w * 256) / (2 * LADO) - 128;
+        fx = max(fx, 0);
+        const int x0 = min(fx >> 8, w - 1), x1 = min(x0 + 1, w - 1), ax = fx & 255;
+        for (int c = 0; c < 3; c++) {
+            const int p00 = o[(y0 * w + x0) * 3 + c], p01 = o[(y0 * w + x1) * 3 + c];
+            const int p10 = o[(y1 * w + x0) * 3 + c], p11 = o[(y1 * w + x1) * 3 + c];
+            const int cima = p00 * (256 - ax) + p01 * ax, baixo = p10 * (256 - ax) + p11 * ax;
+            destino[((img * LADO + y) * LADO + x) * 3 + c] = (uchar)((cima * (256 - ay) + baixo * ay + 32768) >> 16);
+        }
     }
 }
 
 /* ---------------------------------------------------------------- 2 */
-/* Cada grupo de trabalho soma no próprio "rascunho" (memória local) e só no fim
- * faz uma atualização na memória global: menos disputa entre os núcleos. */
+/* NDRange: (linha, imagem). Cada linha soma no particular e soma no global uma vez. */
 __kernel void somar_canais(__global const uchar *img128, __global int *somas) {
-    __local int parcial[N_SOMAS];
-    const int lid = get_local_id(0);
-    if (lid < N_SOMAS) parcial[lid] = 0;
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    const int p = get_global_id(0);
+    const int y = get_global_id(0);
     const int img = get_global_id(1);
-    if (p < PIXELS) {
-        const int x = p % LADO, y = p / LADO;
-        __global const uchar *px = img128 + (img * PIXELS + p) * 3;
-        atomic_add(&parcial[S_R], px[0]);
-        atomic_add(&parcial[S_G], px[1]);
-        atomic_add(&parcial[S_B], px[2]);
-        if (x < MOLDURA || y < MOLDURA || x >= LADO - MOLDURA || y >= LADO - MOLDURA) {
-            atomic_add(&parcial[S_BR], px[0]);
-            atomic_add(&parcial[S_BG], px[1]);
-            atomic_add(&parcial[S_BB], px[2]);
-            atomic_inc(&parcial[S_BN]);
+    if (y >= LADO) return;
+    __global const uchar *px = img128 + (img * LADO + y) * LADO * 3;
+    int s[7] = {0, 0, 0, 0, 0, 0, 0};
+    const int linha_moldura = y < MOLDURA || y >= LADO - MOLDURA;
+    for (int x = 0; x < LADO; x++, px += 3) {
+        s[S_R] += px[0];
+        s[S_G] += px[1];
+        s[S_B] += px[2];
+        if (linha_moldura || x < MOLDURA || x >= LADO - MOLDURA) {
+            s[S_BR] += px[0];
+            s[S_BG] += px[1];
+            s[S_BB] += px[2];
+            s[S_BN]++;
         }
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
-    if (lid < N_SOMAS && parcial[lid] != 0) atomic_add(&somas[img * N_SOMAS + lid], parcial[lid]);
+    for (int k = 0; k < 7; k++)
+        if (s[k]) atomic_add(&somas[img * N_SOMAS + k], s[k]);
 }
 
 /* ---------------------------------------------------------------- 3 */
@@ -135,12 +137,14 @@ inline int classe_tom(int r, int g, int b) {
     return (hb * 2 + sb) * 2 + vb;
 }
 
-/* saída por pixel: tom (0..51), cinza (0..255) e máscara (1 = animal). */
-__kernel void classificar(__global const uchar *img128, __global const int *somas,
-                          __global uchar *tom, __global uchar *cinza, __global uchar *mascara) {
-    const int p = get_global_id(0);
+/* NDRange: (bloco de LINHAS_BLOCO linhas, imagem). As contagens globais começam
+ * zeradas, exceto MIN_X/MIN_Y (= LADO) e MAX_X/MAX_Y (= -1), preparados pelo host. */
+__kernel void descrever(__global const uchar *img128, __global const int *somas, __global int *estat) {
+    const int bloco = get_global_id(0);
     const int img = get_global_id(1);
-    if (p >= PIXELS) return;
+    if (bloco >= BLOCOS) return;
+    const int y0 = bloco * LINHAS_BLOCO;
+
     __global const int *s = somas + img * N_SOMAS;
     const int gr = ganho(s[S_R]), gg = ganho(s[S_G]), gb = ganho(s[S_B]);
     const int n = max(s[S_BN], 1);
@@ -148,73 +152,72 @@ __kernel void classificar(__global const uchar *img128, __global const int *soma
     const int fg = min(255, ((s[S_BG] / n) * gg) >> 10);
     const int fb = min(255, ((s[S_BB] / n) * gb) >> 10);
 
-    __global const uchar *px = img128 + (img * PIXELS + p) * 3;
-    const int r = min(255, (px[0] * gr) >> 10);
-    const int g = min(255, (px[1] * gg) >> 10);
-    const int b = min(255, (px[2] * gb) >> 10);
-
-    const int i = img * PIXELS + p;
-    tom[i] = (uchar)classe_tom(r, g, b);
-    cinza[i] = (uchar)((77 * r + 150 * g + 29 * b) >> 8);
-    mascara[i] = (uchar)((abs(r - fr) + abs(g - fg) + abs(b - fb)) > LIMIAR_FUNDO);
-}
-
-/* ---------------------------------------------------------------- 4 */
-/* LBP rotacionalmente invariante e "uniforme" (riu2), 8 vizinhos: conta quantos
- * vizinhos são ≥ ao centro (0..8) se o padrão tiver no máximo 2 transições; senão
- * classe 9 (padrão irregular). Bordas da imagem ficam com 255 (sem textura). */
-__kernel void lbp(__global const uchar *cinza, __global uchar *classe) {
-    const int p = get_global_id(0);
-    const int img = get_global_id(1);
-    if (p >= PIXELS) return;
-    const int x = p % LADO, y = p / LADO;
-    const int i = img * PIXELS + p;
-    if (x == 0 || y == 0 || x == LADO - 1 || y == LADO - 1) {
-        classe[i] = 255;
-        return;
+    /* cinza das linhas do bloco + 1 linha acima e 1 abaixo (vizinhos do LBP) */
+    uchar cinza[LINHAS_BLOCO + 2][LADO];
+    uchar tom[LINHAS_BLOCO][LADO], animal[LINHAS_BLOCO][LADO];
+    for (int dy = -1; dy <= LINHAS_BLOCO; dy++) {
+        const int y = y0 + dy;
+        if (y < 0 || y >= LADO) continue;
+        __global const uchar *px = img128 + (img * LADO + y) * LADO * 3;
+        for (int x = 0; x < LADO; x++, px += 3) {
+            const int r = min(255, (px[0] * gr) >> 10);
+            const int g = min(255, (px[1] * gg) >> 10);
+            const int b = min(255, (px[2] * gb) >> 10);
+            cinza[dy + 1][x] = (uchar)((77 * r + 150 * g + 29 * b) >> 8);
+            if (dy >= 0 && dy < LINHAS_BLOCO) {
+                tom[dy][x] = (uchar)classe_tom(r, g, b);
+                animal[dy][x] = (uchar)((abs(r - fr) + abs(g - fg) + abs(b - fb)) > LIMIAR_FUNDO);
+            }
+        }
     }
-    __global const uchar *c = cinza + img * PIXELS;
-    const int centro = c[p];
+
+    int h[N_ESTAT];
+    for (int k = 0; k < N_ESTAT; k++) h[k] = 0;
+    h[E_MIN_X] = LADO;
+    h[E_MAX_X] = -1;
+    h[E_MIN_Y] = LADO;
+    h[E_MAX_Y] = -1;
     /* vizinhos em volta, no sentido horário a partir do canto superior esquerdo */
-    const int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
-    const int dy[8] = {-1, -1, -1, 0, 1, 1, 1, 0};
-    int bits[8], uns = 0;
-    for (int k = 0; k < 8; k++) {
-        bits[k] = c[(y + dy[k]) * LADO + (x + dx[k])] >= centro;
-        uns += bits[k];
+    const int dxs[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
+    const int dys[8] = {-1, -1, -1, 0, 1, 1, 1, 0};
+    for (int dy = 0; dy < LINHAS_BLOCO; dy++) {
+        const int y = y0 + dy;
+        for (int x = 0; x < LADO; x++) {
+            /* LBP rotacionalmente invariante e "uniforme" (riu2), 8 vizinhos: conta
+             * quantos vizinhos são ≥ ao centro (0..8) se o padrão tiver no máximo 2
+             * transições; senão classe 9. Pixels da borda da foto não têm textura. */
+            int l = 255;
+            if (x > 0 && y > 0 && x < LADO - 1 && y < LADO - 1) {
+                const int centro = cinza[dy + 1][x];
+                int bits[8], uns = 0, transicoes = 0;
+                for (int k = 0; k < 8; k++) {
+                    bits[k] = cinza[dy + 1 + dys[k]][x + dxs[k]] >= centro;
+                    uns += bits[k];
+                }
+                for (int k = 0; k < 8; k++) transicoes += bits[k] != bits[(k + 1) & 7];
+                l = transicoes <= 2 ? uns : 9;
+            }
+            const int t = ((y >= LADO / 2) * 2 + (x >= LADO / 2)) * TONS + tom[dy][x];
+            h[E_COR_TODOS + t]++;
+            if (l != 255) h[E_LBP_TODOS + l]++;
+            if (animal[dy][x]) {
+                h[E_COR_ANIMAL + t]++;
+                if (l != 255) h[E_LBP_ANIMAL + l]++;
+                h[E_N_ANIMAL]++;
+                h[E_SOMA_X] += x;
+                h[E_SOMA_Y] += y;
+                h[E_MIN_X] = min(h[E_MIN_X], x);
+                h[E_MAX_X] = max(h[E_MAX_X], x);
+                h[E_MIN_Y] = min(h[E_MIN_Y], y);
+                h[E_MAX_Y] = max(h[E_MAX_Y], y);
+            }
+        }
     }
-    int transicoes = 0;
-    for (int k = 0; k < 8; k++) transicoes += bits[k] != bits[(k + 1) & 7];
-    classe[i] = (uchar)(transicoes <= 2 ? uns : 9);
-}
 
-/* ---------------------------------------------------------------- 5 */
-/* Contagens por imagem. Começam zeradas, exceto MIN_X/MIN_Y (= LADO) e
- * MAX_X/MAX_Y (= -1), preparados pelo host. */
-__kernel void histogramas(__global const uchar *tom, __global const uchar *classe_lbp,
-                          __global const uchar *mascara, __global int *estat) {
-    const int p = get_global_id(0);
-    const int img = get_global_id(1);
-    if (p >= PIXELS) return;
-    const int x = p % LADO, y = p / LADO;
-    const int i = img * PIXELS + p;
     __global int *e = estat + img * N_ESTAT;
-    const int regiao = (y >= LADO / 2) * 2 + (x >= LADO / 2);
-    const int t = regiao * TONS + tom[i];
-    const int animal = mascara[i];
-    const int l = classe_lbp[i];
-
-    atomic_inc(&e[E_COR_TODOS + t]);
-    if (l != 255) atomic_inc(&e[E_LBP_TODOS + l]);
-    if (animal) {
-        atomic_inc(&e[E_COR_ANIMAL + t]);
-        if (l != 255) atomic_inc(&e[E_LBP_ANIMAL + l]);
-        atomic_inc(&e[E_N_ANIMAL]);
-        atomic_add(&e[E_SOMA_X], x);
-        atomic_add(&e[E_SOMA_Y], y);
-        atomic_min(&e[E_MIN_X], x);
-        atomic_max(&e[E_MAX_X], x);
-        atomic_min(&e[E_MIN_Y], y);
-        atomic_max(&e[E_MAX_Y], y);
+    for (int k = 0; k < N_ESTAT; k++) {
+        if (k == E_MIN_X || k == E_MIN_Y) atomic_min(&e[k], h[k]);
+        else if (k == E_MAX_X || k == E_MAX_Y) atomic_max(&e[k], h[k]);
+        else if (h[k] != 0) atomic_add(&e[k], h[k]);
     }
 }

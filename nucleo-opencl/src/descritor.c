@@ -258,12 +258,8 @@ int nucleo_preparar(Nucleo *nc, NucleoOcl *ocl) {
     OCL_CHECAR(err, "kernel redimensionar");
     nc->k_somar = clCreateKernel(nc->prog_descritor, "somar_canais", &err);
     OCL_CHECAR(err, "kernel somar_canais");
-    nc->k_classificar = clCreateKernel(nc->prog_descritor, "classificar", &err);
-    OCL_CHECAR(err, "kernel classificar");
-    nc->k_lbp = clCreateKernel(nc->prog_descritor, "lbp", &err);
-    OCL_CHECAR(err, "kernel lbp");
-    nc->k_histogramas = clCreateKernel(nc->prog_descritor, "histogramas", &err);
-    OCL_CHECAR(err, "kernel histogramas");
+    nc->k_descrever = clCreateKernel(nc->prog_descritor, "descrever", &err);
+    OCL_CHECAR(err, "kernel descrever");
     nc->k_comparar = clCreateKernel(nc->prog_comparar, "comparar", &err);
     OCL_CHECAR(err, "kernel comparar");
     return 0;
@@ -272,9 +268,7 @@ int nucleo_preparar(Nucleo *nc, NucleoOcl *ocl) {
 void nucleo_liberar(Nucleo *nc) {
     clReleaseKernel(nc->k_redimensionar);
     clReleaseKernel(nc->k_somar);
-    clReleaseKernel(nc->k_classificar);
-    clReleaseKernel(nc->k_lbp);
-    clReleaseKernel(nc->k_histogramas);
+    clReleaseKernel(nc->k_descrever);
     clReleaseKernel(nc->k_comparar);
     clReleaseProgram(nc->prog_descritor);
     clReleaseProgram(nc->prog_comparar);
@@ -300,6 +294,10 @@ static double intervalo_ms(cl_event primeiro, cl_event ultimo) {
 }
 
 void descritor_opencl(Nucleo *nc, const Imagem *imgs, int n, float *saida, Tempos *t) {
+    if (n <= 0) {
+        if (t) memset(t, 0, sizeof(*t));
+        return;
+    }
     const double inicio = agora_ms();
     cl_command_queue fila = nc->ocl->fila;
 
@@ -318,95 +316,100 @@ void descritor_opencl(Nucleo *nc, const Imagem *imgs, int n, float *saida, Tempo
     int *estat = malloc(sizeof(int) * N_ESTAT * (size_t)n);
     for (int i = 0; i < n; i++) zerar_estatisticas(estat + (size_t)i * N_ESTAT);
 
-    const size_t np = (size_t)n * PIXELS;
-    cl_mem d_origem = criar(nc, CL_MEM_READ_ONLY, total, "buffer origem");
+    /* as fotos já estão na memória do programa: o kernel lê de lá, sem cópia (ver comparar_opencl) */
+    cl_int err;
+    cl_mem d_origem = clCreateBuffer(nc->ocl->contexto, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, total ? total : 1, origem, &err);
+    OCL_CHECAR(err, "buffer origem");
     cl_mem d_info = criar(nc, CL_MEM_READ_ONLY, sizeof(int) * 3 * (size_t)n, "buffer info");
-    cl_mem d_img = criar(nc, CL_MEM_READ_WRITE, np * 3, "buffer 128x128");
+    cl_mem d_img = criar(nc, CL_MEM_READ_WRITE, (size_t)n * PIXELS * 3, "buffer 128x128");
     cl_mem d_somas = criar(nc, CL_MEM_READ_WRITE, sizeof(int) * N_SOMAS * (size_t)n, "buffer somas");
-    cl_mem d_tom = criar(nc, CL_MEM_READ_WRITE, np, "buffer tom");
-    cl_mem d_cinza = criar(nc, CL_MEM_READ_WRITE, np, "buffer cinza");
-    cl_mem d_mascara = criar(nc, CL_MEM_READ_WRITE, np, "buffer mascara");
-    cl_mem d_lbp = criar(nc, CL_MEM_READ_WRITE, np, "buffer lbp");
     cl_mem d_estat = criar(nc, CL_MEM_READ_WRITE, sizeof(int) * N_ESTAT * (size_t)n, "buffer estat");
 
-    cl_event ev_envio[4], ev_k[5], ev_retorno;
+    cl_event ev_envio[3], ev_k[3], ev_retorno;
     const int zero = 0;
-    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_origem, CL_FALSE, 0, total ? total : 1, origem, 0, NULL, &ev_envio[0]), "enviar fotos");
-    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_info, CL_FALSE, 0, sizeof(int) * 3 * (size_t)n, info, 0, NULL, &ev_envio[1]), "enviar info");
-    OCL_CHECAR(clEnqueueFillBuffer(fila, d_somas, &zero, sizeof(int), 0, sizeof(int) * N_SOMAS * (size_t)n, 0, NULL, &ev_envio[2]), "zerar somas");
-    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_estat, CL_FALSE, 0, sizeof(int) * N_ESTAT * (size_t)n, estat, 0, NULL, &ev_envio[3]), "enviar estat");
+    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_info, CL_FALSE, 0, sizeof(int) * 3 * (size_t)n, info, 0, NULL, &ev_envio[0]), "enviar info");
+    OCL_CHECAR(clEnqueueFillBuffer(fila, d_somas, &zero, sizeof(int), 0, sizeof(int) * N_SOMAS * (size_t)n, 0, NULL, &ev_envio[1]), "zerar somas");
+    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_estat, CL_FALSE, 0, sizeof(int) * N_ESTAT * (size_t)n, estat, 0, NULL, &ev_envio[2]), "enviar estat");
 
-    const size_t global[2] = {PIXELS, (size_t)n}, local[2] = {64, 1};
+    const size_t por_linha[2] = {LADO, (size_t)n}, por_bloco[2] = {LADO / 8, (size_t)n};
     arg(nc->k_redimensionar, 0, sizeof(cl_mem), &d_origem);
     arg(nc->k_redimensionar, 1, sizeof(cl_mem), &d_info);
     arg(nc->k_redimensionar, 2, sizeof(cl_mem), &d_img);
-    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_redimensionar, 2, NULL, global, NULL, 0, NULL, &ev_k[0]), "redimensionar");
+    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_redimensionar, 2, NULL, por_linha, NULL, 0, NULL, &ev_k[0]), "redimensionar");
     arg(nc->k_somar, 0, sizeof(cl_mem), &d_img);
     arg(nc->k_somar, 1, sizeof(cl_mem), &d_somas);
-    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_somar, 2, NULL, global, local, 0, NULL, &ev_k[1]), "somar_canais");
-    arg(nc->k_classificar, 0, sizeof(cl_mem), &d_img);
-    arg(nc->k_classificar, 1, sizeof(cl_mem), &d_somas);
-    arg(nc->k_classificar, 2, sizeof(cl_mem), &d_tom);
-    arg(nc->k_classificar, 3, sizeof(cl_mem), &d_cinza);
-    arg(nc->k_classificar, 4, sizeof(cl_mem), &d_mascara);
-    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_classificar, 2, NULL, global, NULL, 0, NULL, &ev_k[2]), "classificar");
-    arg(nc->k_lbp, 0, sizeof(cl_mem), &d_cinza);
-    arg(nc->k_lbp, 1, sizeof(cl_mem), &d_lbp);
-    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_lbp, 2, NULL, global, NULL, 0, NULL, &ev_k[3]), "lbp");
-    arg(nc->k_histogramas, 0, sizeof(cl_mem), &d_tom);
-    arg(nc->k_histogramas, 1, sizeof(cl_mem), &d_lbp);
-    arg(nc->k_histogramas, 2, sizeof(cl_mem), &d_mascara);
-    arg(nc->k_histogramas, 3, sizeof(cl_mem), &d_estat);
-    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_histogramas, 2, NULL, global, NULL, 0, NULL, &ev_k[4]), "histogramas");
+    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_somar, 2, NULL, por_linha, NULL, 0, NULL, &ev_k[1]), "somar_canais");
+    arg(nc->k_descrever, 0, sizeof(cl_mem), &d_img);
+    arg(nc->k_descrever, 1, sizeof(cl_mem), &d_somas);
+    arg(nc->k_descrever, 2, sizeof(cl_mem), &d_estat);
+    OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_descrever, 2, NULL, por_bloco, NULL, 0, NULL, &ev_k[2]), "descrever");
     OCL_CHECAR(clEnqueueReadBuffer(fila, d_estat, CL_TRUE, 0, sizeof(int) * N_ESTAT * (size_t)n, estat, 0, NULL, &ev_retorno), "ler estat");
 
     for (int i = 0; i < n; i++) descritor_de_estatisticas(estat + (size_t)i * N_ESTAT, saida + (size_t)i * DIM);
 
+    if (getenv("NUCLEO_PERFIL")) { /* diagnóstico: tempo de cada kernel */
+        const char *nomes[] = {"redimensionar", "somar_canais", "descrever"};
+        for (int k = 0; k < 3; k++) fprintf(stderr, "  %-14s %8.3f ms\n", nomes[k], ocl_duracao_ms(ev_k[k]));
+    }
     if (t) {
-        t->envio_ms = intervalo_ms(ev_envio[0], ev_envio[3]);
-        t->kernel_ms = intervalo_ms(ev_k[0], ev_k[4]);
+        t->envio_ms = intervalo_ms(ev_envio[0], ev_envio[2]);
+        t->kernel_ms = intervalo_ms(ev_k[0], ev_k[2]);
         t->retorno_ms = ocl_duracao_ms(ev_retorno);
         t->total_ms = agora_ms() - inicio;
     }
-    for (int k = 0; k < 4; k++) clReleaseEvent(ev_envio[k]);
-    for (int k = 0; k < 5; k++) clReleaseEvent(ev_k[k]);
+    for (int k = 0; k < 3; k++) clReleaseEvent(ev_envio[k]);
+    for (int k = 0; k < 3; k++) clReleaseEvent(ev_k[k]);
     clReleaseEvent(ev_retorno);
-    cl_mem bufs[] = {d_origem, d_info, d_img, d_somas, d_tom, d_cinza, d_mascara, d_lbp, d_estat};
+    cl_mem bufs[] = {d_origem, d_info, d_img, d_somas, d_estat};
     for (size_t k = 0; k < sizeof(bufs) / sizeof(bufs[0]); k++) clReleaseMemObject(bufs[k]);
     free(origem);
     free(info);
     free(estat);
 }
 
+/* Os descritores ficam na memória do próprio programa e o kernel lê direto de
+ * lá (CL_MEM_USE_HOST_PTR): como o "dispositivo" é a própria CPU (PoCL), copiar
+ * 90 MB de candidatos a cada busca seria puro desperdício — era o que dominava o
+ * tempo antes desta otimização. Em GPU, o mesmo código faria a cópia sozinho. */
 void comparar_opencl(Nucleo *nc, const float *consultas, int m, const float *candidatos, int n, float *notas,
                      Tempos *t) {
+    if (n <= 0 || m <= 0) {
+        if (t) memset(t, 0, sizeof(*t));
+        return;
+    }
     const double inicio = agora_ms();
     cl_command_queue fila = nc->ocl->fila;
     const size_t b_cons = sizeof(float) * DIM * (size_t)m, b_cand = sizeof(float) * DIM * (size_t)n;
     const size_t b_notas = sizeof(float) * (size_t)m * n;
-    cl_mem d_cons = criar(nc, CL_MEM_READ_ONLY, b_cons, "buffer consultas");
-    cl_mem d_cand = criar(nc, CL_MEM_READ_ONLY, b_cand, "buffer candidatos");
-    cl_mem d_notas = criar(nc, CL_MEM_WRITE_ONLY, b_notas, "buffer notas");
+    cl_int err;
+    const double ini_envio = agora_ms();
+    cl_mem d_cons = clCreateBuffer(nc->ocl->contexto, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, b_cons, (void *)consultas, &err);
+    OCL_CHECAR(err, "buffer consultas");
+    cl_mem d_cand = clCreateBuffer(nc->ocl->contexto, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, b_cand, (void *)candidatos, &err);
+    OCL_CHECAR(err, "buffer candidatos");
+    cl_mem d_notas = clCreateBuffer(nc->ocl->contexto, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, b_notas, notas, &err);
+    OCL_CHECAR(err, "buffer notas");
+    const double envio_ms = agora_ms() - ini_envio;
 
-    cl_event ev_c, ev_d, ev_k, ev_r;
-    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_cons, CL_FALSE, 0, b_cons, consultas, 0, NULL, &ev_c), "enviar consultas");
-    OCL_CHECAR(clEnqueueWriteBuffer(fila, d_cand, CL_FALSE, 0, b_cand, candidatos, 0, NULL, &ev_d), "enviar candidatos");
+    cl_event ev_k, ev_r;
     arg(nc->k_comparar, 0, sizeof(cl_mem), &d_cons);
     arg(nc->k_comparar, 1, sizeof(cl_mem), &d_cand);
     arg(nc->k_comparar, 2, sizeof(cl_mem), &d_notas);
     arg(nc->k_comparar, 3, sizeof(int), &n);
     const size_t global[2] = {(size_t)n, (size_t)m};
     OCL_CHECAR(clEnqueueNDRangeKernel(fila, nc->k_comparar, 2, NULL, global, NULL, 0, NULL, &ev_k), "comparar");
-    OCL_CHECAR(clEnqueueReadBuffer(fila, d_notas, CL_TRUE, 0, b_notas, notas, 0, NULL, &ev_r), "ler notas");
+    /* "ler" um buffer que já mora na memória do programa: só garante que terminou */
+    float *mapa = clEnqueueMapBuffer(fila, d_notas, CL_TRUE, CL_MAP_READ, 0, b_notas, 0, NULL, &ev_r, &err);
+    OCL_CHECAR(err, "ler notas");
+    OCL_CHECAR(clEnqueueUnmapMemObject(fila, d_notas, mapa, 0, NULL, NULL), "devolver notas");
+    OCL_CHECAR(clFinish(fila), "terminar fila");
 
     if (t) {
-        t->envio_ms = intervalo_ms(ev_c, ev_d);
+        t->envio_ms = envio_ms;
         t->kernel_ms = ocl_duracao_ms(ev_k);
         t->retorno_ms = ocl_duracao_ms(ev_r);
         t->total_ms = agora_ms() - inicio;
     }
-    clReleaseEvent(ev_c);
-    clReleaseEvent(ev_d);
     clReleaseEvent(ev_k);
     clReleaseEvent(ev_r);
     clReleaseMemObject(d_cons);

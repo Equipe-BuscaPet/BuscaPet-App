@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && useradd --system --create-home nucleo
 
 WORKDIR /app
-COPY --from=build /src/build/nucleo-servidor /src/build/spike ./
+COPY --from=build /src/build/nucleo-servidor /src/build/spike /src/build/bench /src/build/teste-nucleo ./
 COPY kernels/ ./kernels/
 
 ENV PORTA=8001 \

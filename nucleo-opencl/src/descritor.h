@@ -61,7 +61,7 @@ void comparar_sequencial(const float *consultas, int m, const float *candidatos,
 typedef struct {
     NucleoOcl *ocl;
     cl_program prog_descritor, prog_comparar;
-    cl_kernel k_redimensionar, k_somar, k_classificar, k_lbp, k_histogramas, k_comparar;
+    cl_kernel k_redimensionar, k_somar, k_descrever, k_comparar;
 } Nucleo;
 
 int nucleo_preparar(Nucleo *nc, NucleoOcl *ocl); /* compila os kernels; 0 = ok */
