@@ -37,6 +37,81 @@ def pasta_de_fotos(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "pasta_fotos", tmp_path / "fotos-teste")
 
 
+@pytest.fixture(autouse=True)
+def nucleo_desligado(monkeypatch):
+    """Por padrão os testes rodam SEM o núcleo OpenCL (nem tentam a rede): vale o comportamento de reserva.
+    Quem precisa da comparação por foto usa a fixture `nucleo_falso` (ou `test_nucleo_real.py`, opcional)."""
+    from app.core import nucleo
+
+    def fora_do_ar(*_args, **_kwargs):
+        raise nucleo.NucleoIndisponivel("núcleo desligado nos testes")
+
+    monkeypatch.setattr(nucleo, "_pedir", fora_do_ar)
+
+
+class NucleoFalso:
+    """Imita o serviço em C com a MESMA fórmula de nota (src/descritor.c, nota_semelhanca), mas com um
+    descritor simples: a cor média da foto marca um tom no histograma. Suficiente para testar a integração
+    (filtros, ordenação, alertas); o descritor de verdade é testado no próprio núcleo (`make teste`)."""
+
+    def __init__(self):
+        self.extracoes = 0
+        self.comparacoes = 0
+
+    def descritor(self, rgb: bytes) -> list[float]:
+        n = len(rgb) // 3
+        r, g, b = (sum(rgb[c::3]) // n for c in range(3))
+        d = [0.0] * 224
+        d[(r // 64) * 16 + (g // 64) * 4 + b // 64] = 1.0
+        for k in range(208, 218):
+            d[k] = 0.1
+        d[218:223] = [0.5] * 5
+        return d
+
+    @staticmethod
+    def nota(a: list[float], b: list[float]) -> float:
+        def qui(ini, fim):
+            return 0.5 * sum((a[k] - b[k]) ** 2 / (a[k] + b[k]) for k in range(ini, fim) if a[k] + b[k] > 0)
+        prop = sum(abs(a[k] - b[k]) for k in range(218, 223)) / 5
+        return 1 - (0.6 * qui(0, 208) + 0.3 * qui(208, 218) + 0.1 * prop)
+
+    @staticmethod
+    def grau(nota: float) -> str:
+        return "alta" if nota >= 0.75 else "media" if nota >= 0.55 else "baixa"
+
+    def pedir(self, metodo, caminho, timeout, **kwargs):
+        import base64
+
+        corpo = kwargs.get("json") or {}
+        if caminho == "/extrair-descritor":
+            self.extracoes += 1
+            return {"descritor": self.descritor(base64.b64decode(corpo["pixels"])), "versao": "v1", "tempos": {}}
+        if caminho == "/comparar":
+            self.comparacoes += 1
+            resultados = []
+            for q in corpo["consultas"]:
+                lista = [{"id": c["id"], "nota": self.nota(q, c["descritor"])} for c in corpo["candidatos"]]
+                lista.sort(key=lambda x: (-x["nota"], x["id"]))
+                resultados.append([{**x, "grau": self.grau(x["nota"])} for x in lista])
+            return {"resultados": resultados, "tempos": {"total_ms": 1.0}, "modo": corpo.get("modo", "opencl")}
+        if caminho == "/saude":
+            return {"status": "ok", "opencl": {"dispositivo": "CPU falsa"}}
+        if caminho == "/benchmark":
+            p = kwargs["params"]
+            return {"etapa": p["etapa"], "n": p["n"], "speedup": 3.2, "resultados_iguais": True,
+                    "sequencial": {"total_ms": 32.0}, "opencl": {"total_ms": 10.0}}
+        raise AssertionError(f"rota inesperada no núcleo falso: {metodo} {caminho}")
+
+
+@pytest.fixture()
+def nucleo_falso(monkeypatch) -> NucleoFalso:
+    from app.core import nucleo
+
+    falso = NucleoFalso()
+    monkeypatch.setattr(nucleo, "_pedir", falso.pedir)
+    return falso
+
+
 @pytest.fixture()
 def sessao_factory():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

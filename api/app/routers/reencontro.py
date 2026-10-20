@@ -1,8 +1,8 @@
 """Registro de animal perdido (RF-19) e de avistamento (RF-20) — entradas do reencontro.
 
-São as duas bases que o núcleo de similaridade (OpenCL) vai comparar (escopo, seção 4.1):
-quem perdeu compara contra abrigos e avistamentos; quem encontrou compara contra os perdidos.
-Esta etapa só registra e consulta; a comparação por foto entra com o núcleo (RF-21 em diante).
+São as duas bases que o núcleo de similaridade (OpenCL) compara (escopo, seção 4.1): quem perdeu compara
+contra abrigos e avistamentos; quem encontrou compara contra os perdidos (`GET /reencontro/semelhantes`, RF-22,
+RF-23, RF-27). Toda foto nova ganha o descritor visual na hora (RF-21, `app/core/nucleo.py`).
 
 Regras de perfil:
 - Consultar (lista e detalhe): público, inclusive visitante (escopo, seção 2.2).
@@ -10,34 +10,35 @@ Regras de perfil:
 - Marcar como resolvido (RF-28): só o tutor que registrou a perda.
 - Excluir: o autor do registro ou o administrador (moderação).
 
-Alerta por proximidade (antes do núcleo): todo avistamento novo avisa os tutores com perda ativa da mesma
-espécie, sumida até a data do avistamento, quando o ponto cai dentro do raio de busca que o tutor escolheu.
-É a versão por distância do RF-25; o núcleo vai acrescentar a semelhança da foto.
+Monitoramento contínuo (RF-24, RF-25): registrar uma perda cria a busca salva; todo avistamento novo é
+comparado em lote com as perdas ativas da mesma espécie, sumidas até a data do avistamento, cujo raio de busca
+alcança o ponto. O tutor é avisado quando a semelhança da foto é alta ou média. Se o núcleo estiver fora do ar,
+vale o critério só por distância (o mesmo de antes do núcleo), para ninguém deixar de ser avisado.
 
 Privacidade (escopo, seção 9): a resposta pública não traz nada de quem registrou, e a localização sai
 arredondada (perdido: ~1 km; avistamento: ~100 m). A distância também é calculada sobre o ponto
 arredondado, para que não dê para descobrir o ponto exato consultando de vários lugares.
 """
 import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core import auditoria
+from app.core import auditoria, nucleo, semelhanca
 from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_usuario_atual, get_usuario_opcional
 from app.core.geo import distancia_km
 from app.db.session import get_db
 from app.models.animal import Foto
-from app.models.enums import EntidadeFoto, Especie, StatusBusca, TipoConta
-from app.models.reencontro import AnimalPerdido, Avistamento, BuscaSalva, DescritorVisual
+from app.models.enums import EntidadeFoto, Especie, StatusBusca, TipoConta, TipoCorrespondencia
+from app.models.reencontro import AnimalPerdido, Avistamento, BuscaSalva, Correspondencia, DescritorVisual
 from app.models.transversais import Notificacao
 from app.models.usuario import Usuario
 from app.routers.animais import _para_datetime
-from app.schemas.reencontro import AvistamentoIn, AvistamentoOut, PerdidoIn, PerdidoOut
+from app.schemas.reencontro import AvistamentoIn, AvistamentoOut, CandidatoOut, PerdidoIn, PerdidoOut, SemelhantesOut
 
 router = APIRouter(tags=["reencontro"])
 
@@ -154,6 +155,9 @@ def _excluir(db: Session, registro, tipo: EntidadeFoto, usuario: Usuario, dono_i
         db.execute(delete(Foto).where(Foto.id.in_(foto_ids)))
     if isinstance(registro, AnimalPerdido):
         db.execute(delete(BuscaSalva).where(BuscaSalva.animal_perdido_id == registro.id))
+        db.execute(delete(Correspondencia).where(Correspondencia.animal_perdido_id == registro.id))
+    else:
+        db.execute(delete(Correspondencia).where(Correspondencia.avistamento_id == registro.id))
     nome = "perdido" if isinstance(registro, AnimalPerdido) else "avistamento"
     auditoria.registrar(db, usuario.id, f"{nome}.excluido", nome, registro.id, pelo_admin=(usuario.id != dono_id) or None)
     db.delete(registro)
@@ -196,8 +200,10 @@ async def registrar_perdido(
     campos["data_desaparecimento"] = _para_datetime(campos["data_desaparecimento"])
     perdido = AnimalPerdido(tutor_id=tutor.id, **campos)
     nomes = _gravar(db, perdido, EntidadeFoto.ANIMAL_PERDIDO, prontas)
+    db.add(BuscaSalva(tutor_id=tutor.id, animal_perdido_id=perdido.id))  # RF-24: a perda já nasce monitorada
     auditoria.registrar(db, tutor.id, "perdido.registrado", "perdido", perdido.id, especie=perdido.especie.value)
     db.commit()
+    nucleo.indexar(db, semelhanca.fotos_de(db, EntidadeFoto.ANIMAL_PERDIDO, [perdido.id])[perdido.id])
     return _perdido_out(perdido, [armazenamento.url_publica(n) for n in nomes], exato=True)
 
 
@@ -296,36 +302,117 @@ async def registrar_avistamento(
     avistamento = Avistamento(usuario_id=usuario.id, **campos)
     nomes = _gravar(db, avistamento, EntidadeFoto.AVISTAMENTO, prontas)
     auditoria.registrar(db, usuario.id, "avistamento.registrado", "avistamento", avistamento.id, especie=avistamento.especie.value)
+    db.commit()
+    nucleo.indexar(db, semelhanca.fotos_de(db, EntidadeFoto.AVISTAMENTO, [avistamento.id])[avistamento.id])
     _alertar_perdidos_proximos(db, avistamento, campos["data_avistamento"])
     return _avistamento_out(avistamento, [armazenamento.url_publica(n) for n in nomes], exato=True)
 
 
 def _alertar_perdidos_proximos(db: Session, avistamento: Avistamento, data_avistamento: datetime.datetime) -> None:
-    """Avisa cada tutor com perda ativa da mesma espécie se o avistamento caiu dentro do raio de busca dele.
+    """RF-25: compara o avistamento novo com as perdas ativas que ele alcança e avisa os tutores.
 
-    A distância usa os pontos exatos (é cálculo interno); a mensagem mostra só o valor arredondado.
+    Candidatas: mesma espécie, sumidas até a data do avistamento, com o ponto dentro do raio de busca do tutor
+    (e não do próprio autor do avistamento). Com o núcleo no ar, só avisa quem tem semelhança alta ou média, e
+    o match fica registrado em `correspondencias`; sem o núcleo, avisa por distância. Um alerta por tutor, com a
+    perda mais parecida (ou mais próxima): quem tem duas perdas da mesma espécie não recebe dois avisos iguais.
     A data entra como o valor gravado (e não o lido de volta) para comparar igual em SQLite e Postgres.
-    Um alerta por tutor, com a perda mais próxima: quem tem duas perdas da mesma espécie não recebe dois avisos iguais.
     """
-    candidatos = db.scalars(select(AnimalPerdido).where(
-        AnimalPerdido.resolvido.is_(False),
-        AnimalPerdido.especie == avistamento.especie,
-        AnimalPerdido.tutor_id != avistamento.usuario_id,  # quem avistou não é avisado do próprio registro
-        AnimalPerdido.data_desaparecimento <= data_avistamento,  # visto antes de sumir não é ele
-    ))
-    mais_perto: dict[int, float] = {}  # tutor -> menor distância entre as perdas dele
-    for perdido in candidatos:
+    alvos = semelhanca.perdas_ativas_perto(db, avistamento.especie, avistamento.latitude, avistamento.longitude,
+                                           ate=data_avistamento, excluir_tutor=avistamento.usuario_id)
+    if not alvos:
+        return
+    fotos = semelhanca.fotos_de(db, EntidadeFoto.AVISTAMENTO, [avistamento.id])[avistamento.id]
+    resultado = semelhanca.comparar(db, fotos, alvos)
+
+    escolhido: dict[int, tuple] = {}  # tutor -> (chave de ordem, perdido, km, nota, grau)
+    for alvo in alvos:
+        perdido = alvo.registro
         km = distancia_km(perdido.latitude, perdido.longitude, avistamento.latitude, avistamento.longitude)
-        if km <= perdido.raio_busca_km and km < mais_perto.get(perdido.tutor_id, float("inf")):
-            mais_perto[perdido.tutor_id] = km
-    for tutor_id, km in mais_perto.items():
+        nota, grau = resultado.notas.get(("animal_perdido", perdido.id), (None, None))
+        if resultado.disponivel and grau not in semelhanca.GRAUS_QUE_AVISAM:
+            continue
+        chave = (-nota, km) if resultado.disponivel else (km,)
+        if perdido.tutor_id not in escolhido or chave < escolhido[perdido.tutor_id][0]:
+            escolhido[perdido.tutor_id] = (chave, perdido, km, nota, grau)
+    for tutor_id, (_, perdido, km, nota, grau) in escolhido.items():
         perto = "a menos de 1 km" if km < 1 else f"a cerca de {round(km):d} km"
-        db.add(Notificacao(
-            usuario_id=tutor_id,
-            mensagem=f"{ESPECIE_NO_ALERTA[avistamento.especie]} foi avistado {perto} de onde o seu animal sumiu. Veja se é ele.",
-            referencia_tipo="avistamento", referencia_id=avistamento.id,
-        ))
+        animal = ESPECIE_NO_ALERTA[avistamento.especie]
+        if grau:
+            semelhanca.registrar_correspondencia(db, TipoCorrespondencia.BUSCA_TUTOR, perdido.id, nota, grau,
+                                                 avistamento_id=avistamento.id)
+            texto = f"{animal} com semelhança {ROTULO_GRAU[grau]} com o seu foi avistado {perto} de onde ele sumiu. Veja se é ele."
+        else:
+            texto = f"{animal} foi avistado {perto} de onde o seu animal sumiu. Veja se é ele."
+        db.add(Notificacao(usuario_id=tutor_id, mensagem=texto, referencia_tipo="avistamento", referencia_id=avistamento.id))
     db.commit()
+
+
+# ---------- RF-22, RF-23, RF-27: busca por semelhança ----------
+
+ROTULO_GRAU = {"alta": "alta", "media": "média", "baixa": "baixa"}
+CAMINHO = {
+    EntidadeFoto.AVISTAMENTO: "/reencontro/avistamentos/{}",
+    EntidadeFoto.ANIMAL_PERDIDO: "/reencontro/perdidos/{}",
+    EntidadeFoto.ANIMAL: "/animais/{}",
+}
+
+
+@router.get("/reencontro/semelhantes", response_model=SemelhantesOut)
+def buscar_semelhantes(
+    origem: Literal["perdido", "avistamento"],
+    id: int,
+    raio_km: float | None = Query(default=None, gt=0, le=100, description="Padrão: o raio do tutor (perdido) ou 10 km"),
+    mesmo_porte: bool = False,
+    mesma_cor: bool = False,
+    modo: Literal["opencl", "sequencial"] = "opencl",
+    limite: int = Query(default=30, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> SemelhantesOut:
+    """Candidatos ordenados por semelhança visual com as fotos do registro, com origem, distância e data.
+
+    - `origem=perdido`: quem perdeu compara contra avistamentos (vistos depois do sumiço) e animais dos abrigos.
+    - `origem=avistamento`: busca inversa, contra os animais perdidos que ainda não foram encontrados.
+
+    Filtros prévios (RF-22): mesma espécie e dentro do raio; porte e cor opcionais. `modo=sequencial` faz a mesma
+    comparação sem OpenCL (modo comparativo do RF-29). Pública, como as listas: só usa dados que já são públicos,
+    e as distâncias são calculadas sobre os pontos arredondados.
+    """
+    if origem == "perdido":
+        registro = db.get(AnimalPerdido, id)
+        if registro is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
+        tipo_origem, raio = EntidadeFoto.ANIMAL_PERDIDO, raio_km or registro.raio_busca_km
+        alvos = semelhanca.alvos_para_perdido(db, registro, raio, mesmo_porte, mesma_cor)
+    else:
+        registro = db.get(Avistamento, id)
+        if registro is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
+        tipo_origem, raio = EntidadeFoto.AVISTAMENTO, raio_km or 10.0
+        alvos = [a for a in semelhanca.perdas_ativas_perto(db, registro.especie, registro.latitude, registro.longitude,
+                                                           ate=registro.data_avistamento, raio_km=raio)
+                 if not (mesmo_porte and a.registro.porte != registro.porte)
+                 and not (mesma_cor and (a.registro.cor_predominante or "").lower() != (registro.cor_predominante or "").lower())]
+
+    fotos = semelhanca.fotos_de(db, tipo_origem, [registro.id])[registro.id]
+    resultado = semelhanca.comparar(db, fotos, alvos, modo)
+    lat0, lng0 = semelhanca.ponto_publico(tipo_origem, registro.latitude, registro.longitude)
+    candidatos = []
+    for a in alvos:
+        lat, lng = semelhanca.ponto_publico(a.tipo, a.latitude, a.longitude)
+        nota, grau = resultado.notas.get((a.tipo.value, a.registro.id), (None, None))
+        candidatos.append(CandidatoOut(
+            tipo=a.tipo.value, id=a.registro.id, rotulo=a.rotulo, foto=a.fotos[0].url if a.fotos else None,
+            grau=grau, nota=round(nota, 4) if nota is not None else None,
+            distancia_km=round(distancia_km(lat0, lng0, lat, lng), 1), data=a.data,
+            caminho=CAMINHO[a.tipo].format(a.registro.id),
+        ))
+    candidatos.sort(key=lambda c: (c.nota is None, -(c.nota or 0), c.distancia_km))
+    return SemelhantesOut(
+        comparacao_por_foto=resultado.disponivel, motivo=resultado.motivo, registros_comparados=len(alvos),
+        comparacoes=resultado.fotos_comparadas, tempo_nucleo_ms=round(resultado.tempo_nucleo_ms, 2),
+        tempo_total_ms=round(resultado.tempo_total_ms, 1), modo=resultado.modo, raio_km=raio,
+        candidatos=candidatos[:limite],
+    )
 
 
 @router.get("/avistamentos", response_model=list[AvistamentoOut])

@@ -8,6 +8,8 @@ Regras de perfil:
 - Excluir: o abrigo dono ou o administrador (moderação).
 - Fotos (RF-17): de 1 a 5 por animal, enviadas e removidas pelo abrigo dono; a primeira é a capa do catálogo.
   Mesmo tratamento das fotos do reencontro: validadas, reduzidas e regravadas sem metadados (GPS).
+- Alerta ao abrigo (RF-26): cada foto nova vira descritor (núcleo OpenCL) e é comparada com as perdas ativas
+  da mesma espécie cujo raio alcança o abrigo. Semelhança alta ou média avisa o tutor e o abrigo.
 """
 import datetime
 from typing import Literal
@@ -17,13 +19,14 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.core import auditoria, regras
+from app.core import auditoria, nucleo, regras, semelhanca
 from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
 from app.models.animal import Animal, Foto, Interesse
-from app.models.enums import EntidadeFoto, Especie, Sexo, StatusAnimal, StatusValidacao, TipoConta
-from app.models.reencontro import DescritorVisual
+from app.models.enums import EntidadeFoto, Especie, Sexo, StatusAnimal, StatusValidacao, TipoConta, TipoCorrespondencia
+from app.models.reencontro import Correspondencia, DescritorVisual
+from app.models.transversais import Notificacao
 from app.models.usuario import Abrigo, Usuario
 from app.schemas.animal import AnimalCreate, AnimalOut, AnimalUpdate
 
@@ -215,9 +218,9 @@ def excluir(
     db: Session = Depends(get_db),
 ) -> Response:
     """Exclusão de verdade (a linha some). Remove antes o que depende só deste
-    animal: interesses, fotos e os descritores dessas fotos. Se ainda houver
-    vínculos (ex.: correspondências do reencontro), responde 409: nesse caso o
-    caminho certo é mudar o status para adotado/transferido."""
+    animal: interesses, fotos, os descritores dessas fotos e as correspondências
+    do reencontro. Se ainda houver vínculos (ex.: doações), responde 409: nesse
+    caso o caminho certo é mudar o status para adotado/transferido."""
     animal = db.get(Animal, animal_id)
     if animal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Animal não encontrado.")
@@ -232,6 +235,7 @@ def excluir(
         db.execute(delete(DescritorVisual).where(DescritorVisual.foto_id.in_(foto_ids)))
         db.execute(delete(Foto).where(Foto.id.in_(foto_ids)))
     db.execute(delete(Interesse).where(Interesse.animal_id == animal.id))
+    db.execute(delete(Correspondencia).where(Correspondencia.animal_id == animal.id))
     auditoria.registrar(db, usuario.id, "animal.excluido", "animal", animal.id, animal=animal.nome)
     db.delete(animal)
     try:
@@ -283,19 +287,65 @@ async def enviar_fotos(
         except armazenamento.FotoInvalida as erro:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Foto {numero}: {erro}")
     nomes: list[str] = []
+    novas: list[Foto] = []
     try:
         proxima = max((f.ordem for f in existentes), default=-1) + 1
         for i, jpeg in enumerate(prontas):
             nome = armazenamento.salvar(jpeg)
             nomes.append(nome)
-            db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=armazenamento.url_publica(nome), ordem=proxima + i))
+            novas.append(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=armazenamento.url_publica(nome), ordem=proxima + i))
+        db.add_all(novas)
         auditoria.registrar(db, abrigo.usuario_id, "animal.fotos", "animal", animal.id, animal=animal.nome, enviadas=len(prontas))
         db.commit()
     except Exception:
         db.rollback()
         armazenamento.apagar(nomes)
         raise
+    nucleo.indexar(db, novas)
+    _alertar_perdas_parecidas(db, animal, abrigo, novas)
     return _com_fotos(db, animal, abrigo)
+
+
+def _alertar_perdas_parecidas(db: Session, animal: Animal, abrigo: Abrigo, fotos: list[Foto]) -> None:
+    """RF-26: o abrigo cadastrou um animal parecido com um perdido próximo → avisa o tutor e o abrigo.
+
+    Só com o núcleo no ar (sem a foto não há critério: avisar todo tutor da espécie seria ruído). Cada par
+    animal × perda avisa uma vez só, mesmo que o abrigo mande mais fotos depois.
+    """
+    if animal.status not in semelhanca.STATUS_ABRIGADO or animal.removido_em is not None:
+        return
+    alvos = semelhanca.perdas_ativas_perto(db, animal.especie, abrigo.latitude, abrigo.longitude, ate=None)
+    if not alvos:
+        return
+    resultado = semelhanca.comparar(db, fotos, alvos)
+    if not resultado.disponivel:
+        return
+    especie = {Especie.CAO: "um cão", Especie.GATO: "um gato"}.get(animal.especie, "um animal")
+    avisados = []
+    for alvo in alvos:
+        nota, grau = resultado.notas.get(("animal_perdido", alvo.registro.id), (None, None))
+        if grau not in semelhanca.GRAUS_QUE_AVISAM:
+            continue
+        if not semelhanca.registrar_correspondencia(db, TipoCorrespondencia.ALERTA_ABRIGO, alvo.registro.id, nota, grau,
+                                                    animal_id=animal.id):
+            continue
+        rotulo = "alta" if grau == "alta" else "média"
+        db.add(Notificacao(
+            usuario_id=alvo.registro.tutor_id,
+            mensagem=f"O abrigo {abrigo.nome_abrigo} cadastrou {especie} com semelhança {rotulo} com o seu. Veja se é ele.",
+            referencia_tipo="animal_semelhante", referencia_id=animal.id,
+        ))
+        avisados.append((nota, alvo.registro.id))
+    if avisados:
+        _, melhor = max(avisados)
+        qtd = len(avisados)
+        db.add(Notificacao(
+            usuario_id=abrigo.usuario_id,
+            mensagem=(f"As fotos de {animal.nome} parecem com {qtd} animal(is) perdido(s) por perto. "
+                      "O(s) tutor(es) foi(ram) avisado(s) e pode(m) entrar em contato."),
+            referencia_tipo="perdido_semelhante", referencia_id=melhor,
+        ))
+    db.commit()
 
 
 def _foto_do_animal(db: Session, animal: Animal, foto_id: int) -> Foto:

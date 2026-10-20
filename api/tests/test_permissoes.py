@@ -37,6 +37,8 @@ MATRIZ = [
     ("GET", "/admin/logs", {"admin"}, None),
     ("GET", "/admin/usuarios", {"admin"}, None),
     ("GET", "/admin/denuncias", {"admin"}, None),
+    ("GET", "/admin/nucleo", {"admin"}, None),
+    ("GET", "/admin/nucleo/benchmark", {"admin"}, None),
 ]
 
 

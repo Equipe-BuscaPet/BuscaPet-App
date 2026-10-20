@@ -34,6 +34,10 @@ def _destino(n: Notificacao, usuario: Usuario) -> str | None:
         return "/doacoes" if usuario.tipo_conta == TipoConta.ABRIGO else "/minhas-doacoes"
     if n.referencia_tipo == "avistamento":
         return f"/reencontro/avistamentos/{n.referencia_id}"
+    if n.referencia_tipo == "animal_semelhante":  # RF-26: tutor avisado de um animal parecido num abrigo
+        return f"/animais/{n.referencia_id}"
+    if n.referencia_tipo == "perdido_semelhante":  # RF-26: abrigo avisado de uma perda parecida
+        return f"/reencontro/perdidos/{n.referencia_id}"
     return None
 
 

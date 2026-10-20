@@ -92,3 +92,30 @@ class PerdidoOut(_RegistroOut):
 
 class AvistamentoOut(_RegistroOut):
     data_avistamento: DataDoDia
+
+
+# ---------- busca por semelhança (RF-22, RF-23, RF-27) ----------
+
+class CandidatoOut(BaseModel):
+    """Um candidato da busca: o sistema nunca afirma que é o animal, só mostra o grau de semelhança."""
+    tipo: Literal["avistamento", "animal", "animal_perdido"]
+    id: int
+    rotulo: str
+    foto: str | None
+    grau: Literal["alta", "media", "baixa"] | None  # None = sem comparação por foto (núcleo indisponível)
+    nota: float | None
+    distancia_km: float
+    data: DataDoDia | None
+    caminho: str  # tela da interface que abre o candidato
+
+
+class SemelhantesOut(BaseModel):
+    comparacao_por_foto: bool
+    motivo: str | None = None  # por que não houve comparação por foto, quando não houve
+    registros_comparados: int
+    comparacoes: int  # fotos buscadas × fotos dos candidatos
+    tempo_nucleo_ms: float
+    tempo_total_ms: float
+    modo: str
+    raio_km: float
+    candidatos: list[CandidatoOut]
