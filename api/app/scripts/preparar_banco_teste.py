@@ -3,7 +3,8 @@
 Uso, a partir da pasta api/ (o Playwright chama sozinho, ver frontend/playwright.config.js):
     python -m app.scripts.preparar_banco_teste postgresql+psycopg://buscapet:buscapet@localhost:5432/buscapet_e2e
 
-Os testes E2E criam muitas contas e registros. Rodando num banco separado, o banco de desenvolvimento (e os
+Também garante um administrador só de teste (ADMIN_E2E), usado para conceder o selo Verificado nos testes
+de doações. Os testes E2E criam muitas contas e registros. Rodando num banco separado, o banco de desenvolvimento (e os
 dados de demonstração) ficam limpos. Por segurança, só aceita banco local e cujo nome termine em `_e2e`.
 """
 import os
@@ -15,6 +16,7 @@ from psycopg import sql
 from sqlalchemy.engine import make_url
 
 HOSTS_LOCAIS = {"localhost", "127.0.0.1", "db"}
+ADMIN_E2E = ("admin-e2e@teste.buscapet.dev", "Senha1234!")  # o mesmo e-mail e senha de frontend/e2e/apoio.js
 
 
 def main() -> None:
@@ -37,6 +39,15 @@ def main() -> None:
     # As migrations leem DATABASE_URL do ambiente (alembic/env.py).
     ambiente = {**os.environ, "DATABASE_URL": sys.argv[1]}
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True, env=ambiente)
+
+    from app.core.seguranca import hash_senha  # sem conexão: só gera o hash
+
+    with psycopg.connect(host=url.host, port=url.port or 5432, user=url.username, password=url.password, dbname=url.database) as banco:
+        banco.execute(
+            "INSERT INTO usuarios (nome, email, senha_hash, tipo_conta, ativo) VALUES (%s, %s, %s, 'admin', true) "
+            "ON CONFLICT (email) DO NOTHING",
+            ("Administração E2E", ADMIN_E2E[0], hash_senha(ADMIN_E2E[1])),
+        )
     print(f"[e2e] banco {url.database} pronto")
 
 

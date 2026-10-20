@@ -12,11 +12,11 @@ test.describe('Menu da conta', () => {
     await entrarComo(page, abrigo)
     await page.goto('/')
     const principal = page.getByRole('navigation', { name: 'Principal' })
-    await expect(principal.getByRole('link')).toHaveText(['Mapa', 'Animais', 'Perdidos e achados'])
+    await expect(principal.getByRole('link')).toHaveText(['Mapa', 'Animais', 'Perdidos e achados', 'Quem apoia'])
     await expect(page.getByRole('button', { name: 'Sair' })).toHaveCount(0) // Sair foi para dentro do ☰
   })
 
-  test('cada perfil vê os seus itens, o "Em breve" e o Sair no fim @celular', async ({ page, request }) => {
+  test('cada perfil vê os seus itens e o Sair no fim @celular', async ({ page, request }) => {
     const tutor = await criarConta(request, 'tutor')
     await entrarComo(page, tutor)
     await page.goto('/')
@@ -26,8 +26,25 @@ test.describe('Menu da conta', () => {
       await expect(menu(page).getByRole('link', { name: new RegExp(item) })).toBeVisible()
     }
     await expect(menu(page).getByRole('link', { name: /Meus animais/ })).toHaveCount(0)
-    await expect(menu(page).getByText('Quem apoia: ranking')).toHaveAttribute('aria-disabled', 'true')
+    await expect(menu(page).getByText('Em breve')).toHaveCount(0) // ranking e doações já existem de verdade
     await expect(menu(page).getByRole('button', { name: /Sair/ })).toBeVisible()
+  })
+
+  test('abrigo e apoiador veem os itens de doação no menu', async ({ page, request }) => {
+    const abrigo = await criarConta(request, 'abrigo')
+    await entrarComo(page, abrigo)
+    await page.goto('/')
+    await abrirMenu(page)
+    await expect(menu(page).getByRole('link', { name: /Necessidades e doações/ })).toBeVisible()
+    await expect(menu(page).getByRole('link', { name: /Perfil público do abrigo/ })).toHaveAttribute('href', `/abrigos/${abrigo.usuario.id}`)
+
+    const apoiador = await criarConta(request, 'apoiador')
+    await page.context().clearCookies()
+    await entrarComo(page, apoiador)
+    await page.goto('/')
+    await abrirMenu(page)
+    await expect(menu(page).getByRole('link', { name: /Minhas doações/ })).toBeVisible()
+    await expect(menu(page).getByRole('link', { name: /Meu perfil público/ })).toBeVisible()
   })
 
   test('fecha com Esc e ao navegar', async ({ page, request }) => {
