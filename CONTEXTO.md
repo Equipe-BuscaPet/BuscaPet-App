@@ -59,7 +59,7 @@ Ao falar "Sprint N", diga qual das duas.
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
 > `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
-> `feature/reencontro-completo` (alerta e caso resolvido). Independente:
+> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo). Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -116,8 +116,21 @@ detalhe e em Meus registros.
 **Datas "do dia"** (`data_entrada`, `data_desaparecimento`, `data_avistamento`) são colunas `DateTime` gravadas como
 meia-noite UTC; a saída usa o tipo `DataDoDia` (`app/schemas/datas.py`) para não voltar um dia no Postgres em UTC-3.
 
-**Existe só como modelo de dados, sem rota nem tela:** busca salva, correspondência, descritor visual, necessidade,
-doação, pontuação/ranking de apoiadores, denúncia, log de auditoria, membros da equipe do abrigo.
+**Doações e apoiadores (3º módulo, Sprint 6 oficial — RF-12, RF-30 a RF-35):** `routers/doacoes.py`
+(`/necessidades`: abrigo **verificado** publica, mural público por urgência, `/minhas`, PATCH/DELETE;
+`/doacoes`: apoiador registra do mural ou avulsa, `/minhas`, cancela enquanto aguarda; abrigo vê `/recebidas` e
+confirma/recusa com `PATCH`, uma vez só) e `routers/apoiadores.py` (`/apoiadores/ranking?categoria&periodo=mes|ano`,
+`/apoiadores` para o mapa, `/apoiadores/{id}` perfil). `GET /abrigos/{id}` = perfil público (animais, necessidades,
+apoiadores; chave PIX e necessidades só com selo). Pontuação em `core/pontuacao.py`: **10 por doação confirmada +
+10 por mês seguido**, cache mensal em `pontuacoes_apoiador` recalculado a cada confirmação; selo "Apoiador ativo" =
+doação confirmada no mês atual ou anterior. Necessidade vira `atendida` sozinha quando a soma confirmada alcança o
+pedido. Notificações `referencia_tipo="doacao"` (abrigo → `/doacoes`, apoiador → `/minhas-doacoes`). Telas:
+`/quem-apoia`, `/abrigos/:id`, `/apoiadores/:id`, `/doacoes` (abrigo), `/minhas-doacoes` (apoiador); painel do
+abrigo com o resumo "o que exige ação hoje". Demo: 4 apoiadores (`amigofiel@`, `petcenter@`, `clinicaboavista@`,
+`racaonordeste@exemplo.com`). E2E: admin só de teste `admin-e2e@teste.buscapet.dev` criado por `preparar_banco_teste`.
+
+**Existe só como modelo de dados, sem rota nem tela:** busca salva (usada só ao resolver o caso), correspondência,
+descritor visual, denúncia, log de auditoria, membros da equipe do abrigo.
 
 **Próximo passo:** confirmar o roteiro da **Sprint 5 oficial** (entrega no Teams). Pelo plano interno: núcleo
 (descritores e comparação, com o Nivaldo) → busca por foto (RF-21 a 23) → busca salva e alertas (RF-24 a 27) →
@@ -193,7 +206,7 @@ pausa após ~1 semana sem uso; quem tem acesso restaura pelo painel.
 
 1. Base inicial de fotos para desenvolvimento e teste de escala do núcleo.
 2. Características da ficha do animal (definir com o abrigo parceiro).
-3. Peso exato volume × regularidade no ranking.
+3. ~~Peso exato volume × regularidade no ranking.~~ **Decidido (20/10): 10 por doação confirmada + 10 por mês seguido** (`core/pontuacao.py`).
 4. Abrangência inicial: uma cidade ou a região metropolitana.
 5. ~~Visitante completa os assistentes "Perdi/Encontrei" e só é barrado na ação final?~~ **Decidido (16/10): sim**, com login dentro da etapa de revisão, sem perder as fotos.
 6. "Encontrei um animal" tem monitoramento contínuo ou só publica avistamento? (recomendado: só avistamento)

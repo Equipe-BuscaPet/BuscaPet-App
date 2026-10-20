@@ -17,6 +17,11 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | `/perdi` | todos preenchem; **tutor** publica | Assistente "Perdi meu animal" em 5 etapas (RF-19) |
 | `/encontrei` | todos preenchem; **qualquer conta** publica | Assistente "Encontrei um animal" em 5 etapas (RF-20) |
 | `/meus-registros` | tutor, abrigo, apoiador | Os próprios registros de perdido/avistamento, com "Encontrei meu animal" e exclusão |
+| `/quem-apoia` | todos | **Quem apoia** (RF-33/35): destaques do mês, ranking por categoria (mês/ano), mural de necessidades com "Quero doar" e "Quero apoiar" |
+| `/abrigos/:id` | todos | Perfil público do abrigo (RF-12): contato, chave PIX (só com selo), necessidades, apoiadores e animais |
+| `/apoiadores/:id` | todos | Perfil público do apoiador (RF-34): pontos, meses seguidos, selo e abrigos apoiados |
+| `/doacoes` | abrigo | **Necessidades e doações** (RF-30/32): publica necessidades (com selo) e confirma ou recusa doações |
+| `/minhas-doacoes` | apoiador | Doações registradas, situação e cancelamento enquanto aguarda (RF-31) |
 | `/conta` | qualquer conta logada | **Minha conta** (RF-37): dados da conta e do perfil (abrigo edita o perfil público, inclusive horário e chave PIX), troca de senha e atalhos |
 | `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36). Inclui o alerta de avistamento perto de uma perda, que abre o avistamento |
 | `/interesses` | tutor | Interesses de adoção que a pessoa registrou |
