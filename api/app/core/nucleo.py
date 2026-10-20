@@ -38,9 +38,14 @@ def _url(caminho: str) -> str:
     return settings.nucleo_opencl_url.rstrip("/") + caminho
 
 
+# Um cliente só para o processo inteiro: abrir conexão (e montar o contexto de SSL do httpx) a cada chamada
+# custava ~0,4 s por busca, mais que toda a comparação no núcleo.
+_cliente = httpx.Client()
+
+
 def _pedir(metodo: str, caminho: str, timeout: float, **kwargs) -> dict:
     try:
-        resposta = httpx.request(metodo, _url(caminho), timeout=timeout, **kwargs)
+        resposta = _cliente.request(metodo, _url(caminho), timeout=timeout, **kwargs)
     except httpx.HTTPError as erro:
         raise NucleoIndisponivel(f"núcleo fora do ar ({erro.__class__.__name__})") from erro
     if resposta.status_code != 200:

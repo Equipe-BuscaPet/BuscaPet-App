@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, hojeISO, textoData } from '../rotulos'
-import CartaoRegistro, { TIPOS_REGISTRO } from './CartaoRegistro'
+import { TIPOS_REGISTRO } from './CartaoRegistro'
+import ResultadosSemelhanca from './ResultadosSemelhanca'
 import SeletorFotos, { usePrevias } from './SeletorFotos'
 import SeletorLocal from './SeletorLocal'
 
@@ -35,8 +36,8 @@ const TEXTOS = {
     privacidade: 'No site aparece só a região aproximada (cerca de 1 km), nunca o ponto exato nem os seus dados.',
     publicar: 'Publicar animal perdido',
     publicado: 'Pronto! O seu animal está registrado como perdido.',
-    tituloResultados: 'Avistamentos perto de onde ele sumiu',
-    vazio: 'Ainda não há avistamentos desta espécie nessa região. Assim que a busca salva estiver ativa, avisaremos quando aparecer um.',
+    tituloResultados: 'Parecidos com o seu: avistamentos e animais nos abrigos',
+    vazio: 'Ainda não há avistamentos nem animais abrigados desta espécie nessa região. A sua busca fica salva: avisaremos quando aparecer um parecido.',
     contaExigida: 'tutor',
   },
   avistamento: {
@@ -47,7 +48,7 @@ const TEXTOS = {
     privacidade: 'O local aparece com precisão de cerca de 100 m (para quem procura saber a rua). Os seus dados não aparecem.',
     publicar: 'Publicar avistamento',
     publicado: 'Obrigado! O avistamento foi registrado.',
-    tituloResultados: 'Animais perdidos perto daqui',
+    tituloResultados: 'Animais perdidos parecidos com o que você viu',
     vazio: 'Nenhum animal desta espécie foi registrado como perdido nessa região até agora.',
     contaExigida: null,
   },
@@ -153,7 +154,6 @@ export default function AssistenteRegistro({ tipo }) {
   const [erroGeral, setErroGeral] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [publicado, setPublicado] = useState(null)
-  const [proximos, setProximos] = useState(null)
   const titulo = useRef(null)
   const etapaAnterior = useRef(0)
 
@@ -201,7 +201,6 @@ export default function AssistenteRegistro({ tipo }) {
       const registro = await api(t.caminhoApi, { metodo: 'POST', multipart: corpo })
       setPublicado(registro)
       setEtapa(RESULTADOS)
-      buscarProximos(registro)
     } catch (err) {
       setErroGeral(err.message)
       const campos = Object.keys(err.campos || {})
@@ -214,21 +213,6 @@ export default function AssistenteRegistro({ tipo }) {
     }
   }
 
-  // Enquanto o núcleo OpenCL não compara as fotos, mostramos registros reais da outra base:
-  // mesma espécie, perto do ponto marcado, do mais próximo ao mais distante.
-  async function buscarProximos(registro) {
-    const outra = tipo === 'perdido' ? 'avistamento' : 'perdido'
-    const raio = tipo === 'perdido' ? registro.raio_busca_km : 10
-    const consulta = new URLSearchParams({
-      especie: registro.especie, lat: registro.latitude, lng: registro.longitude, raio_km: raio, limite: 12,
-    })
-    try {
-      setProximos({ tipo: outra, lista: await api(`${TIPOS_REGISTRO[outra].caminhoApi}?${consulta}`) })
-    } catch {
-      setProximos({ tipo: outra, lista: [] })
-    }
-  }
-
   function recomecar() {
     setEtapa(0)
     setFotos([])
@@ -237,7 +221,6 @@ export default function AssistenteRegistro({ tipo }) {
     setErros({})
     setErroGeral('')
     setPublicado(null)
-    setProximos(null)
   }
 
   return (
@@ -369,19 +352,11 @@ export default function AssistenteRegistro({ tipo }) {
               {textos.publicado}{' '}
               <Link to={`${t.caminhoTela}/${publicado.id}`}>Ver o registro</Link> · <Link to="/meus-registros">Meus registros</Link>
             </div>
-            <div className="aviso aviso--atencao" style={{ margin: 0 }}>
-              <strong>A comparação por foto está em construção.</strong> Em breve o núcleo de similaridade (OpenCL) vai
-              comparar as suas fotos e ordenar os candidatos por semelhança (alta, média ou baixa). Por enquanto, mostramos os
-              registros da mesma espécie mais próximos do local marcado. A decisão final é sempre sua.
-            </div>
-            <h3>{textos.tituloResultados}</h3>
-            {!proximos && <p className="estado">Procurando…</p>}
-            {proximos && proximos.lista.length === 0 && <p className="estado">{textos.vazio}</p>}
-            {proximos && proximos.lista.length > 0 && (
-              <div className="grade-animais">
-                {proximos.lista.map((r) => <CartaoRegistro key={r.id} registro={r} tipo={proximos.tipo} />)}
-              </div>
-            )}
+            <ResultadosSemelhanca
+              origem={tipo === 'perdido' ? 'perdido' : 'avistamento'} id={publicado.id}
+              raioInicial={tipo === 'perdido' ? publicado.raio_busca_km : 10}
+              titulo={textos.tituloResultados} vazio={textos.vazio}
+            />
             <div className="acoes">
               <Link className="botao botao--leve" to="/reencontro">Ver todos os perdidos e achados</Link>
               <button type="button" className="botao botao--leve" onClick={recomecar}>Fazer outro registro</button>

@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { api, urlFoto } from '../api'
 import { useAuth } from '../auth'
 import { TIPOS_REGISTRO } from '../componentes/CartaoRegistro'
+import ResultadosSemelhanca from '../componentes/ResultadosSemelhanca'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, textoData, textoHaQuanto, textoKm } from '../rotulos'
 
 // Mostra a área do registro: um círculo quando o ponto é aproximado (público), um marcador quando é o exato (autor).
@@ -160,6 +161,14 @@ export default function RegistroDetalhe({ tipo }) {
           )}
         </div>
       </div>
+      {!registro.resolvido && (
+        <ResultadosSemelhanca
+          key={`${tipo}-${registro.id}`} origem={tipo} id={registro.id}
+          raioInicial={tipo === 'perdido' && ehAutor ? registro.raio_busca_km : undefined}
+          titulo={tipo === 'perdido' ? 'Parecidos com este animal: avistamentos e animais nos abrigos' : 'Animais perdidos parecidos com este'}
+          vazio="Nenhum registro da mesma espécie nessa região por enquanto."
+        />
+      )}
     </main>
   )
 }
