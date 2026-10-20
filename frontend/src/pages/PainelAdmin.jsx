@@ -72,6 +72,7 @@ export default function PainelAdmin() {
 
           <h2>Agora</h2>
           <div className="indicadores">
+            <Indicador valor={dados.agora.denuncias_pendentes} rotulo="denúncias para analisar" para="/admin?aba=denuncias" />
             <Indicador valor={dados.agora.abrigos_para_verificar} rotulo="abrigos para verificar" para="/admin?aba=abrigos" />
             <Indicador valor={dados.agora.perdidos_ativos} rotulo="animais perdidos sendo procurados" para="/reencontro" />
             <Indicador valor={dados.agora.doacoes_aguardando} rotulo="doações aguardando o abrigo" />

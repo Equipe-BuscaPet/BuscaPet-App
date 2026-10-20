@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, urlFoto } from '../api'
+import DenunciarAnuncio from '../componentes/DenunciarAnuncio'
 import PainelInteresse from './PainelInteresse'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, STATUS_ANIMAL, textoIdade } from '../rotulos'
 
@@ -10,10 +11,12 @@ export default function AnimalDetalhe() {
   const { id } = useParams()
   const [animal, setAnimal] = useState(null)
   const [erro, setErro] = useState('')
+  const [fotoAtual, setFotoAtual] = useState(0)
 
   useEffect(() => {
     setAnimal(null)
     setErro('')
+    setFotoAtual(0)
     api(`/animais/${id}`).then(setAnimal).catch((e) => setErro(e.status === 404 ? 'Animal não encontrado.' : e.message))
   }, [id])
 
@@ -31,8 +34,23 @@ export default function AnimalDetalhe() {
     <main className="pagina">
       <p><Link to="/">← Voltar aos animais</Link></p>
       <div className="duas-colunas">
-        <div className="animal__foto" style={{ minHeight: 260, fontSize: '5rem' }} aria-hidden="true">
-          {EMOJI_ESPECIE[animal.especie]}
+        <div className="galeria">
+          {animal.fotos.length ? (
+            <img className="galeria__principal" src={urlFoto(animal.fotos[fotoAtual].url)} alt={`${animal.nome}, foto ${fotoAtual + 1} de ${animal.fotos.length}`} />
+          ) : (
+            <div className="animal__foto" style={{ minHeight: 260, fontSize: '5rem' }} aria-hidden="true">{EMOJI_ESPECIE[animal.especie]}</div>
+          )}
+          {animal.fotos.length > 1 && (
+            <ul className="miniaturas" aria-label="Outras fotos">
+              {animal.fotos.map((f, i) => (
+                <li key={f.id}>
+                  <button type="button" className={`miniatura${i === fotoAtual ? ' miniatura--atual' : ''}`} onClick={() => setFotoAtual(i)} aria-label={`Ver foto ${i + 1}`} aria-pressed={i === fotoAtual}>
+                    <img src={urlFoto(f.url)} alt="" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="cartao detalhe">
           <div>
@@ -60,6 +78,7 @@ export default function AnimalDetalhe() {
       <div style={{ marginTop: '1rem' }}>
         <PainelInteresse animal={animal} />
       </div>
+      <DenunciarAnuncio animal={animal} />
     </main>
   )
 }

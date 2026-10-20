@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, urlFoto } from '../api'
 import { EMOJI_ESPECIE, ESPECIES, PORTES, SEXOS, textoIdade } from '../rotulos'
 import { useUltimoPedido } from '../useUltimoPedido'
 
@@ -9,7 +9,9 @@ const POR_PAGINA = 12
 export function CartaoAnimal({ animal }) {
   return (
     <Link to={`/animais/${animal.id}`} className="animal">
-      <div className="animal__foto" aria-hidden="true">{EMOJI_ESPECIE[animal.especie]}</div>
+      {animal.fotos?.[0]
+        ? <img className="animal__foto animal__foto--img" src={urlFoto(animal.fotos[0].url)} alt="" loading="lazy" />
+        : <div className="animal__foto" aria-hidden="true">{EMOJI_ESPECIE[animal.especie]}</div>}
       <h3>{animal.nome}</h3>
       <p>
         {ESPECIES[animal.especie]} · {PORTES[animal.porte]} · {SEXOS[animal.sexo]}

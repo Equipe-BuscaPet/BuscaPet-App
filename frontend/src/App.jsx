@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './auth'
 import AssistenteRegistro from './componentes/AssistenteRegistro'
@@ -8,6 +9,7 @@ import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
 import Cadastro from './pages/Cadastro'
 import Catalogo from './pages/Catalogo'
+import EsqueciSenha from './pages/EsqueciSenha'
 import DoacoesAbrigo from './pages/DoacoesAbrigo'
 import Interessados from './pages/Interessados'
 import Login from './pages/Login'
@@ -21,9 +23,29 @@ import PainelAbrigo from './pages/PainelAbrigo'
 import PerfilAbrigo from './pages/PerfilAbrigo'
 import PerfilApoiador from './pages/PerfilApoiador'
 import QuemApoia from './pages/QuemApoia'
+import RedefinirSenha from './pages/RedefinirSenha'
 import Reencontro from './pages/Reencontro'
 import RelatoriosAbrigo from './pages/RelatoriosAbrigo'
 import RegistroDetalhe from './pages/RegistroDetalhe'
+
+// Título da aba do navegador por página (usabilidade: várias abas abertas e histórico do navegador legíveis).
+const TITULOS = [
+  ['/mapa', 'Mapa'], ['/reencontro', 'Perdidos e achados'], ['/perdi', 'Perdi meu animal'], ['/encontrei', 'Encontrei um animal'],
+  ['/quem-apoia', 'Quem apoia'], ['/abrigos/', 'Abrigo'], ['/apoiadores/', 'Apoiador'], ['/animais/', 'Animal para adoção'],
+  ['/login', 'Entrar'], ['/cadastro', 'Criar conta'], ['/esqueci-senha', 'Esqueci minha senha'], ['/redefinir-senha', 'Nova senha'],
+  ['/conta', 'Minha conta'], ['/notificacoes', 'Notificações'], ['/meus-registros', 'Meus registros'], ['/interesses', 'Meus interesses'],
+  ['/interessados', 'Interessados'], ['/painel', 'Meus animais'], ['/doacoes', 'Necessidades e doações'],
+  ['/minhas-doacoes', 'Minhas doações'], ['/relatorios', 'Relatórios'], ['/admin', 'Administração'],
+]
+
+function TituloDaPagina() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const achado = TITULOS.find(([prefixo]) => pathname === prefixo || pathname.startsWith(prefixo.endsWith('/') ? prefixo : `${prefixo}/`))
+    document.title = achado ? `${achado[1]} · BuscaPet` : 'BuscaPet · adoção, reencontro e doações'
+  }, [pathname])
+  return null
+}
 
 // Menu principal só com o que é de todos; o que é da conta fica no menu ☰ (componentes/MenuConta.jsx).
 function Cabecalho() {
@@ -90,7 +112,10 @@ function Protegido({ tipos, children }) {
 export default function App() {
   return (
     <>
+      <a href="#conteudo" className="pular-conteudo">Pular para o conteúdo</a>
+      <TituloDaPagina />
       <Cabecalho />
+      <div id="conteudo" tabIndex={-1}>
       <Routes>
         <Route path="/" element={<Catalogo />} />
         <Route path="/mapa" element={<Mapa />} />
@@ -108,6 +133,8 @@ export default function App() {
         <Route path="/encontrei" element={<AssistenteRegistro key="avistamento" tipo="avistamento" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/conta" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador', 'admin']}><MinhaConta /></Protegido>} />
         <Route path="/notificacoes" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador', 'admin']}><Notificacoes /></Protegido>} />
         <Route path="/meus-registros" element={<Protegido tipos={['tutor', 'abrigo', 'apoiador']}><MeusRegistros /></Protegido>} />
@@ -117,6 +144,7 @@ export default function App() {
         <Route path="/admin" element={<Protegido tipos={['admin']}><Admin /></Protegido>} />
         <Route path="*" element={<main className="pagina"><p className="estado">Página não encontrada.</p></main>} />
       </Routes>
+      </div>
       <Rodape />
     </>
   )

@@ -486,3 +486,16 @@ button.miniatura { cursor: pointer; }
 .dialogo-lista__topo h2 { margin: 0; font-size: 1.15rem; }
 .dialogo-lista__corpo { max-height: 55vh; overflow-y: auto; }
 .dialogo-lista__corpo table { width: 100%; }
+
+/* ---------- Sprint 8: fotos dos animais, denúncia, senha e usabilidade ---------- */
+.pular-conteudo { position: absolute; left: 16px; top: -3rem; z-index: 50; background: var(--navy); color: #fff;
+  padding: 0.5rem 0.9rem; border-radius: 8px; font-weight: 700; text-decoration: none; }
+.pular-conteudo:focus { top: 0.5rem; }
+#conteudo:focus { outline: none; }
+.campo-senha { display: flex; gap: 0.4rem; align-items: stretch; }
+.campo-senha input { flex: 1; min-width: 0; }
+.botao-link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.denuncia { margin-top: 1.25rem; }
+.denuncia > .botao-link { color: var(--ink-dim); font-size: 0.9rem; }
+.denuncia__motivo { margin: 0 0 0.75rem; padding: 0.5rem 0.9rem; border-left: 3px solid var(--erro-ink); background: var(--erro-bg); border-radius: 0 8px 8px 0; }
+.foto-gerenciada { display: grid; gap: 0.3rem; justify-items: center; }

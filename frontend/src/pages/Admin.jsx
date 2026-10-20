@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import HistoricoOperacoes from '../componentes/HistoricoOperacoes'
 import { STATUS_VALIDACAO } from '../rotulos'
+import ModeracaoDenuncias from './ModeracaoDenuncias'
 import PainelAdmin from './PainelAdmin'
 import PesquisaContas from './PesquisaContas'
 
@@ -93,6 +94,7 @@ function VerificarAbrigos() {
 const ABAS_ADMIN = [
   ['painel', 'Painel'],
   ['abrigos', 'Verificar abrigos'],
+  ['denuncias', 'Denúncias'],
   ['historico', 'Histórico de operações'],
   ['contas', 'Contas'],
 ]
@@ -114,6 +116,7 @@ export default function Admin() {
       </div>
       {aba === 'painel' && <PainelAdmin />}
       {aba === 'abrigos' && <VerificarAbrigos />}
+      {aba === 'denuncias' && <ModeracaoDenuncias />}
       {aba === 'historico' && <HistoricoOperacoes rota="/admin/logs" rotaCsv="/admin/logs.csv" />}
       {aba === 'contas' && <PesquisaContas />}
     </main>

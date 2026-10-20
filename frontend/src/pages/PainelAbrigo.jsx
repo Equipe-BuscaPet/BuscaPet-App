@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import GerenciarFotos from '../componentes/GerenciarFotos'
 import { ESPECIES, PORTES, SEXOS, STATUS_ANIMAL, textoIdade } from '../rotulos'
 
 const FORM_VAZIO = {
@@ -178,9 +179,10 @@ export default function PainelAbrigo() {
       setOk(`${f.nome} foi atualizado.`)
     } else {
       const corpo = Object.fromEntries(Object.entries(paraApi(f)).filter(([, v]) => v !== null))
-      await api('/animais', { metodo: 'POST', corpo })
+      const criado = await api('/animais', { metodo: 'POST', corpo })
       await carregar()
-      setOk(`${f.nome} foi cadastrado.`)
+      setEditando(criado) // abre a edição, com a seção de fotos logo abaixo
+      setOk(`${f.nome} foi cadastrado. Agora adicione as fotos (a primeira vira a capa no catálogo).`)
     }
   }
 
@@ -242,7 +244,10 @@ export default function PainelAbrigo() {
                       <td><Link to={`/animais/${a.id}`}>{a.nome}</Link></td>
                       <td>{ESPECIES[a.especie]}</td>
                       <td>{textoIdade(a.idade_estimada_meses)}</td>
-                      <td><span className={`etiqueta ${a.status === 'disponivel' ? 'etiqueta--ok' : ''}`}>{STATUS_ANIMAL[a.status]}</span></td>
+                      <td>
+                        <span className={`etiqueta ${a.status === 'disponivel' ? 'etiqueta--ok' : ''}`}>{STATUS_ANIMAL[a.status]}</span>
+                        {a.removido_em && <span className="etiqueta etiqueta--erro" title="Removido pela administração após denúncia">Removido</span>}
+                      </td>
                       <td>
                         <div className="acoes">
                           <button className="botao botao--leve botao--pequeno" disabled={!ativo} onClick={() => { setEditando(a); setOk('') }}>Editar</button>
@@ -264,14 +269,19 @@ export default function PainelAbrigo() {
           )}
         </section>
 
-        <FormularioAnimal
-          key={editando ? `editar-${editando.id}` : 'novo'}
-          inicial={editando ? doAnimal(editando) : FORM_VAZIO}
-          editando={Boolean(editando)}
-          desabilitado={!ativo}
-          onSalvar={salvar}
-          onCancelar={() => setEditando(null)}
-        />
+        <div>
+          <FormularioAnimal
+            key={editando ? `editar-${editando.id}` : 'novo'}
+            inicial={editando ? doAnimal(editando) : FORM_VAZIO}
+            editando={Boolean(editando)}
+            desabilitado={!ativo}
+            onSalvar={salvar}
+            onCancelar={() => setEditando(null)}
+          />
+          {editando && ativo && (
+            <GerenciarFotos animal={editando} aoMudar={(atualizado) => { setEditando(atualizado); carregar() }} />
+          )}
+        </div>
       </div>
     </main>
   )
