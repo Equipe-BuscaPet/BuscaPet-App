@@ -18,7 +18,9 @@ Contas criadas (senha de todas: veja SENHA_DEMO):
                                       clínica e distribuidora), com doações confirmadas em meses seguidos
                                       para o ranking, e uma doação aguardando a confirmação do Patinhas
 
-O Abrigo Patinhas Felizes (verificado) ganha também necessidades publicadas no mural.
+O Abrigo Patinhas Felizes (verificado) ganha também necessidades publicadas no mural e um histórico de adoções
+(Pingo, adotado pela Maria; Nina, aprovada para o João; um interesse aguardando no Thor), com os registros de
+auditoria nas datas em que aconteceram, para o painel e os relatórios terem o que mostrar.
 """
 import argparse
 import datetime
@@ -31,18 +33,21 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.seguranca import hash_senha
 from app.db.session import SessionLocal
-from app.core import pontuacao
-from app.models.animal import Animal
+from app.core import auditoria, pontuacao
+from app.models.animal import Animal, Interesse
 from app.models.doacao import Doacao, Necessidade
 from app.models.enums import (
     Especie,
     Sexo,
+    StatusAnimal,
     StatusDoacao,
+    StatusInteresse,
     StatusValidacao,
     TipoConta,
     TipoEstabelecimento,
     UrgenciaNecessidade,
 )
+from app.models.transversais import LogAuditoria
 from app.models.usuario import Abrigo, Apoiador, Tutor, Usuario
 
 SENHA_DEMO = "Senha1234!"
@@ -167,6 +172,7 @@ def popular(db: Session) -> dict[str, int]:
         criados["contas"] += novo
 
     _popular_doacoes(db, criados)
+    _popular_historico(db, criados)
     db.commit()
     return criados
 
@@ -200,6 +206,63 @@ def _popular_doacoes(db: Session, criados: dict[str, int]) -> None:
             db.add(Doacao(apoiador_id=usuario.id, abrigo_id=patinhas.id, necessidade_id=limpeza.id, item=limpeza.item, quantidade=2))
         db.flush()
         pontuacao.recalcular(db, usuario.id)
+
+
+def _dias_atras(dias: int) -> datetime.datetime:
+    return datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=dias)
+
+
+def _dia_utc(dias: int) -> datetime.datetime:
+    """Data "do dia" como o sistema grava (meia-noite UTC)."""
+    d = _dias_atras(dias).date()
+    return datetime.datetime(d.year, d.month, d.day, tzinfo=datetime.UTC)
+
+
+# nome, espécie, porte, sexo, meses, dias desde a entrada, situação final, tutor, dias atrás do interesse e da aprovação
+HISTORICO = [
+    ("Pingo", Especie.CAO, "pequeno", Sexo.MACHO, 18, 50, StatusAnimal.ADOTADO, "maria@exemplo.com", 30, 28),
+    ("Nina", Especie.CAO, "medio", Sexo.FEMEA, 30, 25, StatusAnimal.EM_PROCESSO, "joao@exemplo.com", 9, 6),
+]
+
+
+def _popular_historico(db: Session, criados: dict[str, int]) -> None:
+    """Adoções passadas do Patinhas, com o histórico de auditoria nas datas certas. Só cria o que for novo."""
+    patinhas = db.scalar(select(Usuario).where(Usuario.email == "patinhas@exemplo.com"))
+    for nome, dias in (("Thor", 60), ("Mel", 35), ("Bolinha", 20)):
+        animal = db.scalar(select(Animal).where(Animal.abrigo_id == patinhas.id, Animal.nome == nome))
+        if animal is not None and animal.data_entrada is None:
+            animal.data_entrada = _dia_utc(dias)
+
+    def log(usuario_id, acao, tipo, entidade_id, quando, **detalhes):
+        auditoria.registrar(db, usuario_id, acao, tipo, entidade_id, **detalhes)
+        db.flush()
+        ultimo = db.scalar(select(LogAuditoria).order_by(LogAuditoria.id.desc()).limit(1))
+        ultimo.criado_em = quando
+
+    for nome, especie, porte, sexo, meses, entrada, situacao, email, d_interesse, d_aprovacao in HISTORICO:
+        if db.scalar(select(Animal.id).where(Animal.abrigo_id == patinhas.id, Animal.nome == nome)):
+            continue
+        tutor = db.scalar(select(Usuario).where(Usuario.email == email))
+        animal = Animal(abrigo_id=patinhas.id, nome=nome, especie=especie, porte=porte, sexo=sexo, idade_estimada_meses=meses,
+                        castrado=True, vacinado=True, data_entrada=_dia_utc(entrada), status=situacao, criado_em=_dias_atras(entrada))
+        db.add(animal)
+        db.flush()
+        criados["animais"] += 1
+        log(patinhas.id, "animal.cadastrado", "animal", animal.id, _dias_atras(entrada), animal=nome)
+        interesse = Interesse(animal_id=animal.id, tutor_id=tutor.id, status=StatusInteresse.APROVADO, criado_em=_dias_atras(d_interesse),
+                              mensagem="Tenho quintal e já tive cachorro.")
+        db.add(interesse)
+        db.flush()
+        log(tutor.id, "interesse.registrado", "interesse", interesse.id, _dias_atras(d_interesse), animal_id=animal.id, animal=nome)
+        log(patinhas.id, "interesse.aprovado", "interesse", interesse.id, _dias_atras(d_aprovacao), animal_id=animal.id, animal=nome)
+
+    thor = db.scalar(select(Animal).where(Animal.abrigo_id == patinhas.id, Animal.nome == "Thor"))
+    joao = db.scalar(select(Usuario).where(Usuario.email == "joao@exemplo.com"))
+    if thor and not db.scalar(select(Interesse.id).where(Interesse.animal_id == thor.id, Interesse.tutor_id == joao.id)):
+        interesse = Interesse(animal_id=thor.id, tutor_id=joao.id, criado_em=_dias_atras(2), mensagem="Moro em casa com quintal grande.")
+        db.add(interesse)
+        db.flush()
+        log(joao.id, "interesse.registrado", "interesse", interesse.id, _dias_atras(2), animal_id=thor.id, animal="Thor")
 
 
 def main() -> int:

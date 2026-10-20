@@ -10,9 +10,9 @@ from tests.conftest import cabecalho
 def test_popula_o_cenario_completo(client, sessao_factory):
     with sessao_factory() as db:
         criados = popular(db)
-        assert criados == {"contas": 11, "animais": 8}
+        assert criados == {"contas": 11, "animais": 10}
         assert db.scalar(select(func.count()).select_from(Usuario)) == 11
-        assert db.scalar(select(func.count()).select_from(Animal)) == 8
+        assert db.scalar(select(func.count()).select_from(Animal)) == 10
         assert db.scalar(select(func.count()).select_from(Abrigo)) == 4
 
     # As contas funcionam de verdade e o selo está onde deveria.
@@ -32,7 +32,7 @@ def test_rodar_de_novo_nao_duplica_nada(sessao_factory):
     with sessao_factory() as db:
         assert popular(db) == {"contas": 0, "animais": 0}
         assert db.scalar(select(func.count()).select_from(Usuario)) == 11
-        assert db.scalar(select(func.count()).select_from(Animal)) == 8
+        assert db.scalar(select(func.count()).select_from(Animal)) == 10
 
 
 def test_o_fluxo_de_adocao_funciona_com_os_dados_de_demonstracao(client, sessao_factory):
@@ -52,3 +52,11 @@ def test_demonstracao_traz_mural_ranking_e_doacao_para_confirmar(client, sessao_
     patinhas = cabecalho(client, "patinhas@exemplo.com", SENHA_DEMO)
     pendentes = client.get("/doacoes/recebidas", params={"status": "aguardando_confirmacao"}, headers=patinhas).json()
     assert [d["nome_apoiador"] for d in pendentes] == ["Pet Shop Amigo Fiel"]
+
+
+def test_demonstracao_traz_historico_para_o_relatorio_do_abrigo(client, sessao_factory):
+    with sessao_factory() as db:
+        popular(db)
+    patinhas = cabecalho(client, "patinhas@exemplo.com", SENHA_DEMO)
+    r = client.get("/relatorios/abrigo", headers=patinhas).json()
+    assert r["adocoes_aprovadas"] == 2 and r["tempo_medio_adocao_dias"] == 20.5  # Pingo 50-28=22 dias, Nina 25-6=19
