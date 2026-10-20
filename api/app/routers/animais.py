@@ -10,6 +10,7 @@ Regras de perfil:
   Mesmo tratamento das fotos do reencontro: validadas, reduzidas e regravadas sem metadados (GPS).
 """
 import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import delete, func, or_, select
@@ -21,7 +22,7 @@ from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
 from app.models.animal import Animal, Foto, Interesse
-from app.models.enums import EntidadeFoto, Especie, StatusAnimal, StatusValidacao, TipoConta
+from app.models.enums import EntidadeFoto, Especie, Sexo, StatusAnimal, StatusValidacao, TipoConta
 from app.models.reencontro import DescritorVisual
 from app.models.usuario import Abrigo, Usuario
 from app.schemas.animal import AnimalCreate, AnimalOut, AnimalUpdate
@@ -90,6 +91,12 @@ def listar(
     status_animal: StatusAnimal | None = Query(default=StatusAnimal.DISPONIVEL, alias="status"),
     abrigo_id: int | None = None,
     busca: str | None = Query(default=None, max_length=100, description="Trecho do nome ou da raça"),
+    sexo: Sexo | None = None,
+    idade: Literal["filhote", "adulto", "idoso"] | None = Query(default=None, description="filhote < 1 ano; idoso a partir de 8 anos"),
+    castrado: bool | None = None,
+    vacinado: bool | None = None,
+    convive_criancas: bool | None = Query(default=None, description="true: só quem convive bem com crianças"),
+    convive_animais: bool | None = Query(default=None, description="true: só quem convive bem com outros animais"),
     limite: int = Query(default=20, ge=1, le=100),
     deslocamento: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -108,6 +115,17 @@ def listar(
     if busca:
         trecho = f"%{busca.lower()}%"
         consulta = consulta.where(or_(func.lower(Animal.nome).like(trecho), func.lower(Animal.raca_aproximada).like(trecho)))
+    # RF-14: filtros combinados (cada um só restringe; juntos, valem todos ao mesmo tempo)
+    if sexo:
+        consulta = consulta.where(Animal.sexo == sexo)
+    if idade:
+        faixas = {"filhote": (0, 11), "adulto": (12, 95), "idoso": (96, 600)}
+        minimo, maximo = faixas[idade]
+        consulta = consulta.where(Animal.idade_estimada_meses.between(minimo, maximo))
+    for coluna, valor in ((Animal.castrado, castrado), (Animal.vacinado, vacinado),
+                          (Animal.convivencia_criancas, convive_criancas), (Animal.convivencia_outros_animais, convive_animais)):
+        if valor is not None:
+            consulta = consulta.where(coluna.is_(valor))
     linhas = db.execute(
         consulta.order_by(Animal.criado_em.desc(), Animal.id.desc()).limit(limite).offset(deslocamento)
     ).all()

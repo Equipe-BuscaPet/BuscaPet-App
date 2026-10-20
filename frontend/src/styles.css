@@ -499,3 +499,4 @@ button.miniatura { cursor: pointer; }
 .denuncia > .botao-link { color: var(--ink-dim); font-size: 0.9rem; }
 .denuncia__motivo { margin: 0 0 0.75rem; padding: 0.5rem 0.9rem; border-left: 3px solid var(--erro-ink); background: var(--erro-bg); border-radius: 0 8px 8px 0; }
 .foto-gerenciada { display: grid; gap: 0.3rem; justify-items: center; }
+.filtros--extras { align-items: center; margin-top: -0.25rem; margin-bottom: 1rem; }

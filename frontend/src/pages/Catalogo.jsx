@@ -22,10 +22,19 @@ export function CartaoAnimal({ animal }) {
   )
 }
 
+// RF-14: além de busca, espécie e porte, os filtros combinados (todos valem ao mesmo tempo).
+const FILTROS_VAZIOS = {
+  busca: '', especie: '', porte: '', sexo: '', idade: '', castrado: '', vacinado: '', convive_criancas: '', convive_animais: '',
+}
+const EXTRAS = ['sexo', 'idade', 'castrado', 'vacinado', 'convive_criancas', 'convive_animais']
+const MARCAS = [['castrado', 'Castrado'], ['vacinado', 'Vacinado'], ['convive_criancas', 'Convive bem com crianças'], ['convive_animais', 'Convive bem com outros animais']]
+
 export default function Catalogo() {
   const [params, setParams] = useSearchParams()
   const abrigoId = params.get('abrigo') || ''
-  const [filtros, setFiltros] = useState({ busca: '', especie: '', porte: '' })
+  const [filtros, setFiltros] = useState(FILTROS_VAZIOS)
+  const [maisFiltros, setMaisFiltros] = useState(false)
+  const extrasAtivos = EXTRAS.filter((k) => filtros[k]).length
   const [animais, setAnimais] = useState([])
   const [temMais, setTemMais] = useState(false)
   const [carregando, setCarregando] = useState(true)
@@ -59,6 +68,7 @@ export default function Catalogo() {
   }, [buscar])
 
   const mudar = (nome) => (e) => setFiltros({ ...filtros, [nome]: e.target.value })
+  const marcar = (nome) => (e) => setFiltros({ ...filtros, [nome]: e.target.checked ? 'true' : '' })
 
   return (
     <main className="pagina">
@@ -108,7 +118,40 @@ export default function Catalogo() {
             {Object.entries(PORTES).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
           </select>
         </div>
+        <div className="campo">
+          <span className="campo__rotulo" aria-hidden="true">&nbsp;</span>
+          <button type="button" className="botao botao--leve" aria-expanded={maisFiltros} aria-controls="mais-filtros" onClick={() => setMaisFiltros(!maisFiltros)}>
+            Mais filtros{extrasAtivos ? ` (${extrasAtivos})` : ''}
+          </button>
+        </div>
       </div>
+      {maisFiltros && (
+        <div id="mais-filtros" className="cartao filtros filtros--extras" role="group" aria-label="Mais filtros">
+          <div className="campo">
+            <label htmlFor="sexo">Sexo</label>
+            <select id="sexo" value={filtros.sexo} onChange={mudar('sexo')}>
+              <option value="">Tanto faz</option>
+              <option value="macho">Macho</option>
+              <option value="femea">Fêmea</option>
+            </select>
+          </div>
+          <div className="campo">
+            <label htmlFor="idade">Idade</label>
+            <select id="idade" value={filtros.idade} onChange={mudar('idade')}>
+              <option value="">Qualquer idade</option>
+              <option value="filhote">Filhote (até 1 ano)</option>
+              <option value="adulto">Adulto (1 a 7 anos)</option>
+              <option value="idoso">Idoso (8 anos ou mais)</option>
+            </select>
+          </div>
+          {MARCAS.map(([chave, rotulo]) => (
+            <label key={chave} className="marcar"><input type="checkbox" checked={filtros[chave] === 'true'} onChange={marcar(chave)} /> {rotulo}</label>
+          ))}
+          {extrasAtivos > 0 && (
+            <button type="button" className="botao botao--leve botao--pequeno" onClick={() => setFiltros({ ...filtros, ...Object.fromEntries(EXTRAS.map((k) => [k, ''])) })}>Limpar estes filtros</button>
+          )}
+        </div>
+      )}
 
       {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
       {!erro && !carregando && animais.length === 0 && (
