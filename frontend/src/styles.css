@@ -68,16 +68,17 @@ h2 { font-size: 1.25rem; font-weight: 700; }
 .conta { display: flex; align-items: center; gap: 0.5rem; }
 .conta__nome { font-weight: 600; }
 .conta__nome small { color: var(--ink-dim); font-weight: 500; margin-left: 0.25rem; }
-/* Celular: marca e conta na primeira linha; o menu vai para a segunda, numa faixa que rola para o lado. */
+/* Celular: marca e conta na primeira linha; o menu vai para a segunda, com os itens dividindo a largura em colunas
+   iguais. Antes era uma faixa que rolava para o lado e escondia o último item ("Quem apoia"). */
 @media (max-width: 700px) {
-  .cabecalho__interno { gap: 0.5rem 1rem; padding-bottom: 0.4rem; }
+  .cabecalho__interno { gap: 0.5rem 1rem; padding-bottom: 0.5rem; }
   .conta { margin-left: auto; }
   .conta__nome small { display: none; }
-  .menu {
-    order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 12px;
-    scrollbar-width: none;
+  .menu { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.25rem; }
+  .menu a {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 0.4rem 0.2rem; font-size: 0.85rem; line-height: 1.15; min-height: 2.6rem;
   }
-  .menu a { white-space: nowrap; }
 }
 
 /* Estrutura */

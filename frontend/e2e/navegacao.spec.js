@@ -17,12 +17,19 @@ test.describe('Navegação', () => {
     await expect(page.getByRole('tab', { name: 'Perdidos' })).toHaveAttribute('aria-selected', 'true')
   })
 
-  test('no celular o menu fica em uma linha só @celular', async ({ page, isMobile }) => {
+  test('no celular o menu fica em uma linha só, com todos os itens à vista @celular', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'regra de layout do celular')
     await page.goto('/')
     const menu = page.getByRole('navigation', { name: 'Principal' })
     const caixa = await menu.boundingBox()
     expect(caixa.height).toBeLessThan(60)
+    // Antes o menu rolava para o lado e o último item ("Quem apoia") ficava fora da tela.
+    const largura = page.viewportSize().width
+    for (const item of ['Mapa', 'Animais', 'Perdidos e achados', 'Quem apoia']) {
+      const link = await menu.getByRole('link', { name: item }).boundingBox()
+      expect(link.x).toBeGreaterThanOrEqual(0)
+      expect(link.x + link.width).toBeLessThanOrEqual(largura)
+    }
   })
 
   test('endereço inexistente mostra página não encontrada', async ({ page }) => {
