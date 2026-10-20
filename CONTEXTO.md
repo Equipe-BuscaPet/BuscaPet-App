@@ -58,7 +58,8 @@ Ao falar "Sprint N", diga qual das duas.
 
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
-> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta`. Independente:
+> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
+> `feature/reencontro-completo` (alerta e caso resolvido). Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -104,6 +105,14 @@ GPS da foto de celular), até 1280 px, nome aleatório, em `api/uploads/fotos/` 
 Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/perdi` e `/encontrei` (5 etapas; o
 visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
 da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
+
+**Alerta e caso resolvido (fecha o fluxo do reencontro, Sprint 5 oficial):** todo `POST /avistamentos` cria
+uma notificação (`referencia_tipo="avistamento"`, o clique abre o avistamento) para o tutor com perda ativa da
+mesma espécie, sumida até a data do avistamento e dentro do `raio_busca_km` dele — **um alerta por tutor**, com
+a perda mais próxima (versão por distância do RF-25; o núcleo vai somar a semelhança da foto).
+`PATCH /perdidos/{id}/resolvido` (RF-28, só o tutor autor; 409 se já resolvido): o caso sai da lista pública e
+do mapa, a `BuscaSalva` vira `resolvida` e para de gerar alertas. Na interface: botão "Encontrei meu animal" no
+detalhe e em Meus registros.
 **Datas "do dia"** (`data_entrada`, `data_desaparecimento`, `data_avistamento`) são colunas `DateTime` gravadas como
 meia-noite UTC; a saída usa o tipo `DataDoDia` (`app/schemas/datas.py`) para não voltar um dia no Postgres em UTC-3.
 

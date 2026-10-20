@@ -13,12 +13,12 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | `/mapa` | todos | **Primeiro item do menu.** Acima do mapa só as abas **Abrigos** e **Perdidos e avistados** (lista mista). Sobre a lista: contagem, **📍 Perto de mim** (liga/desliga) e **⚙️ Filtros**, um painel com tipo, espécie, porte, período e distância (animais) ou só verificados, só com animais e distância (abrigos). URL: `/mapa?ver=animais&mostrar=perdidos` (RF-07 a RF-09) |
 | `/animais/:id` | todos | Ficha completa do animal e registro de interesse de adoção |
 | `/reencontro` | todos | **Perdidos e achados**: animais perdidos e avistados na rua, com filtros e "perto de mim" (RF-19/20) |
-| `/reencontro/perdidos/:id`, `/reencontro/avistamentos/:id` | todos | Detalhe do registro: galeria, características e mapa da região aproximada |
+| `/reencontro/perdidos/:id`, `/reencontro/avistamentos/:id` | todos | Detalhe do registro: galeria, características e mapa da região aproximada; o tutor autor tem **"Encontrei meu animal"** (caso resolvido, RF-28) |
 | `/perdi` | todos preenchem; **tutor** publica | Assistente "Perdi meu animal" em 5 etapas (RF-19) |
 | `/encontrei` | todos preenchem; **qualquer conta** publica | Assistente "Encontrei um animal" em 5 etapas (RF-20) |
-| `/meus-registros` | tutor, abrigo, apoiador | Os próprios registros de perdido/avistamento, com exclusão |
+| `/meus-registros` | tutor, abrigo, apoiador | Os próprios registros de perdido/avistamento, com "Encontrei meu animal" e exclusão |
 | `/conta` | qualquer conta logada | **Minha conta** (RF-37): dados da conta e do perfil (abrigo edita o perfil público, inclusive horário e chave PIX), troca de senha e atalhos |
-| `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36) |
+| `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36). Inclui o alerta de avistamento perto de uma perda, que abre o avistamento |
 | `/interesses` | tutor | Interesses de adoção que a pessoa registrou |
 | `/interessados` | abrigo | Interessados nos animais do abrigo, com a decisão de cada caso |
 | `/painel` | abrigo | CRUD dos animais do abrigo (opera na hora; o selo Verificado é dado pelo administrador) |
