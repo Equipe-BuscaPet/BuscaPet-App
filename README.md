@@ -114,9 +114,11 @@ Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs
 | Camada | Ferramenta | O que garante | Comando |
 |---|---|---|---|
 | Estilo do código Python | `ruff` | padrão de código e erros comuns | `cd api && ruff check .` |
-| API (unidade e integração) | `pytest` | regras de negócio e permissões de cada rota (SQLite em memória) | `cd api && pytest` |
+| API (unidade e integração) | `pytest` + `pytest-cov` | regras de negócio, matriz de permissões (25 rotas × 5 perfis), validações (CV-01 a CV-29) e e-mail; cobertura mínima de 90% | `cd api && pytest --cov=app` |
 | Interface | `vite build` | a interface compila | `cd frontend && npm run build` |
-| **Ponta a ponta (E2E)** | **Playwright** | um navegador de verdade usa as telas contra a API e um **Postgres real**: cadastro, login, perfis, adoção, perdidos e achados, celular | `cd frontend && npm run e2e` |
+| **Ponta a ponta (E2E)** | **Playwright** | um navegador de verdade usa as telas contra a API e um **Postgres real**: cadastro, login, perfis, adoção, perdidos e achados, doações, relatórios, moderação, celular | `cd frontend && npm run e2e` |
+| Varredura de navegação | Playwright (`e2e/varredura.spec.js`) | cada perfil visita todas as telas que alcança e nenhuma dá erro no console, erro 500 ou "página não encontrada" | `npx playwright test varredura` |
+| Acessibilidade | axe-core (`e2e/acessibilidade.spec.js`) | 24 telas sem violação grave das regras WCAG 2.1 A/AA (contraste, rótulos, nomes de botões…) | `npx playwright test acessibilidade` |
 | Núcleo OpenCL | `make teste` | saída paralela igual à sequencial | `docker compose build nucleo-opencl` |
 
 Os testes E2E rodam num **ambiente só deles**, para não sujar o banco de desenvolvimento: banco `buscapet_e2e`
@@ -125,7 +127,7 @@ API na porta 8100 e interface na 5174. O `npm run e2e` sobe tudo isso sozinho; b
 Cada teste cria as próprias contas, com e-mail único, e não depende dos dados de demonstração. `npm run e2e:ver` abre a janela do Playwright para acompanhar passo a passo, e
 `npm run e2e:relatorio` mostra o relatório com captura, vídeo e *trace* das falhas.
 
-A **CI** (`.github/workflows/ci.yml`) roda tudo isso a cada Pull Request. O job `e2e` só começa depois que lint,
+A **CI** (`.github/workflows/ci.yml`) roda tudo isso a cada Pull Request (e falha se a cobertura da API cair abaixo de 90%). O job `e2e` só começa depois que lint,
 testes da API e build passam, sobe um Postgres 16, roda a API com a sessão no fuso de Recife (onde o defeito das
 datas aparecia) e publica o relatório do Playwright como artefato.
 
