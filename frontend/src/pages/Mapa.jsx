@@ -155,7 +155,7 @@ export default function Mapa() {
       marcador.bindPopup(() => caixaBalao(a.nome_abrigo, [
         a.verificado ? 'Abrigo verificado' : 'Abrigo não verificado', a.endereco, texto(a.animais_disponiveis),
         a.distancia_km != null && `A ${textoKm(a.distancia_km)} de você`,
-      ], { texto: 'Ver animais deste abrigo', acao: () => ir(`/?abrigo=${a.id}`) }))
+      ], { texto: 'Ver perfil do abrigo', acao: () => ir(`/abrigos/${a.id}`) }))
       marcador.bindTooltip(a.nome_abrigo)
       marcador.addTo(camada.current)
       marcadores.current.set(`abrigo-${a.id}`, marcador)
@@ -344,7 +344,7 @@ export default function Mapa() {
                       {a.horario_funcionamento && <p style={{ margin: '0 0 0.5rem' }}><small>Horário: {a.horario_funcionamento}</small></p>}
                       <div className="acoes">
                         <button className="botao botao--leve botao--pequeno" onClick={() => focar(`abrigo-${a.id}`, a.latitude, a.longitude)}>Ver no mapa</button>
-                        <button className="botao botao--pequeno" onClick={() => ir(`/?abrigo=${a.id}`)}>Ver animais</button>
+                        <button className="botao botao--pequeno" onClick={() => ir(`/abrigos/${a.id}`)}>Ver abrigo</button>
                         {whats && <a className="botao botao--leve botao--pequeno" href={whats} target="_blank" rel="noreferrer">WhatsApp</a>}
                       </div>
                     </li>

@@ -4,18 +4,19 @@ import { useAuth } from '../auth'
 
 // Menu "hambúrguer" da conta (☰), no canto direito do cabeçalho. Junta o que é da pessoa e do seu perfil,
 // para o menu principal ficar só com o que é de todos (Mapa, Animais, Perdidos e achados).
-// Itens novos (ex.: ranking, pedidos de doação) entram aqui conforme forem sendo construídos.
 export const ROTULO_TIPO = { tutor: 'Tutor', abrigo: 'Abrigo', apoiador: 'Apoiador', admin: 'Administrador' }
 
-const ITENS_DO_PERFIL = {
-  tutor: [['/interesses', '❤️', 'Meus interesses de adoção']],
-  abrigo: [['/painel', '🐾', 'Meus animais'], ['/interessados', '📋', 'Interessados']],
-  apoiador: [],
-  admin: [['/admin', '✅', 'Validar abrigos']],
+function itensDoPerfil(usuario) {
+  return {
+    tutor: [['/interesses', '❤️', 'Meus interesses de adoção']],
+    abrigo: [
+      ['/painel', '🐾', 'Meus animais'], ['/interessados', '📋', 'Interessados'],
+      ['/doacoes', '📦', 'Necessidades e doações'], [`/abrigos/${usuario.id}`, '🏠', 'Perfil público do abrigo'],
+    ],
+    apoiador: [['/minhas-doacoes', '📦', 'Minhas doações'], [`/apoiadores/${usuario.id}`, '🏆', 'Meu perfil público']],
+    admin: [['/admin', '✅', 'Validar abrigos']],
+  }[usuario.tipo_conta]
 }
-
-// Planejados (escopo §5 e §6): aparecem desabilitados para mostrar o caminho do produto.
-const EM_BREVE = [['🏆', 'Quem apoia: ranking'], ['📦', 'Pedidos de doação dos abrigos']]
 
 export default function MenuConta() {
   const { usuario, sair } = useAuth()
@@ -40,7 +41,7 @@ export default function MenuConta() {
 
   const itens = [
     ['/conta', '👤', 'Minha conta'],
-    ...ITENS_DO_PERFIL[usuario.tipo_conta],
+    ...itensDoPerfil(usuario),
     ...(usuario.tipo_conta !== 'admin' ? [['/meus-registros', '📍', 'Meus registros de perdidos e avistados']] : []),
     ['/notificacoes', '🔔', 'Notificações'],
   ]
@@ -61,14 +62,6 @@ export default function MenuConta() {
             {itens.map(([para, icone, rotulo]) => (
               <li key={para}>
                 <NavLink to={para} className="menu-conta__item"><span aria-hidden="true">{icone}</span> {rotulo}</NavLink>
-              </li>
-            ))}
-          </ul>
-          <p className="menu-conta__secao">Em breve</p>
-          <ul>
-            {EM_BREVE.map(([icone, rotulo]) => (
-              <li key={rotulo}>
-                <span className="menu-conta__item menu-conta__item--breve" aria-disabled="true"><span aria-hidden="true">{icone}</span> {rotulo}</span>
               </li>
             ))}
           </ul>

@@ -82,6 +82,7 @@ export default function Catalogo() {
         <div className="aviso aviso--atencao" role="status">
           Mostrando só os animais de {animais[0]?.nome_abrigo || 'um abrigo'}.{' '}
           <button className="botao botao--leve botao--pequeno" onClick={() => setParams({})}>Ver todos os abrigos</button>{' '}
+          <Link className="botao botao--leve botao--pequeno" to={`/abrigos/${abrigoId}`}>Perfil do abrigo</Link>{' '}
           <Link to="/mapa">Voltar ao mapa</Link>
         </div>
       )}

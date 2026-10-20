@@ -109,6 +109,38 @@ function FormularioAnimal({ inicial, editando, desabilitado, onSalvar, onCancela
   )
 }
 
+// "O que exige ação hoje" (escopo §6.1): junta os módulos de adoção e de doações num resumo só.
+function ResumoHoje({ animais }) {
+  const [n, setN] = useState(null)
+  useEffect(() => {
+    Promise.all([
+      api('/interesses/recebidos?status=aguardando'),
+      api('/doacoes/recebidas?status=aguardando_confirmacao'),
+      api('/necessidades/minhas'),
+    ]).then(([interesses, doacoes, necessidades]) => setN({
+      interesses: interesses.length, doacoes: doacoes.length, necessidades: necessidades.filter((x) => x.status === 'aberta').length,
+    })).catch(() => setN(null))
+  }, [])
+  if (!n) return null
+  const disponiveis = animais.filter((a) => a.status === 'disponivel').length
+  const emProcesso = animais.filter((a) => a.status === 'em_processo').length
+  const itens = [
+    ['/interessados', n.interesses, n.interesses === 1 ? 'interessado aguardando resposta' : 'interessados aguardando resposta', n.interesses > 0],
+    ['/doacoes', n.doacoes, n.doacoes === 1 ? 'doação para confirmar' : 'doações para confirmar', n.doacoes > 0],
+    ['/doacoes', n.necessidades, n.necessidades === 1 ? 'necessidade no mural' : 'necessidades no mural', false],
+    ['#titulo-lista', disponiveis, `disponíveis para adoção${emProcesso ? ` · ${emProcesso} em processo` : ''}`, false],
+  ]
+  return (
+    <section aria-label="Hoje no seu abrigo" className="resumo-hoje">
+      {itens.map(([para, valor, rotulo, acao]) => (
+        para.startsWith('#')
+          ? <a key={rotulo} href={para} className="cartao"><strong>{valor}</strong><span>{rotulo}</span></a>
+          : <Link key={rotulo} to={para} className={`cartao${acao ? ' resumo-hoje--acao' : ''}`}><strong>{valor}</strong><span>{rotulo}</span></Link>
+      ))}
+    </section>
+  )
+}
+
 export default function PainelAbrigo() {
   const { usuario, atualizarUsuario } = useAuth()
   const [animais, setAnimais] = useState([])
@@ -174,11 +206,14 @@ export default function PainelAbrigo() {
           <h1>Meus animais</h1>
           <p className="subtitulo" style={{ margin: 0 }}>{usuario.perfil?.nome_abrigo}</p>
         </div>
+        <Link className="botao botao--leve" to={`/abrigos/${usuario.id}`}>Ver perfil público</Link>
       </div>
+
+      {ativo && <ResumoHoje animais={animais} />}
 
       {status === 'pendente' && (
         <div className="aviso aviso--atencao" role="status">
-          Seu abrigo ainda não tem o selo Verificado. Você já pode cadastrar animais; o selo, concedido pela administração, é o que libera a exibição da chave de doação e a entrada no ranking.
+          Seu abrigo ainda não tem o selo Verificado. Você já pode cadastrar animais; o selo, concedido pela administração, é o que libera a chave de doação no perfil e o mural de necessidades (doações).
         </div>
       )}
       {status === 'rejeitado' && (
