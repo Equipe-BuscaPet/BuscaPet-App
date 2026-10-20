@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.deps import get_usuario_atual
 from app.core.seguranca import criar_token, hash_senha, verificar_senha
 from app.db.session import get_db
@@ -65,6 +66,8 @@ def cadastrar(dados: Cadastro, db: Session = Depends(get_db)) -> UsuarioOut:
 
     db.add(usuario)
     try:
+        db.flush()
+        auditoria.registrar(db, usuario.id, "conta.criada", "usuario", usuario.id, tipo=usuario.tipo_conta.value)
         db.commit()
     except IntegrityError:
         # Corrida entre duas requisições com o mesmo e-mail/CNPJ.

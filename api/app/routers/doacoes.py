@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core import pontuacao
 from app.core.deps import exigir_tipo, get_abrigo_operante
 from app.core.geo import distancia_km
@@ -102,6 +103,8 @@ def publicar_necessidade(dados: NecessidadeIn, abrigo: Abrigo = Depends(get_abri
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
     n = Necessidade(abrigo_id=abrigo.usuario_id, **dados.model_dump())
     db.add(n)
+    db.flush()
+    auditoria.registrar(db, abrigo.usuario_id, "necessidade.publicada", "necessidade", n.id, item=n.item, quantidade=n.quantidade)
     db.commit()
     db.refresh(n)
     return _necessidade_out(n, abrigo, 0)
@@ -147,8 +150,10 @@ def editar_necessidade(
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if dados.status == StatusNecessidade.ABERTA and abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
-    for campo, valor in dados.model_dump(exclude_none=True).items():
+    mudancas = dados.model_dump(exclude_none=True)
+    for campo, valor in mudancas.items():
         setattr(n, campo, valor)
+    auditoria.registrar(db, abrigo.usuario_id, "necessidade.atualizada", "necessidade", n.id, item=n.item, campos=sorted(mudancas))
     db.commit()
     db.refresh(n)
     return _necessidade_out(n, abrigo, _recebido(db, [n.id]).get(n.id, 0))
@@ -159,6 +164,7 @@ def excluir_necessidade(necessidade_id: int, abrigo: Abrigo = Depends(get_abrigo
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if db.scalar(select(func.count()).select_from(Doacao).where(Doacao.necessidade_id == n.id)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta necessidade já tem doações registradas e não pode ser excluída. Marque-a como atendida.")
+    auditoria.registrar(db, abrigo.usuario_id, "necessidade.excluida", "necessidade", n.id, item=n.item)
     db.delete(n)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -191,6 +197,7 @@ def registrar_doacao(
     db.add(doacao)
     db.flush()
     _notificar(db, abrigo_id, f"{usuario.nome} vai doar {dados.quantidade} × {item}. Confirme quando receber.", doacao.id)
+    auditoria.registrar(db, usuario.id, "doacao.registrada", "doacao", doacao.id, item=item, quantidade=dados.quantidade, abrigo_id=abrigo_id)
     db.commit()
     db.refresh(doacao)
     return _doacao_out(doacao, usuario, abrigo, ver_contato_de="abrigo")
@@ -214,6 +221,7 @@ def cancelar_doacao(doacao_id: int, usuario: Usuario = Depends(exigir_tipo(TipoC
     if d.status != StatusDoacao.AGUARDANDO_CONFIRMACAO:
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta doação já foi respondida pelo abrigo e não pode ser cancelada.")
     _notificar(db, d.abrigo_id, f"{usuario.nome} cancelou a doação de {d.quantidade} × {d.item}.", d.id)
+    auditoria.registrar(db, usuario.id, "doacao.cancelada", "doacao", d.id, item=d.item, quantidade=d.quantidade)
     db.delete(d)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -258,6 +266,9 @@ def decidir_doacao(
         _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} confirmou o recebimento de {d.quantidade} × {d.item}. Obrigado! Sua pontuação foi atualizada.", d.id)
     else:
         _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} informou que não recebeu {d.quantidade} × {d.item}. Fale com o abrigo se houver engano.", d.id)
+    auditoria.registrar(
+        db, abrigo.usuario_id, f"doacao.{dados.status.value}", "doacao", d.id, item=d.item, quantidade=d.quantidade, apoiador_id=d.apoiador_id,
+    )
     db.commit()
     db.refresh(d)
     return _doacao_out(d, apoiador, abrigo, ver_contato_de="apoiador")

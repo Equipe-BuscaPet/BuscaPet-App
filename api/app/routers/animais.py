@@ -14,6 +14,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
 from app.models.animal import Animal, Foto, Interesse
@@ -63,6 +64,8 @@ def cadastrar(
     campos["data_entrada"] = _para_datetime(campos["data_entrada"])
     animal = Animal(abrigo_id=abrigo.usuario_id, **campos)
     db.add(animal)
+    db.flush()
+    auditoria.registrar(db, abrigo.usuario_id, "animal.cadastrado", "animal", animal.id, animal=animal.nome)
     db.commit()
     db.refresh(animal)
     return _saida(animal, abrigo)
@@ -159,8 +162,13 @@ def atualizar(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Campos obrigatórios não podem ficar vazios: {', '.join(vazios)}.")
     if "data_entrada" in enviados:
         enviados["data_entrada"] = _para_datetime(enviados["data_entrada"])
+    situacao_antes = animal.status
     for campo, valor in enviados.items():
         setattr(animal, campo, valor)
+    auditoria.registrar(
+        db, abrigo.usuario_id, "animal.atualizado", "animal", animal.id, animal=animal.nome, campos=sorted(enviados),
+        situacao=f"{situacao_antes.value} → {animal.status.value}" if animal.status != situacao_antes else None,
+    )
     db.commit()
     db.refresh(animal)
     return _saida(animal, abrigo)
@@ -189,6 +197,7 @@ def excluir(
         db.execute(delete(DescritorVisual).where(DescritorVisual.foto_id.in_(foto_ids)))
         db.execute(delete(Foto).where(Foto.id.in_(foto_ids)))
     db.execute(delete(Interesse).where(Interesse.animal_id == animal.id))
+    auditoria.registrar(db, usuario.id, "animal.excluido", "animal", animal.id, animal=animal.nome)
     db.delete(animal)
     try:
         db.commit()

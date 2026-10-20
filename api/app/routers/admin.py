@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.deps import exigir_tipo
 from app.db.session import get_db
 from app.models.enums import StatusValidacao, TipoConta
@@ -23,6 +24,13 @@ _AVISO = {
     StatusValidacao.APROVADO: "Seu abrigo recebeu o selo Verificado. Ele aparece em destaque no catálogo e no mapa.",
     StatusValidacao.PENDENTE: "O selo Verificado do seu abrigo foi retirado. Você continua podendo publicar animais.",
     StatusValidacao.REJEITADO: "Seu abrigo foi suspenso pela administração e saiu do catálogo. Fale com a equipe do BuscaPet.",
+}
+
+
+_ACAO = {
+    StatusValidacao.APROVADO: "abrigo.verificado",
+    StatusValidacao.PENDENTE: "abrigo.selo_retirado",
+    StatusValidacao.REJEITADO: "abrigo.suspenso",
 }
 
 
@@ -55,6 +63,7 @@ def validar_abrigo(
     novo = StatusValidacao(dados.status)
     if novo != abrigo.status_validacao:
         db.add(Notificacao(usuario_id=abrigo.usuario_id, mensagem=_AVISO[novo], referencia_tipo="abrigo", referencia_id=abrigo.usuario_id))
+        auditoria.registrar(db, admin.id, _ACAO[novo], "abrigo", abrigo.usuario_id, abrigo=abrigo.nome_abrigo)
     abrigo.status_validacao = novo
     abrigo.validado_por_id = admin.id
     abrigo.validado_em = datetime.datetime.now(datetime.UTC)

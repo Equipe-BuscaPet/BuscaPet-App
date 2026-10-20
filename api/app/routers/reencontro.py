@@ -26,6 +26,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_usuario_atual, get_usuario_opcional
 from app.core.geo import distancia_km
@@ -153,6 +154,8 @@ def _excluir(db: Session, registro, tipo: EntidadeFoto, usuario: Usuario, dono_i
         db.execute(delete(Foto).where(Foto.id.in_(foto_ids)))
     if isinstance(registro, AnimalPerdido):
         db.execute(delete(BuscaSalva).where(BuscaSalva.animal_perdido_id == registro.id))
+    nome = "perdido" if isinstance(registro, AnimalPerdido) else "avistamento"
+    auditoria.registrar(db, usuario.id, f"{nome}.excluido", nome, registro.id, pelo_admin=(usuario.id != dono_id) or None)
     db.delete(registro)
     try:
         db.commit()
@@ -193,6 +196,8 @@ async def registrar_perdido(
     campos["data_desaparecimento"] = _para_datetime(campos["data_desaparecimento"])
     perdido = AnimalPerdido(tutor_id=tutor.id, **campos)
     nomes = _gravar(db, perdido, EntidadeFoto.ANIMAL_PERDIDO, prontas)
+    auditoria.registrar(db, tutor.id, "perdido.registrado", "perdido", perdido.id, especie=perdido.especie.value)
+    db.commit()
     return _perdido_out(perdido, [armazenamento.url_publica(n) for n in nomes], exato=True)
 
 
@@ -244,6 +249,7 @@ def marcar_resolvido(
     agora = datetime.datetime.now(datetime.UTC)
     for busca in db.scalars(select(BuscaSalva).where(BuscaSalva.animal_perdido_id == perdido.id, BuscaSalva.status == StatusBusca.MONITORANDO)):
         busca.status, busca.resolvida_em = StatusBusca.RESOLVIDA, agora
+    auditoria.registrar(db, tutor.id, "perdido.resolvido", "perdido", perdido.id)
     db.commit()
     db.refresh(perdido)
     return _perdido_out(perdido, _fotos_de(db, EntidadeFoto.ANIMAL_PERDIDO, [perdido.id])[perdido.id], exato=True)
@@ -289,6 +295,7 @@ async def registrar_avistamento(
     campos["data_avistamento"] = _para_datetime(campos["data_avistamento"])
     avistamento = Avistamento(usuario_id=usuario.id, **campos)
     nomes = _gravar(db, avistamento, EntidadeFoto.AVISTAMENTO, prontas)
+    auditoria.registrar(db, usuario.id, "avistamento.registrado", "avistamento", avistamento.id, especie=avistamento.especie.value)
     _alertar_perdidos_proximos(db, avistamento, campos["data_avistamento"])
     return _avistamento_out(avistamento, [armazenamento.url_publica(n) for n in nomes], exato=True)
 
