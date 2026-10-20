@@ -214,7 +214,8 @@ def test_perfis_publicos_integram_os_modulos(client, apoiador, necessidade, abri
 def test_abrigo_sem_selo_nao_mostra_chave_nem_necessidades(client):
     r = client.post("/auth/cadastro", json=dados_abrigo(email="semselo@exemplo.com"))
     cab = cabecalho(client, "semselo@exemplo.com")
-    client.patch("/usuarios/eu", json={"perfil": {"chave_doacao_financeira": "pix@semselo.org"}}, headers=cab)
+    salvo = client.patch("/usuarios/eu", json={"chave_doacao_financeira": "pix@semselo.org"}, headers=cab)
+    assert salvo.json()["perfil"]["chave_doacao_financeira"] == "pix@semselo.org"  # a chave existe, mas fica escondida
     perfil = client.get(f"/abrigos/{r.json()['id']}").json()
     assert perfil["verificado"] is False and perfil["chave_doacao_financeira"] is None and perfil["necessidades"] == []
     assert client.get("/abrigos/99999").status_code == 404
