@@ -169,3 +169,63 @@ def test_admin_pode_excluir_avistamento(client, tutor, admin):
 def test_rota_de_foto_nao_le_fora_da_pasta(client):
     assert client.get("/fotos/..%2F..%2F.env").status_code == 404
     assert client.get("/fotos/naoexiste.jpg").status_code == 404
+
+
+# ---------- alerta por proximidade e caso resolvido (RF-25 por distância, RF-28) ----------
+
+ONTEM = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+
+
+def alertas(client, cabecalho_tutor) -> list[dict]:
+    return [n for n in client.get("/notificacoes", headers=cabecalho_tutor).json() if n["referencia_tipo"] == "avistamento"]
+
+
+def test_avistamento_perto_avisa_o_tutor_da_perda(client, tutor, outro_tutor):
+    client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor)  # cão, raio padrão 5 km
+    visto = client.post("/avistamentos", data=campos_avistamento(especie="cao"), files=arquivos(imagem()), headers=outro_tutor).json()
+    [alerta] = alertas(client, tutor)
+    assert alerta["mensagem"] == "Um cão foi avistado a cerca de 1 km de onde o seu animal sumiu. Veja se é ele."
+    assert alerta["referencia_id"] == visto["id"]
+    assert alerta["destino"] == f"/reencontro/avistamentos/{visto['id']}"
+    assert alertas(client, outro_tutor) == []  # quem avistou não recebe nada
+
+
+@pytest.mark.parametrize("extra", [
+    {"especie": "gato"},  # outra espécie
+    {"especie": "cao", "latitude": "-8.2", "longitude": "-34.95"},  # ~18 km, fora do raio de 5 km
+    {"especie": "cao", "data_avistamento": ONTEM},  # visto antes do dia em que sumiu
+], ids=["outra-especie", "fora-do-raio", "antes-de-sumir"])
+def test_avistamento_que_nao_combina_nao_gera_alerta(client, tutor, outro_tutor, extra):
+    client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor)
+    r = client.post("/avistamentos", data=campos_avistamento(**extra), files=arquivos(imagem()), headers=outro_tutor)
+    assert r.status_code == 201, r.text
+    assert alertas(client, tutor) == []
+
+
+def test_raio_de_busca_do_tutor_e_respeitado(client, tutor, outro_tutor):
+    client.post("/perdidos", data=campos_perdido(raio_busca_km="1"), files=arquivos(imagem()), headers=tutor)
+    client.post("/avistamentos", data=campos_avistamento(especie="cao"), files=arquivos(imagem()), headers=outro_tutor)  # ~1,4 km
+    assert alertas(client, tutor) == []
+
+
+def test_tutor_marca_caso_resolvido_e_ele_sai_do_mapa(client, tutor, outro_tutor):
+    criado = client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor).json()
+    caminho = f"/perdidos/{criado['id']}/resolvido"
+    assert client.patch(caminho).status_code == 401
+    r = client.patch(caminho, headers=outro_tutor)
+    assert r.status_code == 403 and "Só quem registrou" in r.json()["detail"]
+
+    r = client.patch(caminho, headers=tutor)
+    assert r.status_code == 200 and r.json()["resolvido"] is True
+    assert client.get("/perdidos").json() == []  # sai da lista pública (e, com ela, do mapa)
+    assert client.get("/perdidos/meus", headers=tutor).json()[0]["resolvido"] is True  # o tutor continua vendo
+    assert client.patch(caminho, headers=tutor).status_code == 409
+
+    client.post("/avistamentos", data=campos_avistamento(especie="cao"), files=arquivos(imagem()), headers=outro_tutor)
+    assert alertas(client, tutor) == []  # caso resolvido não gera mais alerta
+
+
+def test_abrigo_nao_marca_resolvido(client, tutor, abrigo_aprovado):
+    criado = client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor).json()
+    assert client.patch(f"/perdidos/{criado['id']}/resolvido", headers=abrigo_aprovado["headers"]).status_code == 403
+    assert client.patch("/perdidos/999/resolvido", headers=tutor).status_code == 404

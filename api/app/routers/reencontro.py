@@ -7,12 +7,18 @@ Esta etapa só registra e consulta; a comparação por foto entra com o núcleo 
 Regras de perfil:
 - Consultar (lista e detalhe): público, inclusive visitante (escopo, seção 2.2).
 - Registrar perdido: só tutor. Registrar avistamento: qualquer conta logada.
+- Marcar como resolvido (RF-28): só o tutor que registrou a perda.
 - Excluir: o autor do registro ou o administrador (moderação).
+
+Alerta por proximidade (antes do núcleo): todo avistamento novo avisa os tutores com perda ativa da mesma
+espécie, sumida até a data do avistamento, quando o ponto cai dentro do raio de busca que o tutor escolheu.
+É a versão por distância do RF-25; o núcleo vai acrescentar a semelhança da foto.
 
 Privacidade (escopo, seção 9): a resposta pública não traz nada de quem registrou, e a localização sai
 arredondada (perdido: ~1 km; avistamento: ~100 m). A distância também é calculada sobre o ponto
 arredondado, para que não dê para descobrir o ponto exato consultando de vários lugares.
 """
+import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
@@ -25,8 +31,9 @@ from app.core.deps import exigir_tipo, get_usuario_atual, get_usuario_opcional
 from app.core.geo import distancia_km
 from app.db.session import get_db
 from app.models.animal import Foto
-from app.models.enums import EntidadeFoto, Especie, TipoConta
+from app.models.enums import EntidadeFoto, Especie, StatusBusca, TipoConta
 from app.models.reencontro import AnimalPerdido, Avistamento, BuscaSalva, DescritorVisual
+from app.models.transversais import Notificacao
 from app.models.usuario import Usuario
 from app.routers.animais import _para_datetime
 from app.schemas.reencontro import AvistamentoIn, AvistamentoOut, PerdidoIn, PerdidoOut
@@ -38,6 +45,7 @@ FormularioComFotos = Form(media_type="multipart/form-data")
 
 CASAS_PERDIDO = 2  # 0,01° ≈ 1,1 km
 CASAS_AVISTAMENTO = 3  # 0,001° ≈ 110 m: quem procura precisa saber a rua, e o ponto é onde o animal estava
+ESPECIE_NO_ALERTA = {Especie.CAO: "Um cão", Especie.GATO: "Um gato", Especie.OUTRO: "Um animal"}
 
 
 # ---------- apoio ----------
@@ -215,6 +223,32 @@ def listar_meus_perdidos(
     return [_perdido_out(p, fotos[p.id], exato=True) for p in perdidos]
 
 
+@router.patch("/perdidos/{perdido_id}/resolvido", response_model=PerdidoOut)
+def marcar_resolvido(
+    perdido_id: int,
+    tutor: Usuario = Depends(exigir_tipo(TipoConta.TUTOR)),
+    db: Session = Depends(get_db),
+) -> PerdidoOut:
+    """RF-28: o tutor encontrou o animal. O caso sai da lista pública e do mapa e para de gerar alertas.
+
+    Não tem volta pela interface: se foi engano, o tutor registra a perda de novo.
+    """
+    perdido = db.get(AnimalPerdido, perdido_id)
+    if perdido is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
+    if perdido.tutor_id != tutor.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Só quem registrou a perda pode marcar o caso como resolvido.")
+    if perdido.resolvido:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este caso já está marcado como resolvido.")
+    perdido.resolvido = True
+    agora = datetime.datetime.now(datetime.UTC)
+    for busca in db.scalars(select(BuscaSalva).where(BuscaSalva.animal_perdido_id == perdido.id, BuscaSalva.status == StatusBusca.MONITORANDO)):
+        busca.status, busca.resolvida_em = StatusBusca.RESOLVIDA, agora
+    db.commit()
+    db.refresh(perdido)
+    return _perdido_out(perdido, _fotos_de(db, EntidadeFoto.ANIMAL_PERDIDO, [perdido.id])[perdido.id], exato=True)
+
+
 @router.get("/perdidos/{perdido_id}", response_model=PerdidoOut)
 def consultar_perdido(
     perdido_id: int,
@@ -255,7 +289,33 @@ async def registrar_avistamento(
     campos["data_avistamento"] = _para_datetime(campos["data_avistamento"])
     avistamento = Avistamento(usuario_id=usuario.id, **campos)
     nomes = _gravar(db, avistamento, EntidadeFoto.AVISTAMENTO, prontas)
+    _alertar_perdidos_proximos(db, avistamento, campos["data_avistamento"])
     return _avistamento_out(avistamento, [armazenamento.url_publica(n) for n in nomes], exato=True)
+
+
+def _alertar_perdidos_proximos(db: Session, avistamento: Avistamento, data_avistamento: datetime.datetime) -> None:
+    """Avisa cada tutor com perda ativa da mesma espécie se o avistamento caiu dentro do raio de busca dele.
+
+    A distância usa os pontos exatos (é cálculo interno); a mensagem mostra só o valor arredondado.
+    A data entra como o valor gravado (e não o lido de volta) para comparar igual em SQLite e Postgres.
+    """
+    candidatos = db.scalars(select(AnimalPerdido).where(
+        AnimalPerdido.resolvido.is_(False),
+        AnimalPerdido.especie == avistamento.especie,
+        AnimalPerdido.tutor_id != avistamento.usuario_id,  # quem avistou não é avisado do próprio registro
+        AnimalPerdido.data_desaparecimento <= data_avistamento,  # visto antes de sumir não é ele
+    ))
+    for perdido in candidatos:
+        km = distancia_km(perdido.latitude, perdido.longitude, avistamento.latitude, avistamento.longitude)
+        if km > perdido.raio_busca_km:
+            continue
+        perto = "a menos de 1 km" if km < 1 else f"a cerca de {round(km):d} km"
+        db.add(Notificacao(
+            usuario_id=perdido.tutor_id,
+            mensagem=f"{ESPECIE_NO_ALERTA[avistamento.especie]} foi avistado {perto} de onde o seu animal sumiu. Veja se é ele.",
+            referencia_tipo="avistamento", referencia_id=avistamento.id,
+        ))
+    db.commit()
 
 
 @router.get("/avistamentos", response_model=list[AvistamentoOut])
