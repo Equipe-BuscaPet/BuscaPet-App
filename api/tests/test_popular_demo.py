@@ -10,8 +10,8 @@ from tests.conftest import cabecalho
 def test_popula_o_cenario_completo(client, sessao_factory):
     with sessao_factory() as db:
         criados = popular(db)
-        assert criados == {"contas": 7, "animais": 8}
-        assert db.scalar(select(func.count()).select_from(Usuario)) == 7
+        assert criados == {"contas": 11, "animais": 8}
+        assert db.scalar(select(func.count()).select_from(Usuario)) == 11
         assert db.scalar(select(func.count()).select_from(Animal)) == 8
         assert db.scalar(select(func.count()).select_from(Abrigo)) == 4
 
@@ -31,7 +31,7 @@ def test_rodar_de_novo_nao_duplica_nada(sessao_factory):
         popular(db)
     with sessao_factory() as db:
         assert popular(db) == {"contas": 0, "animais": 0}
-        assert db.scalar(select(func.count()).select_from(Usuario)) == 7
+        assert db.scalar(select(func.count()).select_from(Usuario)) == 11
         assert db.scalar(select(func.count()).select_from(Animal)) == 8
 
 
@@ -41,3 +41,14 @@ def test_o_fluxo_de_adocao_funciona_com_os_dados_de_demonstracao(client, sessao_
     luna = next(a["id"] for a in client.get("/animais?limite=50").json() if a["nome"] == "Luna")
     resp = client.post(f"/animais/{luna}/interesses", json={}, headers=cabecalho(client, "maria@exemplo.com", SENHA_DEMO))
     assert resp.status_code == 201 and resp.json()["abrigo_telefone"] == "81988880002"
+
+
+def test_demonstracao_traz_mural_ranking_e_doacao_para_confirmar(client, sessao_factory):
+    with sessao_factory() as db:
+        popular(db)
+    assert len(client.get("/necessidades").json()) == 4
+    ranking = client.get("/apoiadores/ranking", params={"categoria": "petshop"}).json()
+    assert [r["nome"] for r in ranking] == ["Pet Shop Amigo Fiel", "Pet Center Graças"]  # a constância vence
+    patinhas = cabecalho(client, "patinhas@exemplo.com", SENHA_DEMO)
+    pendentes = client.get("/doacoes/recebidas", params={"status": "aguardando_confirmacao"}, headers=patinhas).json()
+    assert [d["nome_apoiador"] for d in pendentes] == ["Pet Shop Amigo Fiel"]

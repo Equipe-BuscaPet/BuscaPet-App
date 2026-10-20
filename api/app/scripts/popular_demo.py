@@ -14,6 +14,11 @@ Contas criadas (senha de todas: veja SENHA_DEMO):
     cordeiro@exemplo.com              abrigo não verificado (Protetores do Cordeiro, Recife)
     quatropatas@exemplo.com           abrigo não verificado (Amigos de Quatro Patas, Jaboatão)
     maria@exemplo.com / joao@exemplo.com   tutores
+    amigofiel@, petcenter@, clinicaboavista@, racaonordeste@exemplo.com   apoiadores (petshop, petshop,
+                                      clínica e distribuidora), com doações confirmadas em meses seguidos
+                                      para o ranking, e uma doação aguardando a confirmação do Patinhas
+
+O Abrigo Patinhas Felizes (verificado) ganha também necessidades publicadas no mural.
 """
 import argparse
 import datetime
@@ -26,9 +31,19 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.seguranca import hash_senha
 from app.db.session import SessionLocal
+from app.core import pontuacao
 from app.models.animal import Animal
-from app.models.enums import Especie, Sexo, StatusValidacao, TipoConta
-from app.models.usuario import Abrigo, Tutor, Usuario
+from app.models.doacao import Doacao, Necessidade
+from app.models.enums import (
+    Especie,
+    Sexo,
+    StatusDoacao,
+    StatusValidacao,
+    TipoConta,
+    TipoEstabelecimento,
+    UrgenciaNecessidade,
+)
+from app.models.usuario import Abrigo, Apoiador, Tutor, Usuario
 
 SENHA_DEMO = "Senha1234!"
 HOSTS_LOCAIS = {"db", "localhost", "127.0.0.1"}
@@ -76,6 +91,35 @@ TUTORES = [
     ("João Pereira", "joao@exemplo.com", "81999990002", "Olinda"),
 ]
 
+# Necessidades do Abrigo Patinhas Felizes (o único verificado: só ele publica no mural).
+NECESSIDADES = [
+    ("Ração para cão adulto (saco de 15 kg)", 10, UrgenciaNecessidade.ALTA),
+    ("Vermífugo para filhotes", 20, UrgenciaNecessidade.MEDIA),
+    ("Material de limpeza (kit)", 5, UrgenciaNecessidade.MEDIA),
+    ("Areia sanitária (pacote de 4 kg)", 8, UrgenciaNecessidade.BAIXA),
+]
+
+# nome, e-mail, CNPJ, tipo, endereço, lat, lng, doações confirmadas por mês (0 = este mês, 1 = o anterior...)
+APOIADORES = [
+    ("Pet Shop Amigo Fiel", "amigofiel@exemplo.com", "12034567000168", TipoEstabelecimento.PETSHOP,
+     "Rua dos Navegantes, 300, Recife", -8.1203, -34.9011, {0: 1, 1: 1, 2: 1}),
+    ("Pet Center Graças", "petcenter@exemplo.com", "23045678000196", TipoEstabelecimento.PETSHOP,
+     "Rua das Graças, 150, Recife", -8.0469, -34.8985, {0: 2}),
+    ("Clínica Veterinária Boa Vista", "clinicaboavista@exemplo.com", "34056789000114", TipoEstabelecimento.CLINICA,
+     "Rua da Aurora, 900, Recife", -8.0601, -34.8820, {0: 1, 1: 1}),
+    ("Distribuidora Ração Nordeste", "racaonordeste@exemplo.com", "45067890000197", TipoEstabelecimento.DISTRIBUIDORA,
+     "Av. Recife, 4000, Recife", -8.1060, -34.9420, {0: 3}),
+]
+
+
+def _dia_do_mes(meses_atras: int) -> datetime.datetime:
+    """Dia 5 de N meses atrás (dia 5 para cair no passado mesmo no começo do mês atual)."""
+    hoje = datetime.datetime.now(datetime.UTC)
+    ano, mes = hoje.year, hoje.month
+    for _ in range(meses_atras):
+        ano, mes = pontuacao.mes_anterior(ano, mes)
+    return min(datetime.datetime(ano, mes, 5, 15, tzinfo=datetime.UTC), hoje)
+
 
 def _usuario(db: Session, nome: str, email: str, tipo: TipoConta) -> tuple[Usuario, bool]:
     existente = db.scalar(select(Usuario).where(Usuario.email == email))
@@ -122,8 +166,40 @@ def popular(db: Session) -> dict[str, int]:
             usuario.tutor = Tutor(telefone=telefone, cidade=cidade)
         criados["contas"] += novo
 
+    _popular_doacoes(db, criados)
     db.commit()
     return criados
+
+
+def _popular_doacoes(db: Session, criados: dict[str, int]) -> None:
+    """Necessidades do Patinhas e apoiadores com histórico. Só cria doações para apoiador criado agora."""
+    patinhas = db.scalar(select(Usuario).where(Usuario.email == "patinhas@exemplo.com"))
+    necessidades = {}
+    for item, quantidade, urgencia in NECESSIDADES:
+        n = db.scalar(select(Necessidade).where(Necessidade.abrigo_id == patinhas.id, Necessidade.item == item))
+        if n is None:
+            n = Necessidade(abrigo_id=patinhas.id, item=item, quantidade=quantidade, urgencia=urgencia)
+            db.add(n)
+            db.flush()
+        necessidades[item] = n
+    racao, limpeza = necessidades[NECESSIDADES[0][0]], necessidades[NECESSIDADES[2][0]]
+
+    for nome, email, cnpj, tipo, endereco, lat, lng, por_mes in APOIADORES:
+        usuario, novo = _usuario(db, nome, email, TipoConta.APOIADOR)
+        criados["contas"] += novo
+        if not novo:
+            continue
+        usuario.apoiador = Apoiador(cnpj=cnpj, tipo_estabelecimento=tipo, endereco=endereco, latitude=lat, longitude=lng)
+        db.flush()
+        for meses_atras, quantas in por_mes.items():
+            for _ in range(quantas):
+                momento = _dia_do_mes(meses_atras)
+                db.add(Doacao(apoiador_id=usuario.id, abrigo_id=patinhas.id, necessidade_id=racao.id if meses_atras == 0 else None,
+                              item=racao.item, quantidade=1, status=StatusDoacao.CONFIRMADA, registrado_em=momento, confirmado_em=momento))
+        if email == "amigofiel@exemplo.com":  # o que o abrigo tem para confirmar hoje
+            db.add(Doacao(apoiador_id=usuario.id, abrigo_id=patinhas.id, necessidade_id=limpeza.id, item=limpeza.item, quantidade=2))
+        db.flush()
+        pontuacao.recalcular(db, usuario.id)
 
 
 def main() -> int:
