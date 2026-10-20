@@ -80,6 +80,9 @@ export default function Mapa() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [avisoLocal, setAvisoLocal] = useState('')
+  const [podeMarcar, setPodeMarcar] = useState(false) // RF-11: localização negada → marcar a posição no mapa
+  const [marcando, setMarcando] = useState(false)
+  const [destacado, setDestacado] = useState(null) // RF-09: o ponto clicado destaca o item na lista
 
   const ir = useCallback((caminho) => navegar(caminho), [navegar])
 
@@ -157,6 +160,7 @@ export default function Mapa() {
         a.distancia_km != null && `A ${textoKm(a.distancia_km)} de você`,
       ], { texto: 'Ver perfil do abrigo', acao: () => ir(`/abrigos/${a.id}`) }))
       marcador.bindTooltip(a.nome_abrigo)
+      marcador.on('click', () => setDestacado(`abrigo-${a.id}`))
       marcador.addTo(camada.current)
       marcadores.current.set(`abrigo-${a.id}`, marcador)
       pontos.push([a.latitude, a.longitude])
@@ -174,6 +178,7 @@ export default function Mapa() {
         resumoCaracteristicas(r), `${t.rotuloData} ${textoData(r[t.campoData])}`, 'Local aproximado',
         r.distancia_km != null && `A ${textoKm(r.distancia_km)} de você`,
       ], { texto: 'Ver registro', acao: () => ir(`${t.caminhoTela}/${r.id}`) }))
+      marcador.on('click', () => setDestacado(`${r.tipo}-${r.id}`))
       marcador.addTo(camada.current)
       marcadores.current.set(`${r.tipo}-${r.id}`, marcador)
       pontos.push([r.latitude, r.longitude])
@@ -187,6 +192,27 @@ export default function Mapa() {
     if (pontos.length > 1) m.fitBounds(pontos, { padding: [40, 40], maxZoom: 15 })
     else if (pontos.length === 1) m.setView(pontos[0], 14)
   }, [abrigos, animais, posicao, ir])
+
+  // RF-09: o item do ponto clicado aparece destacado e a lista rola até ele.
+  useEffect(() => {
+    if (!destacado) return
+    document.querySelector(`[data-chave="${destacado}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [destacado])
+
+  // RF-11: no modo "marcar minha posição", o próximo clique no mapa vira a posição da pessoa.
+  useEffect(() => {
+    const m = mapa.current
+    if (!m || !marcando) return
+    m.getContainer().style.cursor = 'crosshair'
+    const aoClicar = (e) => {
+      setPosicao({ lat: Number(e.latlng.lat.toFixed(5)), lng: Number(e.latlng.lng.toFixed(5)) })
+      setMarcando(false)
+      setPodeMarcar(false)
+      setAvisoLocal('')
+    }
+    m.once('click', aoClicar)
+    return () => { m.off('click', aoClicar); m.getContainer().style.cursor = '' }
+  }, [marcando])
 
   function trocarAba(chave) {
     setParams(chave === 'animais' ? { ver: 'animais' } : {}, { replace: true })
@@ -217,10 +243,12 @@ export default function Mapa() {
   function perto() {
     setAvisoLocal('')
     if (posicao) { setPosicao(null); setRaio(''); return } // segundo clique desliga
-    if (!navigator.geolocation) return setAvisoLocal('Seu navegador não oferece localização. O mapa continua mostrando tudo.')
+    if (marcando) { setMarcando(false); return }
+    const semLocalizacao = (texto) => { setAvisoLocal(texto); setPodeMarcar(true) }
+    if (!navigator.geolocation) return semLocalizacao('Seu navegador não oferece localização.')
     navigator.geolocation.getCurrentPosition(
       (p) => setPosicao({ lat: Number(p.coords.latitude.toFixed(5)), lng: Number(p.coords.longitude.toFixed(5)) }),
-      () => setAvisoLocal('Não foi possível obter sua localização. Verifique a permissão do navegador; enquanto isso o mapa mostra tudo.'),
+      () => semLocalizacao('Não foi possível obter sua localização (permissão negada ou indisponível).'),
       { timeout: 10000 },
     )
   }
@@ -316,7 +344,14 @@ export default function Mapa() {
             </div>
           </div>
 
-          {avisoLocal && <div className="aviso aviso--atencao" role="status">{avisoLocal}</div>}
+          {avisoLocal && (
+            <div className="aviso aviso--atencao" role="status">
+              {avisoLocal}{' '}
+              {marcando ? 'Clique no mapa no lugar onde você está.' : podeMarcar && (
+                <>Você pode <button type="button" className="botao-link" onClick={() => setMarcando(true)}>marcar sua posição no mapa</button> ou continuar vendo tudo.</>
+              )}
+            </div>
+          )}
           {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
 
           <div className="mapa-lista">
@@ -331,7 +366,7 @@ export default function Mapa() {
                 {abrigos.map((a) => {
                   const whats = linkWhatsApp(a.telefone)
                   return (
-                    <li key={a.id} className="cartao" data-abrigo={a.id}>
+                    <li key={a.id} className={`cartao${destacado === `abrigo-${a.id}` ? ' item-destacado' : ''}`} data-abrigo={a.id} data-chave={`abrigo-${a.id}`}>
                       <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
                         <h2 style={{ marginBottom: 0, fontSize: '1.05rem' }}>{a.nome_abrigo}</h2>
                         <span className={`etiqueta ${a.verificado ? 'etiqueta--ok' : 'etiqueta--atencao'}`}>{a.verificado ? 'Verificado' : 'Não verificado'}</span>
@@ -358,7 +393,7 @@ export default function Mapa() {
                 {animais.map((r) => {
                   const t = TIPOS_REGISTRO[r.tipo]
                   return (
-                    <li key={`${r.tipo}-${r.id}`} className="cartao registro-mini">
+                    <li key={`${r.tipo}-${r.id}`} className={`cartao registro-mini${destacado === `${r.tipo}-${r.id}` ? ' item-destacado' : ''}`} data-chave={`${r.tipo}-${r.id}`}>
                       <span className={`camada__marca camada__marca--${r.tipo === 'perdido' ? 'perdidos' : 'avistamentos'}`} aria-hidden="true" />
                       <div>
                         <div className="registro-mini__topo">

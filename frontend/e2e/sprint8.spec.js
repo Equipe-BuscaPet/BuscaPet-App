@@ -120,3 +120,38 @@ test('usabilidade: mostrar a senha, pular para o conteúdo e título da página'
   await pular.press('Enter')
   await expect(page.locator('#conteudo')).toBeFocused()
 })
+
+test('sem permissão de localização, a pessoa marca a própria posição no mapa (RF-11)', async ({ page }) => {
+  await page.goto('/mapa')
+  await page.getByRole('button', { name: /Perto de mim/ }).click()
+  await expect(page.getByRole('status')).toContainText('Não foi possível obter sua localização')
+  await page.getByRole('button', { name: 'marcar sua posição no mapa' }).click()
+  await expect(page.getByRole('status')).toContainText('Clique no mapa no lugar onde você está.')
+  await page.locator('.mapa').first().click({ position: { x: 120, y: 120 } })
+  await expect(page.getByText('mais perto primeiro')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Perto de mim/ })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('clicar no ponto do mapa destaca o item na lista (RF-09)', async ({ page, request }) => {
+  await criarConta(request, 'abrigo') // garante pelo menos um abrigo no mapa
+  await page.goto('/mapa')
+  await expect(page.locator('.lista-abrigos li').first()).toBeVisible()
+  await page.locator('path.leaflet-interactive').first().click({ force: true })
+  await expect(page.locator('.lista-abrigos li.item-destacado')).toHaveCount(1)
+})
+
+test('filtros combinados do catálogo (RF-14)', async ({ page, request }) => {
+  const abrigo = await criarConta(request, 'abrigo')
+  const idoso = await criarAnimal(request, abrigo, { idade_estimada_meses: 130, castrado: true })
+  const filhote = await criarAnimal(request, abrigo, { idade_estimada_meses: 3 })
+  await page.goto(`/?abrigo=${abrigo.usuario.id}`)
+  await page.getByRole('button', { name: 'Mais filtros' }).click()
+  await page.getByLabel('Idade').selectOption('idoso')
+  await expect(page.getByRole('button', { name: 'Mais filtros (1)' })).toBeVisible()
+  await expect(page.locator(`a[href="/animais/${idoso.id}"]`)).toBeVisible()
+  await expect(page.locator(`a[href="/animais/${filhote.id}"]`)).toHaveCount(0)
+  await page.getByLabel('Castrado').check()
+  await expect(page.locator(`a[href="/animais/${idoso.id}"]`)).toBeVisible()
+  await page.getByRole('button', { name: 'Limpar estes filtros' }).click()
+  await expect(page.locator(`a[href="/animais/${filhote.id}"]`)).toBeVisible()
+})
