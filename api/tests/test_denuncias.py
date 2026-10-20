@@ -119,3 +119,19 @@ def test_interesse_aprovado_nao_e_mexido_quando_o_animal_vira_adotado(client, an
     client.patch(f"/interesses/{i1['id']}", json={"status": "aprovado"}, headers=h_abrigo)
     client.patch(f"/animais/{anuncio['id']}", json={"status": "adotado"}, headers=h_abrigo)
     assert client.get("/interesses/meus", headers=t1).json()[0]["status"] == "aprovado"
+
+
+def test_animal_que_volta_a_ficar_disponivel_desfaz_a_aprovacao(client, anuncio, abrigo_aprovado):
+    # Antes: o aprovado continuava "aprovado" e o abrigo conseguia aprovar um segundo interesse.
+    h_abrigo = abrigo_aprovado["headers"]
+    t1, t2 = tutor(client, "t1@exemplo.com"), tutor(client, "t2@exemplo.com")
+    i1 = client.post(f"/animais/{anuncio['id']}/interesses", json={}, headers=t1).json()
+    i2 = client.post(f"/animais/{anuncio['id']}/interesses", json={}, headers=t2).json()
+    client.patch(f"/interesses/{i1['id']}", json={"status": "aprovado"}, headers=h_abrigo)
+
+    client.patch(f"/animais/{anuncio['id']}", json={"status": "disponivel"}, headers=h_abrigo)  # a adoção não deu certo
+    assert client.get("/interesses/meus", headers=t1).json()[0]["status"] == "recusado"
+    assert "não foi concluída" in notificacoes(client, t1, "interesse")[0]
+    assert client.patch(f"/interesses/{i2['id']}", json={"status": "aprovado"}, headers=h_abrigo).status_code == 200
+    aprovados = [i for i in client.get("/interesses/recebidos", headers=h_abrigo).json() if i["status"] == "aprovado"]
+    assert len(aprovados) == 1  # nunca dois aprovados para o mesmo animal

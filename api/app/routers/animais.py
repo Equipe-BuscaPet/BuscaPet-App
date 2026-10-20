@@ -179,6 +179,8 @@ def atualizar(
         setattr(animal, campo, valor)
     if animal.status != situacao_antes and animal.status in FORA_PARA_SEMPRE:
         regras.encerrar_interesses_abertos(db, animal, abrigo.usuario_id, MOTIVO[animal.status])
+    if situacao_antes == StatusAnimal.EM_PROCESSO and animal.status == StatusAnimal.DISPONIVEL:
+        regras.desfazer_aprovacao(db, animal, abrigo.usuario_id)
     auditoria.registrar(
         db, abrigo.usuario_id, "animal.atualizado", "animal", animal.id, animal=animal.nome, campos=sorted(enviados),
         situacao=f"{situacao_antes.value} → {animal.status.value}" if animal.status != situacao_antes else None,
