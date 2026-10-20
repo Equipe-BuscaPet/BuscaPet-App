@@ -5,7 +5,6 @@
 """
 import pytest
 
-from tests.conftest import CNPJ_VALIDO, SENHA, cabecalho, dados_animal, dados_tutor
 
 PERFIS = ["visitante", "tutor", "abrigo", "apoiador", "admin"]
 LOGADOS = {"tutor", "abrigo", "apoiador", "admin"}
@@ -39,23 +38,6 @@ MATRIZ = [
     ("GET", "/admin/usuarios", {"admin"}, None),
     ("GET", "/admin/denuncias", {"admin"}, None),
 ]
-
-
-@pytest.fixture()
-def contas(client, admin, abrigo_aprovado) -> dict:
-    client.post("/auth/cadastro", json=dados_tutor())
-    client.post("/auth/cadastro", json={
-        "tipo_conta": "apoiador", "nome": "Loja", "email": "loja@exemplo.com", "senha": SENHA,
-        "cnpj": CNPJ_VALIDO, "tipo_estabelecimento": "petshop", "endereco": "Av. Brasil, 1",
-    })
-    animal = client.post("/animais", json=dados_animal(), headers=abrigo_aprovado["headers"]).json()
-    return {
-        "cabecalhos": {
-            "visitante": {}, "tutor": cabecalho(client, "tutor@exemplo.com"), "abrigo": abrigo_aprovado["headers"],
-            "apoiador": cabecalho(client, "loja@exemplo.com"), "admin": admin,
-        },
-        "animal": animal["id"],
-    }
 
 
 @pytest.mark.parametrize("metodo, rota, permitidos, corpo", MATRIZ, ids=[f"{m} {r}" for m, r, _, _ in MATRIZ])

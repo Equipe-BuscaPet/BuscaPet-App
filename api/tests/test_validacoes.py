@@ -8,7 +8,6 @@ import datetime
 import pytest
 
 from tests.conftest import SENHA, dados_abrigo, dados_tutor
-from tests.test_permissoes import contas  # noqa: F401 — fixture com tutor, abrigo (com animal), apoiador e admin
 
 AMANHA = (datetime.date.today() + datetime.timedelta(days=3)).isoformat()
 
@@ -46,7 +45,7 @@ CASOS = [
 
 
 @pytest.mark.parametrize("cid, perfil, metodo, rota, corpo, codigo, trecho", CASOS, ids=[c[0] for c in CASOS])
-def test_validacao(client, contas, cid, perfil, metodo, rota, corpo, codigo, trecho):  # noqa: F811
+def test_validacao(client, contas, cid, perfil, metodo, rota, corpo, codigo, trecho):
     cab = contas["cabecalhos"][perfil] if perfil else {}
     r = client.request(metodo, rota.format(animal=contas["animal"]), json=corpo, headers=cab)
     assert r.status_code == codigo, f"{cid}: esperado {codigo}, obtido {r.status_code} — {r.text}"

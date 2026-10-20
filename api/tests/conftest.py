@@ -104,3 +104,21 @@ def abrigo_aprovado(client, admin) -> dict:
     ok = client.patch(f"/admin/abrigos/{usuario_id}/validacao", json={"status": "aprovado"}, headers=admin)
     assert ok.status_code == 200, ok.text
     return {"headers": cabecalho(client, "abrigo@exemplo.com"), "id": usuario_id}
+
+
+# Um de cada perfil, mais um animal do abrigo: usado pela matriz de permissões e pela suíte de validação.
+@pytest.fixture()
+def contas(client, admin, abrigo_aprovado) -> dict:
+    client.post("/auth/cadastro", json=dados_tutor())
+    client.post("/auth/cadastro", json={
+        "tipo_conta": "apoiador", "nome": "Loja", "email": "loja@exemplo.com", "senha": SENHA,
+        "cnpj": CNPJ_VALIDO, "tipo_estabelecimento": "petshop", "endereco": "Av. Brasil, 1",
+    })
+    animal = client.post("/animais", json=dados_animal(), headers=abrigo_aprovado["headers"]).json()
+    return {
+        "cabecalhos": {
+            "visitante": {}, "tutor": cabecalho(client, "tutor@exemplo.com"), "abrigo": abrigo_aprovado["headers"],
+            "apoiador": cabecalho(client, "loja@exemplo.com"), "admin": admin,
+        },
+        "animal": animal["id"],
+    }
