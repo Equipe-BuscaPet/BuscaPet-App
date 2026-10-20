@@ -6,19 +6,22 @@ Regras de perfil:
   enxergam também os seus/todos.
 - Cadastrar e atualizar: só abrigo não suspenso, e só os animais do próprio abrigo.
 - Excluir: o abrigo dono ou o administrador (moderação).
+- Fotos (RF-17): de 1 a 5 por animal, enviadas e removidas pelo abrigo dono; a primeira é a capa do catálogo.
+  Mesmo tratamento das fotos do reencontro: validadas, reduzidas e regravadas sem metadados (GPS).
 """
 import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core import auditoria
+from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
 from app.models.animal import Animal, Foto, Interesse
-from app.models.enums import Especie, StatusAnimal, StatusValidacao, TipoConta
+from app.models.enums import EntidadeFoto, Especie, StatusAnimal, StatusValidacao, TipoConta
 from app.models.reencontro import DescritorVisual
 from app.models.usuario import Abrigo, Usuario
 from app.schemas.animal import AnimalCreate, AnimalOut, AnimalUpdate
@@ -32,6 +35,7 @@ def _para_datetime(dia: datetime.date | None) -> datetime.datetime | None:
 
 
 def _saida(animal: Animal, abrigo: Abrigo) -> AnimalOut:
+    """As fotos vêm do relacionamento Animal.fotos (ordenado; a primeira é a capa), carregado em lote nas listas."""
     saida = AnimalOut.model_validate(animal)
     saida.nome_abrigo = abrigo.nome_abrigo
     saida.abrigo_verificado = abrigo.status_validacao == StatusValidacao.APROVADO
@@ -49,6 +53,7 @@ def _publico_visivel(consulta):
 def _consulta_base():
     return (
         select(Animal, Abrigo)
+        .options(selectinload(Animal.fotos))  # fotos de todos os animais da página numa consulta só (sem N+1)
         .join(Abrigo, Abrigo.usuario_id == Animal.abrigo_id)
         .join(Usuario, Usuario.id == Abrigo.usuario_id)
     )
@@ -192,7 +197,8 @@ def excluir(
     if usuario.tipo_conta == TipoConta.ABRIGO and (usuario.abrigo is None or usuario.abrigo.status_validacao == StatusValidacao.REJEITADO):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Seu abrigo foi suspenso pela administração.")
 
-    foto_ids = list(db.scalars(select(Foto.id).where(Foto.entidade_tipo == "animal", Foto.entidade_id == animal.id)))
+    fotos_do_animal = list(db.scalars(select(Foto).where(Foto.entidade_tipo == "animal", Foto.entidade_id == animal.id)))
+    foto_ids = [f.id for f in fotos_do_animal]
     if foto_ids:
         db.execute(delete(DescritorVisual).where(DescritorVisual.foto_id.in_(foto_ids)))
         db.execute(delete(Foto).where(Foto.id.in_(foto_ids)))
@@ -207,4 +213,88 @@ def excluir(
             status.HTTP_409_CONFLICT,
             "Este animal tem registros vinculados e não pode ser excluído. Altere o status para adotado ou transferido.",
         )
+    armazenamento.apagar([armazenamento.nome_da_url(f.url) for f in fotos_do_animal])  # só depois do banco confirmar
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---------- RF-17: fotos do animal ----------
+
+def _fotos_do_animal(db: Session, animal_id: int) -> list[Foto]:
+    return list(db.scalars(select(Foto).where(Foto.entidade_tipo == EntidadeFoto.ANIMAL.value, Foto.entidade_id == animal_id)
+                           .order_by(Foto.ordem, Foto.id)))
+
+
+def _com_fotos(db: Session, animal: Animal, abrigo: Abrigo) -> AnimalOut:
+    db.expire(animal, ["fotos"])  # relê as fotos depois da mudança
+    return _saida(animal, abrigo)
+
+
+@router.post("/{animal_id}/fotos", response_model=AnimalOut, status_code=status.HTTP_201_CREATED)
+async def enviar_fotos(
+    animal_id: int,
+    fotos: list[UploadFile] = File(..., description="De 1 a 5 fotos no total por animal (JPEG, PNG ou WebP)"),
+    abrigo: Abrigo = Depends(get_abrigo_operante),
+    db: Session = Depends(get_db),
+) -> AnimalOut:
+    """Acrescenta fotos ao animal. Ou entram todas, ou nenhuma (se uma for inválida, nada é gravado)."""
+    animal = _animal_do_abrigo(animal_id, abrigo, db)
+    existentes = _fotos_do_animal(db, animal.id)
+    fotos = [f for f in fotos if f.filename]
+    if not fotos:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Escolha pelo menos uma foto.")
+    if len(existentes) + len(fotos) > armazenamento.MAX_FOTOS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Cada animal pode ter no máximo {armazenamento.MAX_FOTOS} fotos (este já tem {len(existentes)}).",
+        )
+    prontas = []
+    for numero, foto in enumerate(fotos, start=1):
+        try:
+            prontas.append(armazenamento.processar(await foto.read(armazenamento.tamanho_maximo_bytes() + 1)))
+        except armazenamento.FotoInvalida as erro:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Foto {numero}: {erro}")
+    nomes: list[str] = []
+    try:
+        proxima = max((f.ordem for f in existentes), default=-1) + 1
+        for i, jpeg in enumerate(prontas):
+            nome = armazenamento.salvar(jpeg)
+            nomes.append(nome)
+            db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=armazenamento.url_publica(nome), ordem=proxima + i))
+        auditoria.registrar(db, abrigo.usuario_id, "animal.fotos", "animal", animal.id, animal=animal.nome, enviadas=len(prontas))
+        db.commit()
+    except Exception:
+        db.rollback()
+        armazenamento.apagar(nomes)
+        raise
+    return _com_fotos(db, animal, abrigo)
+
+
+def _foto_do_animal(db: Session, animal: Animal, foto_id: int) -> Foto:
+    foto = db.get(Foto, foto_id)
+    if foto is None or foto.entidade_tipo != EntidadeFoto.ANIMAL.value or foto.entidade_id != animal.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Foto não encontrada.")
+    return foto
+
+
+@router.delete("/{animal_id}/fotos/{foto_id}", response_model=AnimalOut)
+def excluir_foto(animal_id: int, foto_id: int, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> AnimalOut:
+    animal = _animal_do_abrigo(animal_id, abrigo, db)
+    foto = _foto_do_animal(db, animal, foto_id)
+    url = foto.url
+    db.execute(delete(DescritorVisual).where(DescritorVisual.foto_id == foto.id))
+    db.delete(foto)
+    auditoria.registrar(db, abrigo.usuario_id, "animal.fotos", "animal", animal.id, animal=animal.nome, removida=foto_id)
+    db.commit()
+    armazenamento.apagar([armazenamento.nome_da_url(url)])
+    return _com_fotos(db, animal, abrigo)
+
+
+@router.patch("/{animal_id}/fotos/{foto_id}/capa", response_model=AnimalOut)
+def definir_capa(animal_id: int, foto_id: int, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> AnimalOut:
+    """A foto escolhida passa a ser a primeira (a capa do catálogo); as outras mantêm a ordem."""
+    animal = _animal_do_abrigo(animal_id, abrigo, db)
+    capa = _foto_do_animal(db, animal, foto_id)
+    for ordem, foto in enumerate([capa] + [f for f in _fotos_do_animal(db, animal.id) if f.id != capa.id]):
+        foto.ordem = ordem
+    db.commit()
+    return _com_fotos(db, animal, abrigo)

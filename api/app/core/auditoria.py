@@ -23,6 +23,7 @@ ROTULOS = {
     "animal.cadastrado": "Animal cadastrado",
     "animal.atualizado": "Animal alterado",
     "animal.excluido": "Animal excluído",
+    "animal.fotos": "Fotos do animal alteradas",
     "interesse.registrado": "Interesse de adoção registrado",
     "interesse.desistencia": "Tutor desistiu do interesse",
     "interesse.em_conversa": "Abrigo iniciou conversa",

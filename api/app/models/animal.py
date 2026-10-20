@@ -43,7 +43,7 @@ class Animal(Base):
     fotos: Mapped[list["Foto"]] = relationship(
         primaryjoin="and_(Foto.entidade_tipo=='animal', foreign(Foto.entidade_id)==Animal.id)",
         viewonly=True,
-        order_by="Foto.ordem",
+        order_by="(Foto.ordem, Foto.id)",
     )
     interesses: Mapped[list["Interesse"]] = relationship(back_populates="animal")
 

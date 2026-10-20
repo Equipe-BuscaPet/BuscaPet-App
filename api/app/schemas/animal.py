@@ -51,6 +51,13 @@ class AnimalUpdate(BaseModel):
     status: StatusAnimal | None = None
 
 
+class FotoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+
+
 class AnimalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -75,3 +82,4 @@ class AnimalOut(BaseModel):
     condicao_chegada: str | None
     status: StatusAnimal
     criado_em: datetime.datetime
+    fotos: list[FotoOut] = []  # a primeira é a capa (RF-17)
