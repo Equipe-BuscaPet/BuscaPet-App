@@ -149,3 +149,9 @@ def test_troca_de_senha_e_conta_ficam_no_historico_sem_dados_sensiveis(client, c
     client.post("/usuarios/eu/senha", json={"senha_atual": SENHA, "senha_nova": "OutraSenha123!"}, headers=cenario["tutor"])
     [log] = client.get("/admin/logs", params={"acao": "conta.senha_trocada"}, headers=cenario["admin"]).json()["itens"]
     assert log["detalhes"] == {} and "Senha" not in str(log["detalhes"])
+
+
+def test_navegador_consegue_ler_o_nome_do_arquivo_csv(client, cenario):
+    # A interface roda em outra origem: o CORS precisa expor o Content-Disposition (achado no teste E2E).
+    r = client.get("/admin/logs.csv", headers={**cenario["admin"], "Origin": "http://localhost:5173"})
+    assert "content-disposition" in r.headers.get("access-control-expose-headers", "").lower()

@@ -44,11 +44,17 @@ export async function criarConta(request, tipo = 'tutor') {
 // Administrador só de teste, criado por api/app/scripts/preparar_banco_teste.py.
 const ADMIN_E2E = 'admin-e2e@teste.buscapet.dev'
 
-// Concede o selo Verificado a um abrigo (só abrigo verificado publica necessidades e recebe doações).
-export async function verificarAbrigo(request, abrigo) {
+// O administrador de teste, como conta (token) para usar com entrarComo().
+export async function contaAdmin(request) {
   const login = await request.post(`${API}/auth/login`, { form: { username: ADMIN_E2E, password: SENHA } })
   expect(login.ok(), 'admin de teste: rode o e2e pelo Playwright para o banco ser preparado').toBeTruthy()
-  const { access_token: token } = await login.json()
+  const { access_token: token, usuario } = await login.json()
+  return { email: ADMIN_E2E, token, usuario }
+}
+
+// Concede o selo Verificado a um abrigo (só abrigo verificado publica necessidades e recebe doações).
+export async function verificarAbrigo(request, abrigo) {
+  const { token } = await contaAdmin(request)
   const r = await request.patch(`${API}/admin/abrigos/${abrigo.usuario.id}/validacao`, {
     headers: { Authorization: `Bearer ${token}` }, data: { status: 'aprovado' },
   })

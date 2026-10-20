@@ -34,6 +34,8 @@ app.add_middleware(
     allow_origins=settings.cors_origens,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Sem isto o navegador esconde o nome sugerido dos relatórios CSV (a interface fica de outra origem).
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(auth.router)
