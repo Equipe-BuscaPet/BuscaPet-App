@@ -208,6 +208,15 @@ def test_raio_de_busca_do_tutor_e_respeitado(client, tutor, outro_tutor):
     assert alertas(client, tutor) == []
 
 
+def test_tutor_com_duas_perdas_recebe_um_alerta_so_com_a_mais_proxima(client, tutor, outro_tutor):
+    # Defeito achado no roteiro em navegador: cada perda gerava um alerta, e as mensagens eram iguais.
+    client.post("/perdidos", data=campos_perdido(latitude="-8.08", longitude="-34.9"), files=arquivos(imagem()), headers=tutor)  # ~2,7 km
+    client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor)  # ~1,4 km
+    client.post("/avistamentos", data=campos_avistamento(especie="cao"), files=arquivos(imagem()), headers=outro_tutor)
+    [alerta] = alertas(client, tutor)
+    assert "a cerca de 1 km" in alerta["mensagem"]
+
+
 def test_tutor_marca_caso_resolvido_e_ele_sai_do_mapa(client, tutor, outro_tutor):
     criado = client.post("/perdidos", data=campos_perdido(), files=arquivos(imagem()), headers=tutor).json()
     caminho = f"/perdidos/{criado['id']}/resolvido"

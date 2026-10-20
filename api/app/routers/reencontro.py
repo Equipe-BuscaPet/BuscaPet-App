@@ -298,6 +298,7 @@ def _alertar_perdidos_proximos(db: Session, avistamento: Avistamento, data_avist
 
     A distância usa os pontos exatos (é cálculo interno); a mensagem mostra só o valor arredondado.
     A data entra como o valor gravado (e não o lido de volta) para comparar igual em SQLite e Postgres.
+    Um alerta por tutor, com a perda mais próxima: quem tem duas perdas da mesma espécie não recebe dois avisos iguais.
     """
     candidatos = db.scalars(select(AnimalPerdido).where(
         AnimalPerdido.resolvido.is_(False),
@@ -305,13 +306,15 @@ def _alertar_perdidos_proximos(db: Session, avistamento: Avistamento, data_avist
         AnimalPerdido.tutor_id != avistamento.usuario_id,  # quem avistou não é avisado do próprio registro
         AnimalPerdido.data_desaparecimento <= data_avistamento,  # visto antes de sumir não é ele
     ))
+    mais_perto: dict[int, float] = {}  # tutor -> menor distância entre as perdas dele
     for perdido in candidatos:
         km = distancia_km(perdido.latitude, perdido.longitude, avistamento.latitude, avistamento.longitude)
-        if km > perdido.raio_busca_km:
-            continue
+        if km <= perdido.raio_busca_km and km < mais_perto.get(perdido.tutor_id, float("inf")):
+            mais_perto[perdido.tutor_id] = km
+    for tutor_id, km in mais_perto.items():
         perto = "a menos de 1 km" if km < 1 else f"a cerca de {round(km):d} km"
         db.add(Notificacao(
-            usuario_id=perdido.tutor_id,
+            usuario_id=tutor_id,
             mensagem=f"{ESPECIE_NO_ALERTA[avistamento.especie]} foi avistado {perto} de onde o seu animal sumiu. Veja se é ele.",
             referencia_tipo="avistamento", referencia_id=avistamento.id,
         ))
