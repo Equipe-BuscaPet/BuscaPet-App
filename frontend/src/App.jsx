@@ -8,14 +8,19 @@ import Admin from './pages/Admin'
 import AnimalDetalhe from './pages/AnimalDetalhe'
 import Cadastro from './pages/Cadastro'
 import Catalogo from './pages/Catalogo'
+import DoacoesAbrigo from './pages/DoacoesAbrigo'
 import Interessados from './pages/Interessados'
 import Login from './pages/Login'
 import Mapa from './pages/Mapa'
 import MeusInteresses from './pages/MeusInteresses'
 import MeusRegistros from './pages/MeusRegistros'
+import MinhasDoacoes from './pages/MinhasDoacoes'
 import MinhaConta from './pages/MinhaConta'
 import Notificacoes from './pages/Notificacoes'
 import PainelAbrigo from './pages/PainelAbrigo'
+import PerfilAbrigo from './pages/PerfilAbrigo'
+import PerfilApoiador from './pages/PerfilApoiador'
+import QuemApoia from './pages/QuemApoia'
 import Reencontro from './pages/Reencontro'
 import RegistroDetalhe from './pages/RegistroDetalhe'
 
@@ -32,6 +37,7 @@ function Cabecalho() {
           <NavLink to="/mapa">Mapa</NavLink>
           <NavLink to="/" end>Animais</NavLink>
           <NavLink to="/reencontro">Perdidos e achados</NavLink>
+          <NavLink to="/quem-apoia">Quem apoia</NavLink>
         </nav>
         <div className="conta">
           {usuario ? (
@@ -89,6 +95,11 @@ export default function App() {
         <Route path="/mapa" element={<Mapa />} />
         <Route path="/animais/:id" element={<AnimalDetalhe />} />
         <Route path="/reencontro" element={<Reencontro />} />
+        <Route path="/quem-apoia" element={<QuemApoia />} />
+        <Route path="/abrigos/:id" element={<PerfilAbrigo />} />
+        <Route path="/apoiadores/:id" element={<PerfilApoiador />} />
+        <Route path="/doacoes" element={<Protegido tipos={['abrigo']}><DoacoesAbrigo /></Protegido>} />
+        <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador']}><MinhasDoacoes /></Protegido>} />
         <Route path="/reencontro/perdidos/:id" element={<RegistroDetalhe key="perdido" tipo="perdido" />} />
         <Route path="/reencontro/avistamentos/:id" element={<RegistroDetalhe key="avistamento" tipo="avistamento" />} />
         <Route path="/perdi" element={<AssistenteRegistro key="perdido" tipo="perdido" />} />

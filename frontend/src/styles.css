@@ -399,11 +399,48 @@ button.miniatura { cursor: pointer; }
   font: inherit; font-weight: 600; background: none; border: 0; text-align: left; cursor: pointer;
 }
 .menu-conta__item:hover, .menu-conta__item.active { background: var(--surface-2); }
-.menu-conta__item--breve { color: var(--ink-dim); font-weight: 500; cursor: default; }
-.menu-conta__item--breve:hover { background: none; }
-.menu-conta__secao { margin: 0.4rem 1rem 0.1rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); }
 .menu-conta__sair { border-top: 1px solid var(--line); margin-top: 0.3rem; color: var(--erro-ink); }
 @media (max-width: 700px) {
   .menu-conta { position: static; }
   .menu-conta__painel { left: 16px; right: 16px; top: calc(100% + 0.25rem); width: auto; }
 }
+
+/* ---------- Doações e "Quem apoia" (RF-30 a RF-35) ---------- */
+.necessidades { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.necessidade { display: grid; gap: 0.5rem; align-content: start; }
+.necessidade h3 { margin: 0; font-size: 1.05rem; }
+.necessidade__topo { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
+.necessidade__abrigo { color: var(--ink-dim); font-size: 0.9rem; margin: 0; }
+.progresso { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.progresso__barra { height: 100%; background: var(--ok-ink); border-radius: 99px; }
+.progresso__texto { font-size: 0.85rem; color: var(--ink-dim); margin: 0; }
+.doar { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; }
+.doar input { width: 6rem; }
+.chamada-apoio { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--navy); color: #fff; border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 1.5rem; }
+.chamada-apoio h2 { margin: 0 0 0.2rem; color: #fff; }
+.chamada-apoio p { margin: 0; opacity: 0.9; }
+.destaques { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-bottom: 1.5rem; }
+.destaque { text-align: center; display: grid; gap: 0.25rem; }
+.destaque__medalha { font-size: 2rem; }
+.ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.ranking li { display: grid; grid-template-columns: 2.5rem 1fr auto; gap: 0.75rem; align-items: center; }
+.ranking__posicao { font-size: 1.3rem; font-weight: 800; color: var(--ink-dim); text-align: center; }
+.ranking__nome { font-weight: 700; }
+.ranking__detalhe { color: var(--ink-dim); font-size: 0.85rem; }
+.ranking__pontos { font-size: 1.2rem; font-weight: 800; text-align: right; }
+.ranking__pontos small { display: block; font-size: 0.75rem; font-weight: 600; color: var(--ink-dim); }
+.selo-apoio { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
+  background: var(--navy); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.chips a { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.3rem 0.7rem; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.chips a:hover { border-color: var(--accent); }
+.pix { border: 1px dashed var(--accent); border-radius: 12px; padding: 0.75rem 1rem; }
+.pix code { font-size: 1rem; font-weight: 700; }
+.resumo-hoje { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 1.5rem; }
+.resumo-hoje a { display: grid; gap: 0.15rem; text-decoration: none; color: var(--ink); }
+.resumo-hoje a:hover { border-color: var(--accent); }
+.resumo-hoje strong { font-size: 1.8rem; line-height: 1; }
+.resumo-hoje span { color: var(--ink-dim); font-size: 0.9rem; }
+.resumo-hoje .resumo-hoje--acao strong { color: var(--accent); }

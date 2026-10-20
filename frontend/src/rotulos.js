@@ -15,6 +15,14 @@ export const TIPOS_ESTABELECIMENTO = {
   distribuidora: 'Distribuidora',
   pessoa_fisica: 'Pessoa física',
 }
+export const EMOJI_ESTABELECIMENTO = { petshop: '🛍️', clinica: '🩺', distribuidora: '🚚', pessoa_fisica: '🙋' }
+
+// Doações (RF-30 a RF-35)
+export const URGENCIAS = { alta: 'Urgente', media: 'Média', baixa: 'Pode esperar' }
+export const COR_URGENCIA = { alta: 'etiqueta--erro', media: 'etiqueta--atencao', baixa: '' }
+export const STATUS_DOACAO = { aguardando_confirmacao: 'Aguardando o abrigo', confirmada: 'Recebida pelo abrigo', recusada: 'Não recebida' }
+export const COR_DOACAO = { aguardando_confirmacao: 'etiqueta--atencao', confirmada: 'etiqueta--ok', recusada: 'etiqueta--erro' }
+
 export const STATUS_VALIDACAO = { pendente: 'Não verificado', aprovado: 'Verificado', rejeitado: 'Suspenso' }
 
 export const STATUS_INTERESSE = {
@@ -35,7 +43,7 @@ export const ROTULO_CAMPO = {
   status: 'Situação', mensagem: 'Mensagem', senha_nova: 'Nova senha', senha_atual: 'Senha atual',
   cor_predominante: 'Cor predominante', pelagem: 'Pelagem', sinais_particulares: 'Sinais particulares',
   data_desaparecimento: 'Data em que sumiu', data_avistamento: 'Data em que foi visto',
-  raio_busca_km: 'Raio de busca', fotos: 'Fotos',
+  raio_busca_km: 'Raio de busca', fotos: 'Fotos', item: 'Item', quantidade: 'Quantidade', urgencia: 'Urgência',
 }
 
 // Link do WhatsApp a partir de um telefone brasileiro (só dígitos; acrescenta o 55 se faltar).
