@@ -25,9 +25,9 @@ from app.core.deps import exigir_tipo, get_abrigo_operante
 from app.db.session import get_db
 from app.models.animal import Animal, Interesse
 from app.models.doacao import Doacao, Necessidade
-from app.models.enums import StatusAnimal, StatusDoacao, StatusNecessidade, StatusValidacao, TipoConta
+from app.models.enums import StatusAnimal, StatusDenuncia, StatusDoacao, StatusNecessidade, StatusValidacao, TipoConta
 from app.models.reencontro import AnimalPerdido, Avistamento
-from app.models.transversais import LogAuditoria
+from app.models.transversais import Denuncia, LogAuditoria
 from app.models.usuario import Abrigo, Apoiador, Tutor, Usuario
 from app.schemas.relatorio import (
     ApoiadorDoAbrigo,
@@ -266,6 +266,7 @@ def painel_admin(p: Periodo = Depends(periodo), _: Usuario = Depends(somente_adm
         "necessidades_abertas": contar(Necessidade, Necessidade.status == StatusNecessidade.ABERTA),
         "perdidos_ativos": contar(AnimalPerdido, AnimalPerdido.resolvido.is_(False)),
         "abrigos_para_verificar": contar(Abrigo, Abrigo.status_validacao == StatusValidacao.PENDENTE),
+        "denuncias_pendentes": contar(Denuncia, Denuncia.status == StatusDenuncia.PENDENTE),
     }
     desde = _inicio_serie(p)
     _, fim = _limites(p)
@@ -295,7 +296,7 @@ def abrigos_csv(p: Periodo = Depends(periodo), _: Usuario = Depends(somente_admi
     doacoes = dict(db.execute(
         select(Doacao.abrigo_id, func.count()).where(Doacao.status == StatusDoacao.CONFIRMADA, _no(Doacao.confirmado_em, p)).group_by(Doacao.abrigo_id)
     ).all())
-    disponiveis = dict(db.execute(select(Animal.abrigo_id, func.count()).where(Animal.status == StatusAnimal.DISPONIVEL).group_by(Animal.abrigo_id)).all())
+    disponiveis = dict(db.execute(select(Animal.abrigo_id, func.count()).where(Animal.status == StatusAnimal.DISPONIVEL, Animal.removido_em.is_(None)).group_by(Animal.abrigo_id)).all())
     abertas = dict(db.execute(select(Necessidade.abrigo_id, func.count()).where(Necessidade.status == StatusNecessidade.ABERTA).group_by(Necessidade.abrigo_id)).all())
     situacao = {"aprovado": "Verificado", "pendente": "Não verificado", "rejeitado": "Suspenso"}
     linhas = db.execute(select(Abrigo, Usuario).join(Usuario, Usuario.id == Abrigo.usuario_id).order_by(Abrigo.nome_abrigo)).tuples()

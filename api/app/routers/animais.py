@@ -16,7 +16,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.core import auditoria
+from app.core import auditoria, regras
 from app.core import fotos as armazenamento
 from app.core.deps import exigir_tipo, get_abrigo_operante, get_usuario_opcional
 from app.db.session import get_db
@@ -43,10 +43,11 @@ def _saida(animal: Animal, abrigo: Abrigo) -> AnimalOut:
 
 
 def _publico_visivel(consulta):
-    """Filtro de visibilidade pública: conta ativa e abrigo não suspenso."""
+    """Filtro de visibilidade pública: conta ativa, abrigo não suspenso e anúncio não removido pela moderação."""
     return consulta.where(
         Abrigo.status_validacao != StatusValidacao.REJEITADO,
         Usuario.ativo.is_(True),
+        Animal.removido_em.is_(None),
     )
 
 
@@ -57,6 +58,12 @@ def _consulta_base():
         .join(Abrigo, Abrigo.usuario_id == Animal.abrigo_id)
         .join(Usuario, Usuario.id == Abrigo.usuario_id)
     )
+
+
+# Situações em que o animal não volta a ficar disponível: os interesses que esperavam resposta são encerrados.
+FORA_PARA_SEMPRE = {StatusAnimal.ADOTADO, StatusAnimal.OBITO, StatusAnimal.TRANSFERIDO}
+MOTIVO = {StatusAnimal.ADOTADO: "foi adotado", StatusAnimal.OBITO: "o abrigo registrou o falecimento",
+          StatusAnimal.TRANSFERIDO: "foi transferido para outro lugar"}
 
 
 @router.post("", response_model=AnimalOut, status_code=status.HTTP_201_CREATED)
@@ -126,7 +133,7 @@ def _buscar_visivel(animal_id: int, usuario: Usuario | None, db: Session) -> tup
     animal, abrigo = linha
     dono = usuario is not None and usuario.id == animal.abrigo_id
     admin = usuario is not None and usuario.tipo_conta == TipoConta.ADMIN
-    publico = abrigo.status_validacao != StatusValidacao.REJEITADO and abrigo.usuario.ativo
+    publico = abrigo.status_validacao != StatusValidacao.REJEITADO and abrigo.usuario.ativo and animal.removido_em is None
     if not (publico or dono or admin):
         # 404 (e não 403) para não confirmar a existência de cadastros suspensos ou desativados.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Animal não encontrado.")
@@ -170,6 +177,8 @@ def atualizar(
     situacao_antes = animal.status
     for campo, valor in enviados.items():
         setattr(animal, campo, valor)
+    if animal.status != situacao_antes and animal.status in FORA_PARA_SEMPRE:
+        regras.encerrar_interesses_abertos(db, animal, abrigo.usuario_id, MOTIVO[animal.status])
     auditoria.registrar(
         db, abrigo.usuario_id, "animal.atualizado", "animal", animal.id, animal=animal.nome, campos=sorted(enviados),
         situacao=f"{situacao_antes.value} → {animal.status.value}" if animal.status != situacao_antes else None,

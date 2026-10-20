@@ -36,7 +36,7 @@ def listar(
 
     disponiveis = (
         select(Animal.abrigo_id, func.count(Animal.id).label("total"))
-        .where(Animal.status == StatusAnimal.DISPONIVEL)
+        .where(Animal.status == StatusAnimal.DISPONIVEL, Animal.removido_em.is_(None))
         .group_by(Animal.abrigo_id)
         .subquery()
     )
@@ -80,7 +80,7 @@ def perfil(abrigo_id: int, db: Session = Depends(get_db)) -> AbrigoPerfilOut:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Abrigo não encontrado.")
     verificado = abrigo.status_validacao == StatusValidacao.APROVADO
     disponiveis = db.scalar(
-        select(func.count(Animal.id)).where(Animal.abrigo_id == abrigo_id, Animal.status == StatusAnimal.DISPONIVEL)
+        select(func.count(Animal.id)).where(Animal.abrigo_id == abrigo_id, Animal.status == StatusAnimal.DISPONIVEL, Animal.removido_em.is_(None))
     )
     necessidades = []
     if verificado:

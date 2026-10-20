@@ -82,4 +82,5 @@ class AnimalOut(BaseModel):
     condicao_chegada: str | None
     status: StatusAnimal
     criado_em: datetime.datetime
+    removido_em: datetime.datetime | None = None  # anúncio removido pela moderação (RF-41)
     fotos: list[FotoOut] = []  # a primeira é a capa (RF-17)

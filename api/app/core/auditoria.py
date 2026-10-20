@@ -41,6 +41,11 @@ ROTULOS = {
     "doacao.cancelada": "Doação cancelada pelo apoiador",
     "doacao.confirmada": "Doação confirmada pelo abrigo",
     "doacao.recusada": "Doação marcada como não recebida",
+    "denuncia.registrada": "Denúncia de anúncio registrada",
+    "denuncia.ignorado": "Denúncia considerada improcedente",
+    "denuncia.advertido": "Abrigo advertido após denúncia",
+    "denuncia.removido": "Anúncio removido após denúncia",
+    "denuncia.banido": "Abrigo suspenso após denúncia",
 }
 
 

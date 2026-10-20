@@ -14,6 +14,7 @@ from app.routers import (
     animais,
     apoiadores,
     auth,
+    denuncias,
     doacoes,
     fotos,
     interesses,
@@ -50,6 +51,7 @@ app.include_router(notificacoes.router)
 app.include_router(doacoes.router)
 app.include_router(apoiadores.router)
 app.include_router(relatorios.router)
+app.include_router(denuncias.router)
 
 
 @app.get("/health", tags=["infra"])
