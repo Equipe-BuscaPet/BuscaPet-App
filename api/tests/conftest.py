@@ -18,6 +18,17 @@ SENHA = "senha-segura-123"
 CNPJ_VALIDO = "11.222.333/0001-81"
 
 
+@pytest.fixture(autouse=True)
+def caixa_de_saida(tmp_path, monkeypatch):
+    """Os e-mails dos testes (sem SMTP) vão para uma pasta temporária, nunca para api/caixa-de-saida."""
+    from app.core.config import settings
+
+    pasta = tmp_path / "caixa-de-saida"
+    monkeypatch.setattr(settings, "pasta_caixa_saida", pasta)
+    monkeypatch.setattr(settings, "smtp_host", None)
+    return pasta
+
+
 @pytest.fixture()
 def sessao_factory():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

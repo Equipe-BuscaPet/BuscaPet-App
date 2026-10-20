@@ -16,6 +16,8 @@ ROTULOS = {
     "conta.criada": "Conta criada",
     "conta.atualizada": "Dados da conta alterados",
     "conta.senha_trocada": "Senha trocada",
+    "conta.redefinicao_pedida": "Pedido de nova senha (link enviado por e-mail)",
+    "conta.senha_redefinida": "Senha redefinida pelo link do e-mail",
     "conta.desativada": "Conta desativada",
     "abrigo.verificado": "Selo Verificado concedido",
     "abrigo.selo_retirado": "Selo Verificado retirado",

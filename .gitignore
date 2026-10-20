@@ -1,6 +1,7 @@
 .env
 registro-sessoes/
 api/uploads/
+api/caixa-de-saida/
 __pycache__/
 *.pyc
 .venv/

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core import email  # noqa: F401 — registra o envio dos avisos por e-mail (RF-36)
 from app.core.config import settings
 from app.db.session import get_db
 from app.routers import (

@@ -19,6 +19,16 @@ class Settings(BaseSettings):
     # Fotos do reencontro (RF-19/RF-20). Pasta fora do Git; ver app/core/fotos.py.
     pasta_fotos: Path = ENV_FILE.parent / "uploads" / "fotos"
     foto_tamanho_max_mb: int = 8
+    # E-mail (RF-05, RF-36). Sem SMTP_HOST, os e-mails vão para a caixa de saída (arquivos .eml); ver app/core/email.py.
+    smtp_host: str | None = None
+    smtp_porta: int = 587
+    smtp_usuario: str | None = None
+    smtp_senha: str | None = None
+    email_remetente: str = "BuscaPet <nao-responda@buscapet.dev>"
+    pasta_caixa_saida: Path = ENV_FILE.parent / "caixa-de-saida"
+    # Endereço da interface, usado nos links dos e-mails (ex.: redefinir senha).
+    url_interface: str = "http://localhost:5173"
+    redefinir_senha_minutos: int = 30
 
 
 settings = Settings()
