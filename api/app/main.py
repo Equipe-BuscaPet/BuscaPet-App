@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.routers import abrigos, admin, animais, auth, fotos, interesses, notificacoes, reencontro, usuarios
+from app.routers import abrigos, admin, animais, apoiadores, auth, doacoes, fotos, interesses, notificacoes, reencontro, usuarios
 
 app = FastAPI(
     title="BuscaPet API",
@@ -32,6 +32,8 @@ app.include_router(admin.router)
 app.include_router(reencontro.router)
 app.include_router(fotos.router)
 app.include_router(notificacoes.router)
+app.include_router(doacoes.router)
+app.include_router(apoiadores.router)
 
 
 @app.get("/health", tags=["infra"])
