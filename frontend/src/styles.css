@@ -410,6 +410,7 @@ button.miniatura { cursor: pointer; }
 .necessidade { display: grid; gap: 0.5rem; align-content: start; }
 .necessidade h3 { margin: 0; font-size: 1.05rem; }
 .necessidade__topo { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
+.necessidade__topo .etiqueta { white-space: nowrap; flex-shrink: 0; }
 .necessidade__abrigo { color: var(--ink-dim); font-size: 0.9rem; margin: 0; }
 .progresso { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .progresso__barra { height: 100%; background: var(--ok-ink); border-radius: 99px; }
