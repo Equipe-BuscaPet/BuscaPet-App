@@ -79,8 +79,9 @@ O último comando carrega o mesmo cenário de demonstração em qualquer máquin
 todas: `Senha1234!`; as contas estão listadas no topo de `api/app/scripts/popular_demo.py`). É seguro repetir e **só roda
 em banco local**: ele se recusa a rodar contra o Supabase.
 
-API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL
-(`http://localhost:8001`) ainda é placeholder, por isso não sobe junto. O Postgres do Docker
+API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL sobe à
+parte com `docker compose up -d --build nucleo-opencl` (`http://localhost:8001/saude`). Por enquanto ele só
+responde à rota de saúde e roda o spike; detalhes em [`nucleo-opencl/README.md`](nucleo-opencl/README.md). O Postgres do Docker
 começa vazio e é local de cada pessoa (o volume `db_data` guarda os dados entre reinícios;
 `docker compose down` mantém, `docker compose down -v` apaga). Para criar o admin nele:
 `docker compose exec api python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`.

@@ -1,0 +1,2 @@
+# O núcleo roda em Linux (Docker/CI): Makefile e fontes sempre com fim de linha LF.
+* text eol=lf

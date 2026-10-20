@@ -34,8 +34,9 @@ services:
     build: ./nucleo-opencl
     ports:
       - "8001:8001"
-    # PoCL (runtime OpenCL por software) é instalado dentro da imagem — ver
-    # nucleo-opencl/Dockerfile. Implementação do serviço é trabalho da Sprint 3.
+    # Serviço em C + OpenCL (PoCL, roda na CPU). O build da imagem só termina
+    # se o teste de equivalência passar. Conferir: curl localhost:8001/saude
+    # Detalhes em nucleo-opencl/README.md.
 
   frontend:
     build: ./frontend

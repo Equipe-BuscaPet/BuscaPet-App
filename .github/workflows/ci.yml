@@ -85,3 +85,21 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  nucleo-opencl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # O build compila com -Wall -Wextra e roda `make teste` (equivalência
+      # sequencial x OpenCL via PoCL); se o kernel errar, a imagem não é gerada.
+      - name: Compilar e testar o núcleo
+        run: docker build -t buscapet-nucleo nucleo-opencl
+      - name: Subir o serviço e conferir /saude
+        run: |
+          docker run -d --name nucleo -p 8001:8001 buscapet-nucleo
+          for i in $(seq 1 15); do
+            curl -sf localhost:8001/saude && exit 0
+            sleep 1
+          done
+          docker logs nucleo
+          exit 1

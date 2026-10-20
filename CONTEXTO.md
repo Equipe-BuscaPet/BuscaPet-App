@@ -106,6 +106,8 @@ Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/p
 visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
 da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
 
+**Núcleo OpenCL (`nucleo-opencl/`):** serviço HTTP em C (porta 8001) com o spike de soma de vetores e `GET /saude`; descritores, comparação e benchmark em desenvolvimento na branch `feature/nucleo-busca-por-foto`.
+
 **Alerta e caso resolvido (fecha o fluxo do reencontro, Sprint 5 oficial):** todo `POST /avistamentos` cria
 uma notificação (`referencia_tipo="avistamento"`, o clique abre o avistamento) para o tutor com perda ativa da
 mesma espécie, sumida até a data do avistamento e dentro do `raio_busca_km` dele — **um alerta por tutor**, com
