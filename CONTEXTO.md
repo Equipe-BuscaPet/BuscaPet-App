@@ -59,7 +59,7 @@ Ao falar "Sprint N", diga qual das duas.
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
 > `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
-> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo). Independente:
+> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7). Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -129,8 +129,22 @@ pedido. Notificações `referencia_tipo="doacao"` (abrigo → `/doacoes`, apoiad
 abrigo com o resumo "o que exige ação hoje". Demo: 4 apoiadores (`amigofiel@`, `petcenter@`, `clinicaboavista@`,
 `racaonordeste@exemplo.com`). E2E: admin só de teste `admin-e2e@teste.buscapet.dev` criado por `preparar_banco_teste`.
 
+**Painel, relatórios e histórico (Sprint 7 oficial — RF-38, RF-39, RF-40):** `core/auditoria.py` —
+`auditoria.registrar(db, usuario_id, "entidade.verbo", tipo, id, **detalhes)` em **toda ação sensível**, antes do
+commit da própria ação (mesma transação; ação que falha não deixa log; nunca senha/token nos detalhes); rótulos em
+`ROTULOS`. `routers/relatorios.py`: `/admin/painel` (indicadores do período + "agora" + série de 6 meses + últimas
+ações), `/admin/logs` (+ `.csv`; filtros `de`, `ate`, `acao`, `q`, `entidade`), `/admin/usuarios` (pesquisa),
+`/admin/relatorios/abrigos.csv`, `/relatorios/abrigo` (+ `/historico`, `interesses.csv`, `doacoes.csv`,
+`animais.csv`). Período: dias no fuso de Recife (UTC-3), padrão 90 dias; limites convertidos para UTC antes do banco.
+"Tempo até a adoção" = dias de calendário da entrada (ou cadastro) do animal até o log `interesse.aprovado`.
+CSV com `;` e BOM (Excel pt-BR); o CORS expõe `Content-Disposition`. Telas: `/admin` em abas (Painel, Verificar
+abrigos, Histórico, Contas) e `/relatorios` (abrigo). Gráficos: `componentes/GraficoMensal.jsx` (SVG, uma série por
+gráfico, cores `--serie-1..3` validadas para daltonismo, opção "ver como tabela").
+**Cuidado:** `GROUP BY` com expressão + parâmetro (ex.: `coalesce(cidade, '...')`) passa no SQLite e quebra no
+Postgres — teste as consultas novas contra o Postgres.
+
 **Existe só como modelo de dados, sem rota nem tela:** busca salva (usada só ao resolver o caso), correspondência,
-descritor visual, denúncia, log de auditoria, membros da equipe do abrigo.
+descritor visual, denúncia, membros da equipe do abrigo.
 
 **Próximo passo:** confirmar o roteiro da **Sprint 5 oficial** (entrega no Teams). Pelo plano interno: núcleo
 (descritores e comparação, com o Nivaldo) → busca por foto (RF-21 a 23) → busca salva e alertas (RF-24 a 27) →
