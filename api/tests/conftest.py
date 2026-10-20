@@ -29,6 +29,14 @@ def caixa_de_saida(tmp_path, monkeypatch):
     return pasta
 
 
+@pytest.fixture(autouse=True)
+def pasta_de_fotos(tmp_path, monkeypatch):
+    """As fotos gravadas pelos testes vão para uma pasta temporária, nunca para api/uploads."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "pasta_fotos", tmp_path / "fotos-teste")
+
+
 @pytest.fixture()
 def sessao_factory():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

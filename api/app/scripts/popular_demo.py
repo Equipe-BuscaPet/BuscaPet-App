@@ -33,10 +33,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.seguranca import hash_senha
 from app.db.session import SessionLocal
+from pathlib import Path
+
 from app.core import auditoria, pontuacao
-from app.models.animal import Animal, Interesse
+from app.core import fotos as armazenamento
+from app.models.animal import Animal, Foto, Interesse
 from app.models.doacao import Doacao, Necessidade
 from app.models.enums import (
+    EntidadeFoto,
     Especie,
     Sexo,
     StatusAnimal,
@@ -173,6 +177,7 @@ def popular(db: Session) -> dict[str, int]:
 
     _popular_doacoes(db, criados)
     _popular_historico(db, criados)
+    _popular_fotos(db)
     db.commit()
     return criados
 
@@ -263,6 +268,21 @@ def _popular_historico(db: Session, criados: dict[str, int]) -> None:
         db.add(interesse)
         db.flush()
         log(joao.id, "interesse.registrado", "interesse", interesse.id, _dias_atras(2), animal_id=thor.id, animal="Thor")
+
+
+FOTOS_DEMO = Path(__file__).with_name("fotos_demo")
+FOTO_POR_ESPECIE = {Especie.CAO: "cachorro-caramelo.jpg", Especie.GATO: "gato-cinza.jpg"}
+
+
+def _popular_fotos(db: Session) -> None:
+    """Capa para os animais de demonstração que ainda não têm foto (RF-17), com o mesmo tratamento do envio real."""
+    com_foto = set(db.scalars(select(Foto.entidade_id).where(Foto.entidade_tipo == EntidadeFoto.ANIMAL.value)))
+    for animal in db.scalars(select(Animal)):
+        arquivo = FOTO_POR_ESPECIE.get(animal.especie)
+        if animal.id in com_foto or arquivo is None:
+            continue
+        nome = armazenamento.salvar(armazenamento.processar((FOTOS_DEMO / arquivo).read_bytes()))
+        db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=armazenamento.url_publica(nome), ordem=0))
 
 
 def main() -> int:

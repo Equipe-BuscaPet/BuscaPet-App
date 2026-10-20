@@ -60,3 +60,11 @@ def test_demonstracao_traz_historico_para_o_relatorio_do_abrigo(client, sessao_f
     patinhas = cabecalho(client, "patinhas@exemplo.com", SENHA_DEMO)
     r = client.get("/relatorios/abrigo", headers=patinhas).json()
     assert r["adocoes_aprovadas"] == 2 and r["tempo_medio_adocao_dias"] == 20.5  # Pingo 50-28=22 dias, Nina 25-6=19
+
+
+def test_demonstracao_poe_capa_nos_animais(client, sessao_factory):
+    with sessao_factory() as db:
+        popular(db)
+        popular(db)  # rodar de novo não duplica as fotos
+    animais = client.get("/animais?limite=50").json()
+    assert animais and all(len(a["fotos"]) == 1 for a in animais)
