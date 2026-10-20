@@ -156,8 +156,17 @@ def _log_out(log: LogAuditoria, u: Usuario) -> LogOut:
     )
 
 
+ROTULO_DETALHE = {
+    "animal": "Animal", "item": "Item", "quantidade": "Quantidade", "abrigo": "Abrigo", "campos": "Campos",
+    "situacao": "Situação", "tipo": "Tipo de conta", "especie": "Espécie", "pelo_admin": "Pela administração",
+}
+
+
 def _texto_detalhes(d: dict) -> str:
-    return "; ".join(f"{k}: {', '.join(map(str, v)) if isinstance(v, list) else v}" for k, v in d.items())
+    """Detalhes legíveis para o CSV: sem ids internos e separados por " | " (o ";" é o separador das colunas)."""
+    def valor(v):
+        return ", ".join(map(str, v)) if isinstance(v, list) else "sim" if v is True else str(v)
+    return " | ".join(f"{ROTULO_DETALHE.get(k, k)}: {valor(v)}" for k, v in d.items() if not k.endswith("_id"))
 
 
 @router.get("/admin/acoes", response_model=dict[str, str])

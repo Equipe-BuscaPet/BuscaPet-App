@@ -77,7 +77,8 @@ def test_historico_em_csv(client, cenario):
     texto = r.content.decode("utf-8")
     assert texto.startswith("﻿Data;Quem;E-mail;")  # BOM: o Excel abre com acentos
     linhas = texto.strip().splitlines()
-    assert len(linhas) == 2 and "Adoção aprovada" in linhas[1] and "animal: Thor" in linhas[1]
+    assert len(linhas) == 2 and "Adoção aprovada" in linhas[1]
+    assert linhas[1].endswith(";Animal: Thor")  # detalhes legíveis, sem id interno e sem ";" dentro do campo
 
 
 # ---------- painel da administração (RF-38) ----------
