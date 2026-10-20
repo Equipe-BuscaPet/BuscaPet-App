@@ -59,7 +59,7 @@ Ao falar "Sprint N", diga qual das duas.
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
 > `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
-> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7) → `feature/sprint8`. Independente:
+> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7) → `feature/sprint8` → `feature/sprint9`. Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -159,6 +159,15 @@ Postgres — teste as consultas novas contra o Postgres.
   animal que volta de "em processo" para "disponível" desfaz a aprovação (nunca dois aprovados).
 - **Permissões:** `tests/test_permissoes.py` = matriz 25 rotas × 5 perfis.
 - **Usabilidade:** Mostrar senha (`CampoSenha`), "Pular para o conteúdo", título da aba por página.
+
+**Sprint 9 oficial (testes completos):**
+- `frontend/e2e/varredura.spec.js` (navegação por perfil, 225 páginas), `frontend/e2e/acessibilidade.spec.js`
+  (axe-core, WCAG 2.1 AA), `api/tests/test_validacoes.py` (CV-01 a CV-29), `api/tests/test_email_smtp.py`.
+- Cobertura com `pytest-cov`: 94%; a CI falha abaixo de 90% (`--cov-fail-under=90`).
+- Cor de destaque `--accent` agora é `#b24c18` (a antiga `#c4541a` reprovava no contraste 4,5:1). Ao mexer em
+  cores, rode `npx playwright test acessibilidade`.
+- A fixture `contas` (uma conta de cada perfil + um animal) está no `tests/conftest.py`.
+- Em máquina com pouca memória: `npx playwright test --workers=2`.
 
 **Existe só como modelo de dados, sem rota nem tela:** busca salva (usada só ao resolver o caso), correspondência,
 descritor visual (dependem do núcleo OpenCL), membros da equipe do abrigo.

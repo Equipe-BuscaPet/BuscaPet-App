@@ -119,6 +119,11 @@ npm run e2e:relatorio  # relatório HTML da última execução
 | `e2e/pwa.spec.js` | manifesto válido, ícones existem, dica de instalação no iPhone, botão escondido sem o pedido do navegador |
 | `e2e/notificacoes.spec.js` | sino acende para o abrigo e leva aos interessados; página com filtro e marcar todas; visitante sem sino |
 | `e2e/conta.spec.js` | menu ☰ por perfil (Em breve, Sair no fim, fecha com Esc e ao navegar), Minha conta (dados persistem, abrigo edita perfil, troca de senha com erros e sucesso) |
+| `e2e/doacoes.spec.js` | apoiador doa pelo mural e o abrigo confirma (pontua); visitante convidado a apoiar; abrigo sem selo não publica; publicar, atender e reabrir; perfil do abrigo com PIX só com selo |
+| `e2e/relatorios.spec.js` | painel da administração, histórico com filtros e CSV, pesquisa de contas, relatório do abrigo com período e exportação, listas longas com "Ver todos" |
+| `e2e/sprint8.spec.js` | recuperação de senha lendo o e-mail da caixa de saída, fotos e capa, denúncia até a remoção, mostrar senha e "Pular para o conteúdo", posição manual e destaque no mapa, filtros combinados |
+| `e2e/varredura.spec.js` | **Sprint 9:** cada perfil segue os links internos (até 45 telas) e falha em erro de console, erro de JavaScript, API 500, "Página não encontrada" ou menu que leva a "não tem acesso"; teste de controle com endereço inexistente |
+| `e2e/acessibilidade.spec.js` | **Sprint 9:** axe-core em 24 telas (visitante, tutor, abrigo, admin), WCAG 2.1 A/AA, falha em violação grave ou crítica |
 | `e2e/apoio.js` | cria contas e registros pela API, com e-mail único por teste |
 
 Dois projetos: `computador` (todos os testes) e `celular` (Pixel 7, só os marcados com `@celular`). O fuso do navegador
