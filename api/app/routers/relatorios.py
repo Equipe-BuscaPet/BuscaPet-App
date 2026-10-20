@@ -324,12 +324,16 @@ def relatorio_abrigo(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get
         .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(Interesse.status)
     ).all()
     aprovadas, tempo = _tempo_medio_adocao(db, aid, p)
-    origem = db.execute(
-        select(func.coalesce(Tutor.cidade, "Não informada"), func.count())
+    # Agrupa pela coluna e trata a cidade vazia aqui: agrupar por coalesce(cidade, '...') passa no SQLite mas o
+    # PostgreSQL recusa (cada cópia do texto vira um parâmetro diferente) — achado no teste contra o Postgres.
+    por_cidade = Counter()
+    for cidade, total in db.execute(
+        select(Tutor.cidade, func.count())
         .select_from(Interesse).join(Animal, Animal.id == Interesse.animal_id).join(Tutor, Tutor.usuario_id == Interesse.tutor_id)
-        .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(func.coalesce(Tutor.cidade, "Não informada"))
-        .order_by(func.count().desc())
-    ).all()
+        .where(Animal.abrigo_id == aid, _no(Interesse.criado_em, p)).group_by(Tutor.cidade)
+    ):
+        por_cidade[(cidade or "").strip() or "Não informada"] += total
+    origem = sorted(por_cidade.items(), key=lambda c: (-c[1], c[0]))
     doacoes = db.execute(
         select(Doacao.status, func.count()).where(Doacao.abrigo_id == aid, _no(Doacao.registrado_em, p)).group_by(Doacao.status)
     ).all()
