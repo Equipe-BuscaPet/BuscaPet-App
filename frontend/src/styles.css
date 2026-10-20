@@ -6,7 +6,7 @@
   --line: #d9cfba;
   --ink: #23201a;
   --ink-dim: #6b6354;
-  --accent: #c4541a;
+  --accent: #b24c18; /* 4,76:1 no pior caso (texto claro no botão e link no fundo creme); era #c4541a, 4,05:1 — WCAG AA pede 4,5:1 */
   --accent-ink: #fffaf3;
   --navy: #1c3550;
   --ok-bg: #e3ecdf;
