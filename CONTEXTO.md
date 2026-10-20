@@ -59,7 +59,7 @@ Ao falar "Sprint N", diga qual das duas.
 > Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
 > #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
 > `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
-> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7). Independente:
+> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7) → `feature/sprint8`. Independente:
 > `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
 
 **Funciona, validado no Postgres local e por testes automatizados:**
@@ -143,8 +143,25 @@ gráfico, cores `--serie-1..3` validadas para daltonismo, opção "ver como tabe
 **Cuidado:** `GROUP BY` com expressão + parâmetro (ex.: `coalesce(cidade, '...')`) passa no SQLite e quebra no
 Postgres — teste as consultas novas contra o Postgres.
 
+**Sprint 8 oficial (tudo implementado, permissões, usabilidade, regras):**
+- **Fotos dos animais (RF-17):** `POST /animais/{id}/fotos` (até 5, tudo ou nada), `DELETE .../fotos/{foto_id}`,
+  `PATCH .../fotos/{foto_id}/capa`; `AnimalOut.fotos` vem do relacionamento `Animal.fotos` com `selectinload` (sem
+  N+1). Excluir o animal apaga os arquivos. Demo: capa a partir de `app/scripts/fotos_demo/`.
+- **Denúncia (RF-41):** `routers/denuncias.py`; **migration `0004`** (`animais.removido_em`): anúncio removido some
+  do público (catálogo, ficha, perfil, mapa), mas a linha fica. Decisões: ignorado, advertido, removido, banido
+  (suspende o abrigo); resolve todas as pendentes do anúncio. **Aplicar `alembic upgrade head` no Supabase.**
+- **Senha e e-mail (RF-05, RF-36):** `core/email.py` (SMTP via `SMTP_HOST`/`SMTP_PORTA`/`SMTP_USUARIO`/`SMTP_SENHA`/
+  `EMAIL_REMETENTE`; sem SMTP grava `.eml` em `api/caixa-de-saida/`, fora do Git). Toda `Notificacao` também vira
+  e-mail (gancho `before_flush`/`after_commit` do SQLAlchemy). `/auth/esqueci-senha` (mesma resposta sempre) e
+  `/auth/redefinir-senha` (link de 30 min, uso único; token com `fim` — `decodificar_token` recusa tokens com `fim`).
+  Em produção, configurar também `URL_INTERFACE` (links dos e-mails).
+- **Regras revisadas (`core/regras.py`):** animal adotado/óbito/transferido/removido encerra interesses abertos;
+  animal que volta de "em processo" para "disponível" desfaz a aprovação (nunca dois aprovados).
+- **Permissões:** `tests/test_permissoes.py` = matriz 25 rotas × 5 perfis.
+- **Usabilidade:** Mostrar senha (`CampoSenha`), "Pular para o conteúdo", título da aba por página.
+
 **Existe só como modelo de dados, sem rota nem tela:** busca salva (usada só ao resolver o caso), correspondência,
-descritor visual, denúncia, membros da equipe do abrigo.
+descritor visual (dependem do núcleo OpenCL), membros da equipe do abrigo.
 
 **Próximo passo:** confirmar o roteiro da **Sprint 5 oficial** (entrega no Teams). Pelo plano interno: núcleo
 (descritores e comparação, com o Nivaldo) → busca por foto (RF-21 a 23) → busca salva e alertas (RF-24 a 27) →

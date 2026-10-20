@@ -23,12 +23,13 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 | `/doacoes` | abrigo | **Necessidades e doações** (RF-30/32): publica necessidades (com selo) e confirma ou recusa doações |
 | `/relatorios` | abrigo | **Relatórios** (RF-40): indicadores do período, gráficos dos últimos 6 meses, origem dos interessados, doações por apoiador e item, exportação CSV; aba com o histórico das próprias operações |
 | `/minhas-doacoes` | apoiador | Doações registradas, situação e cancelamento enquanto aguarda (RF-31) |
+| `/esqueci-senha`, `/redefinir-senha` | todos | **Recuperação de senha** (RF-05): pedir o link e criar a nova senha pelo link do e-mail (30 min, uso único) |
 | `/conta` | qualquer conta logada | **Minha conta** (RF-37): dados da conta e do perfil (abrigo edita o perfil público, inclusive horário e chave PIX), troca de senha e atalhos |
 | `/notificacoes` | qualquer conta logada | Todas as notificações, com filtro de não lidas e marcar todas. O **sino 🔔** do cabeçalho mostra o contador e as recentes (RF-36). Inclui o alerta de avistamento perto de uma perda, que abre o avistamento |
 | `/interesses` | tutor | Interesses de adoção que a pessoa registrou |
 | `/interessados` | abrigo | Interessados nos animais do abrigo, com a decisão de cada caso |
 | `/painel` | abrigo | CRUD dos animais do abrigo (opera na hora; o selo Verificado é dado pelo administrador) |
-| `/admin` | admin | **Administração** em abas: Painel (RF-38: indicadores, gráficos, últimas ações, CSV de abrigos), Verificar abrigos (RF-06), Histórico de operações (RF-39: filtros, pesquisa, CSV) e Contas (pesquisa) |
+| `/admin` | admin | **Administração** em abas: Painel (RF-38: indicadores, gráficos, últimas ações, CSV de abrigos), Verificar abrigos (RF-06), Denúncias (RF-41: ignorar, advertir, remover anúncio, suspender abrigo), Histórico de operações (RF-39: filtros, pesquisa, CSV) e Contas (pesquisa) |
 | `/login`, `/cadastro` | visitante | Login único e cadastro de tutor, abrigo ou apoiador |
 
 ### Assistente "Perdi" / "Encontrei"
