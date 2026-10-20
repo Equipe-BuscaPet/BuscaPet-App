@@ -34,6 +34,18 @@ export default function MeusRegistros() {
     }
   }
 
+  async function resolver(registro) {
+    if (!window.confirm('Marcar como resolvido? O registro sai do mapa e você deixa de receber alertas de avistamentos.')) return
+    setAviso('')
+    try {
+      await api(`/perdidos/${registro.id}/resolvido`, { metodo: 'PATCH' })
+      setAviso('Caso marcado como resolvido. Que bom que vocês se reencontraram!')
+      carregar()
+    } catch (e) {
+      setErro(e.message)
+    }
+  }
+
   function secao(titulo, tipo, lista, vazio, novo) {
     return (
       <section style={{ marginBottom: '2rem' }}>
@@ -47,7 +59,12 @@ export default function MeusRegistros() {
           {lista?.map((r) => (
             <CartaoRegistro
               key={r.id} registro={r} tipo={tipo}
-              acoes={<button type="button" className="botao botao--leve botao--pequeno" onClick={() => excluir(tipo, r)}>Excluir</button>}
+              acoes={<>
+                {tipo === 'perdido' && !r.resolvido && (
+                  <button type="button" className="botao botao--pequeno" onClick={() => resolver(r)}>Encontrei meu animal</button>
+                )}
+                <button type="button" className="botao botao--leve botao--pequeno" onClick={() => excluir(tipo, r)}>Excluir</button>
+              </>}
             />
           ))}
         </div>

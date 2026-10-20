@@ -36,6 +36,8 @@ export default function RegistroDetalhe({ tipo }) {
   const [fotoAtual, setFotoAtual] = useState(0)
   const [erro, setErro] = useState('')
   const [excluindo, setExcluindo] = useState(false)
+  const [resolvendo, setResolvendo] = useState(false)
+  const [aviso, setAviso] = useState('')
 
   useEffect(() => {
     setRegistro(null)
@@ -55,6 +57,20 @@ export default function RegistroDetalhe({ tipo }) {
     } catch (e) {
       setErro(e.message)
       setExcluindo(false)
+    }
+  }
+
+  async function resolver() {
+    if (!window.confirm('Marcar como resolvido? O registro sai do mapa e você deixa de receber alertas de avistamentos.')) return
+    setResolvendo(true)
+    setErro('')
+    try {
+      setRegistro(await api(`/perdidos/${id}/resolvido`, { metodo: 'PATCH' }))
+      setAviso('Que bom que vocês se reencontraram! O caso foi marcado como resolvido e saiu do mapa.')
+    } catch (e) {
+      setErro(e.message)
+    } finally {
+      setResolvendo(false)
     }
   }
 
@@ -121,8 +137,14 @@ export default function RegistroDetalhe({ tipo }) {
             </small>
           </section>
 
+          {aviso && <div className="aviso aviso--ok" role="status">{aviso}</div>}
           {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
           <div className="acoes">
+            {ehAutor && tipo === 'perdido' && !registro.resolvido && (
+              <button type="button" className="botao" onClick={resolver} disabled={resolvendo}>
+                {resolvendo ? 'Salvando…' : 'Encontrei meu animal'}
+              </button>
+            )}
             {!ehAutor && tipo === 'perdido' && <Link className="botao" to="/encontrei">Vi este animal</Link>}
             {!ehAutor && tipo === 'avistamento' && <Link className="botao" to="/perdi">É o meu animal? Registre a perda</Link>}
             {podeExcluir && (

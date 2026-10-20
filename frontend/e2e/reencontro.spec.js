@@ -145,3 +145,44 @@ test.describe('Lista, detalhe e privacidade', () => {
     await expect(cartao).toHaveCount(0)
   })
 })
+
+test.describe('Reencontro: alerta e caso resolvido', () => {
+  test('o tutor é avisado de um avistamento perto, confere e marca o caso como resolvido', async ({ page, request }) => {
+    // Espécie "outro" para nenhum outro teste rodando em paralelo disparar alerta para esta conta.
+    const tutor = await criarConta(request, 'tutor')
+    const perdido = await criarPerdido(request, tutor, { especie: 'outro' })
+    const quemViu = await criarConta(request, 'tutor')
+    const avistamento = await criarAvistamento(request, quemViu, { especie: 'outro', latitude: -8.05, longitude: -34.88 })
+
+    await entrarComo(page, tutor)
+    await page.goto('/notificacoes')
+    const alerta = page.getByRole('listitem').filter({ hasText: 'Um animal foi avistado a menos de 1 km de onde o seu animal sumiu' })
+    await expect(alerta).toBeVisible()
+    await alerta.getByRole('button', { name: 'Abrir' }).click()
+    await expect(page).toHaveURL(new RegExp(`/reencontro/avistamentos/${avistamento.id}$`))
+    await expect(page.getByRole('heading', { name: 'Animal avistado' })).toBeVisible()
+
+    await page.goto(`/reencontro/perdidos/${perdido.id}`)
+    page.once('dialog', (dialogo) => dialogo.accept())
+    await page.getByRole('button', { name: 'Encontrei meu animal' }).click()
+    await expect(page.getByRole('status')).toContainText('O caso foi marcado como resolvido e saiu do mapa.')
+    await expect(page.getByText('Caso resolvido')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Encontrei meu animal' })).toHaveCount(0)
+
+    await page.goto('/reencontro')
+    await expect(page.locator(`a[href="/reencontro/perdidos/${perdido.id}"]`)).toHaveCount(0) // saiu da lista pública
+  })
+
+  test('em Meus registros o caso resolvido ganha a etiqueta e perde o botão', async ({ page, request }) => {
+    const tutor = await criarConta(request, 'tutor')
+    const perdido = await criarPerdido(request, tutor)
+    await entrarComo(page, tutor)
+    await page.goto('/meus-registros')
+    const cartao = page.locator('article', { has: page.locator(`a[href="/reencontro/perdidos/${perdido.id}"]`) })
+    page.once('dialog', (dialogo) => dialogo.accept())
+    await cartao.getByRole('button', { name: 'Encontrei meu animal' }).click()
+    await expect(page.getByRole('status')).toHaveText('Caso marcado como resolvido. Que bom que vocês se reencontraram!')
+    await expect(cartao.getByText('Resolvido')).toBeVisible()
+    await expect(cartao.getByRole('button', { name: 'Encontrei meu animal' })).toHaveCount(0)
+  })
+})
