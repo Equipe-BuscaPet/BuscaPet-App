@@ -5,7 +5,7 @@ import { useAuth } from '../auth'
 import { COR_URGENCIA, URGENCIAS } from '../rotulos'
 
 // Uma necessidade do mural (RF-30/RF-35), usada no "Quem apoia", no perfil do abrigo e na área do abrigo.
-// O apoiador doa ali mesmo; o visitante é convidado a entrar ou criar a conta de apoiador.
+// Apoiador e tutor doam ali mesmo; o visitante é convidado a entrar ou criar a conta.
 export default function CartaoNecessidade({ necessidade: n, mostrarAbrigo = true, acoes, aoDoar }) {
   const { usuario } = useAuth()
   const { pathname } = useLocation()
@@ -49,7 +49,7 @@ export default function CartaoNecessidade({ necessidade: n, mostrarAbrigo = true
       {ok && <div className="aviso aviso--ok" role="status">{ok}</div>}
       {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
       {acoes}
-      {podeDoar && !ok && usuario?.tipo_conta === 'apoiador' && (
+      {podeDoar && !ok && ['apoiador', 'tutor'].includes(usuario?.tipo_conta) && (
         <form className="doar" onSubmit={doar}>
           <div className="campo">
             <label htmlFor={`qtd-${n.id}`}>Quantidade</label>
@@ -60,7 +60,7 @@ export default function CartaoNecessidade({ necessidade: n, mostrarAbrigo = true
       )}
       {podeDoar && !usuario && (
         <p className="progresso__texto">
-          <Link to={`/login?voltar=${encodeURIComponent(pathname)}`}>Entre</Link> ou <Link to="/cadastro?tipo=apoiador">cadastre-se como apoiador</Link> para doar.
+          <Link to={`/login?voltar=${encodeURIComponent(pathname)}`}>Entre</Link> ou <Link to="/cadastro">crie sua conta</Link> para doar.
         </p>
       )}
     </article>

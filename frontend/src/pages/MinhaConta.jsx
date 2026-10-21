@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { ROTULO_TIPO } from '../componentes/MenuConta'
-import { TIPOS_ESTABELECIMENTO } from '../rotulos'
+import { CATEGORIAS_EMPRESA } from '../rotulos'
 
 // Minha conta (RF-37): dados da conta, troca de senha e atalhos. Usa a API que já existia (/usuarios/eu).
 // Cada tipo de conta edita só os campos que lhe cabem (a mesma regra vale na API).
@@ -120,7 +120,7 @@ export default function MinhaConta() {
               <div className="campo">
                 <label htmlFor="tipo_estabelecimento">Tipo de estabelecimento</label>
                 <select id="tipo_estabelecimento" value={dados.tipo_estabelecimento} onChange={mudar('tipo_estabelecimento')}>
-                  {Object.entries(TIPOS_ESTABELECIMENTO).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                  {CATEGORIAS_EMPRESA.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
                 </select>
               </div>
             )}

@@ -443,6 +443,10 @@ button.miniatura { cursor: pointer; }
 .chips a:hover { border-color: var(--accent); }
 .pix { border: 1px dashed var(--accent); border-radius: 12px; padding: 0.75rem 1rem; }
 .pix code { font-size: 1rem; font-weight: 700; }
+.doar-dinheiro { display: grid; gap: 0.6rem; }
+.doar-dinheiro__valores { margin: 0; font-size: 1.05rem; }
+.doar-dinheiro__valores strong { font-size: 1.35rem; color: var(--ok-ink); }
+.pix code { word-break: break-all; }
 .resumo-hoje { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 1.5rem; }
 .resumo-hoje a { display: grid; gap: 0.15rem; text-decoration: none; color: var(--ink); }
 .resumo-hoje a:hover { border-color: var(--accent); }

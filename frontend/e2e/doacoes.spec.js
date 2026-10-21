@@ -72,6 +72,62 @@ test.describe('Doações', () => {
     await cartao.getByRole('button', { name: 'Reabrir' }).click()
     await expect(cartao.getByText('Pode esperar')).toBeVisible()
   })
+
+  test('abrigo define a meta do mês, tutor informa o PIX e a meta avança quando o abrigo confirma @celular', async ({ page, request, browser }) => {
+    const abrigo = await criarConta(request, 'abrigo')
+    await verificarAbrigo(request, abrigo)
+    const pix = await request.patch(`${API}/usuarios/eu`, { headers: { Authorization: `Bearer ${abrigo.token}` }, data: { chave_doacao_financeira: 'pix@abrigo.teste' } })
+    expect(pix.ok(), await pix.text()).toBeTruthy()
+
+    // Abrigo: define a meta em Necessidades e doações.
+    const paginaAbrigo = await (await browser.newContext()).newPage()
+    await entrarComo(paginaAbrigo, abrigo)
+    await paginaAbrigo.goto('/doacoes')
+    await paginaAbrigo.getByRole('button', { name: 'Definir meta' }).click()
+    await paginaAbrigo.getByLabel('Meta do mês (R$)').fill('1.000,00')
+    await paginaAbrigo.getByLabel(/Para que serve/).fill('Ração e vacinas')
+    await paginaAbrigo.getByRole('button', { name: 'Salvar meta' }).click()
+    await expect(paginaAbrigo.getByRole('status')).toContainText('R$ 1.000,00')
+
+    // Tutor: vê a meta e a chave no perfil do abrigo e informa o PIX que fez.
+    const tutor = await criarConta(request, 'tutor')
+    await entrarComo(page, tutor)
+    await page.goto(`/abrigos/${abrigo.usuario.id}`)
+    const meta = page.getByRole('region', { name: /Meta de/ })
+    await expect(meta.getByRole('progressbar')).toHaveAttribute('aria-valuetext', /R\$\s0,00 de R\$\s1\.000,00/)
+    await expect(meta).toContainText('pix@abrigo.teste')
+    await expect(meta).toContainText('Ração e vacinas')
+    await meta.getByLabel(/Informe o valor/).fill('40')
+    await meta.getByRole('button', { name: 'Informar doação' }).click()
+    await expect(meta.getByRole('status')).toContainText('PIX de R$ 40,00')
+
+    // Abrigo: confirma que o dinheiro chegou; a meta avança.
+    await paginaAbrigo.reload()
+    const doacao = paginaAbrigo.getByRole('article', { name: `Doação de ${tutor.nome}` })
+    await expect(doacao).toContainText('R$ 40,00 via PIX')
+    await expect(doacao).toContainText('(pessoa física)')
+    await doacao.getByRole('button', { name: 'Confirmar: o PIX chegou' }).click()
+    await expect(paginaAbrigo.getByRole('status')).toContainText('na meta do mês')
+
+    await page.reload()
+    await expect(page.getByRole('region', { name: /Meta de/ }).getByRole('progressbar')).toHaveAttribute('aria-valuetext', /R\$\s40,00 de R\$\s1\.000,00/)
+    await page.goto('/minhas-doacoes')
+    const minha = page.getByRole('article', { name: `Doação para ${abrigo.nome_abrigo}` })
+    await expect(minha).toContainText('R$ 40,00 via PIX')
+    await expect(minha.getByText('Recebida pelo abrigo')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Meu perfil público' })).toHaveCount(0) // pessoa física não tem perfil
+  })
+
+  test('tutor doa itens pelo mural', async ({ page, request }) => {
+    const abrigo = await criarConta(request, 'abrigo')
+    await verificarAbrigo(request, abrigo)
+    const necessidade = await publicarNecessidade(request, abrigo, { quantidade: 2 })
+    await entrarComo(page, await criarConta(request, 'tutor'))
+    await page.goto(`/abrigos/${abrigo.usuario.id}`)
+    const cartao = page.getByRole('article', { name: necessidade.item })
+    await cartao.getByRole('button', { name: 'Quero doar' }).click()
+    await expect(cartao.getByRole('status')).toContainText('Doação registrada!')
+  })
 })
 
 test.describe('Perfis públicos e navegação entre os módulos', () => {
@@ -93,7 +149,7 @@ test.describe('Perfis públicos e navegação entre os módulos', () => {
     await expect(page.getByText('pix@abrigo-e2e.org')).toBeVisible()
     await expect(page.getByRole('article', { name: necessidade.item })).toBeVisible()
     await expect(page.getByRole('link', { name: new RegExp(animal.nome) })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'cadastre-se como apoiador' })).toBeVisible() // visitante é convidado
+    await expect(page.getByRole('link', { name: 'crie sua conta' }).first()).toBeVisible() // visitante é convidado
   })
 
   test('abrigo não verificado: sem chave PIX e com o aviso do selo', async ({ page, request }) => {

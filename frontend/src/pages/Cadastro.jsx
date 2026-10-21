@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { destinoPorTipo, useAuth } from '../auth'
-import { limpar, TIPOS_ESTABELECIMENTO } from '../rotulos'
+import { CATEGORIAS_EMPRESA, limpar } from '../rotulos'
 
 const TIPOS = [
   { valor: 'tutor', titulo: 'Tutor', texto: 'Quero adotar ou encontrar meu animal' },
@@ -148,7 +148,7 @@ export default function Cadastro() {
                 <div className="campo">
                   <label htmlFor="tipo_estabelecimento">Tipo de estabelecimento</label>
                   <select {...campo('tipo_estabelecimento')}>
-                    {Object.entries(TIPOS_ESTABELECIMENTO).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    {CATEGORIAS_EMPRESA.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
                   </select>
                 </div>
               </div>
