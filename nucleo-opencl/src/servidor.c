@@ -2,7 +2,7 @@
  * servidor.c — serviço HTTP do núcleo OpenCL (porta 8001 por padrão).
  *
  * O backend (FastAPI) nunca executa OpenCL: ele chama este serviço via HTTP
- * (decisão fechada no CONTEXTO §5). Este arquivo cuida só do HTTP; o cálculo
+ * (decisão de arquitetura da equipe). Este arquivo cuida só do HTTP; o cálculo
  * fica em src/descritor.c e nos kernels.
  *
  * Rotas:

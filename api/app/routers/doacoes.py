@@ -3,7 +3,7 @@
 Fluxo: o abrigo publica o que precisa → o apoiador registra a doação (do mural ou avulsa) → o abrigo
 confirma quando recebe (ou recusa) → só então a doação pontua no ranking (escopo 5.4).
 
-O selo Verificado passa a ser exigido aqui, onde há risco de golpe (CONTEXTO, decisão da Sprint 4):
+O selo Verificado passa a ser exigido aqui, onde há risco de golpe (decisão da Sprint 4):
 só abrigo verificado publica no mural e recebe doação pela plataforma.
 """
 import datetime

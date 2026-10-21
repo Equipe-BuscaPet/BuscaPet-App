@@ -69,7 +69,12 @@ npm run dev                            # abre em http://localhost:5173
 ### B) Docker Compose
 
 ```bash
-cp .env.example .env                                  # Windows: Copy-Item .env.example .env
+# 1) Crie o arquivo .env na raiz (nunca é versionado) com estas linhas:
+#      DATABASE_URL=postgresql+psycopg://buscapet:buscapet@db:5432/buscapet
+#      JWT_SECRET=troque-por-um-valor-aleatorio-longo
+#      REDIS_URL=redis://redis:6379/0
+#      NUCLEO_OPENCL_URL=http://nucleo-opencl:8001
+# 2) Suba os serviços:
 docker compose up -d --build db redis api frontend
 docker compose exec api alembic upgrade head          # cria o schema no Postgres do Docker
 docker compose exec api python -m app.scripts.popular_demo   # abrigos, animais e contas de exemplo (iguais para todo o time)
