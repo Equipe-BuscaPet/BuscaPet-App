@@ -12,13 +12,17 @@ const CATEGORIAS = ['petshop', 'clinica', 'distribuidora', 'pessoa_fisica']
 function Chamada() {
   const { usuario } = useAuth()
   let botao = <Link className="botao" to="/cadastro?tipo=apoiador">Quero apoiar</Link>
-  if (usuario?.tipo_conta === 'apoiador') botao = <a className="botao" href="#mural">Ver o que os abrigos precisam</a>
+  if (['apoiador', 'tutor'].includes(usuario?.tipo_conta)) botao = <a className="botao" href="#mural">Ver o que os abrigos precisam</a>
   else if (usuario) botao = null
   return (
     <section className="chamada-apoio">
       <div>
-        <h2>Petshop, clínica ou distribuidora?</h2>
-        <p>Doe o que os abrigos precisam agora e apareça no ranking da sua categoria. A doação só conta depois que o abrigo confirma o recebimento.</p>
+        <h2>Quer ajudar um abrigo?</h2>
+        <p>
+          Doe itens do mural ou dinheiro pelo PIX do abrigo e apareça no ranking: empresas (petshop, clínica,
+          distribuidora) com a conta de apoiador, pessoas com a conta de tutor. A doação só conta depois que o abrigo
+          confirma o recebimento.
+        </p>
       </div>
       {botao}
     </section>
@@ -71,13 +75,18 @@ export default function QuemApoia() {
         <section aria-labelledby="t-destaques">
           <h2 id="t-destaques">Destaques de {mes}</h2>
           <div className="destaques">
-            {destaques.map((d, i) => (
-              <Link key={d.apoiador_id} to={`/apoiadores/${d.apoiador_id}`} className="cartao destaque" style={{ textDecoration: 'none', color: 'inherit' }}>
-                <span className="destaque__medalha" aria-hidden="true">{MEDALHAS[i]}</span>
-                <strong>{d.nome}</strong>
-                <small>{TIPOS_ESTABELECIMENTO[d.tipo_estabelecimento]} · {d.pontos} pontos</small>
-              </Link>
-            ))}
+            {destaques.map((d, i) => {
+              const conteudo = (
+                <>
+                  <span className="destaque__medalha" aria-hidden="true">{MEDALHAS[i]}</span>
+                  <strong>{d.nome}</strong>
+                  <small>{TIPOS_ESTABELECIMENTO[d.tipo_estabelecimento]} · {d.pontos} pontos</small>
+                </>
+              )
+              return d.perfil_publico
+                ? <Link key={d.apoiador_id} to={`/apoiadores/${d.apoiador_id}`} className="cartao destaque" style={{ textDecoration: 'none', color: 'inherit' }}>{conteudo}</Link>
+                : <div key={d.apoiador_id} className="cartao destaque">{conteudo}</div>
+            })}
           </div>
         </section>
       )}
@@ -99,7 +108,8 @@ export default function QuemApoia() {
           ))}
         </div>
         <p className="legenda" style={{ marginBottom: '0.75rem' }}>
-          Pontos: 10 por doação confirmada pelo abrigo + 10 por mês seguido doando. Manter a constância vale tanto quanto doar mais.
+          Pontos: 10 por doação confirmada pelo abrigo (itens ou dinheiro) + 10 por mês seguido doando. Manter a constância vale tanto quanto doar mais.
+          {categoria === 'pessoa_fisica' && ' Pessoas físicas aparecem com o primeiro nome e a inicial do sobrenome.'}
         </p>
         {ranking === null && <p className="estado">Carregando…</p>}
         {ranking?.length === 0 && <p className="estado">Ainda não há doações confirmadas nesta categoria {periodo === 'mes' ? 'neste mês' : 'neste ano'}. Que tal ser o primeiro?</p>}
@@ -108,7 +118,7 @@ export default function QuemApoia() {
             <li key={r.apoiador_id} className="cartao">
               <span className="ranking__posicao">{r.posicao}º</span>
               <div>
-                <Link className="ranking__nome" to={`/apoiadores/${r.apoiador_id}`}>{r.nome}</Link>{' '}
+                {r.perfil_publico ? <Link className="ranking__nome" to={`/apoiadores/${r.apoiador_id}`}>{r.nome}</Link> : <span className="ranking__nome">{r.nome}</span>}{' '}
                 {r.selo_ativo && <span className="selo-apoio">Apoiador ativo</span>}
                 <div className="ranking__detalhe">
                   {r.doacoes_confirmadas} {r.doacoes_confirmadas === 1 ? 'doação confirmada' : 'doações confirmadas'} · {r.meses_seguidos} {r.meses_seguidos === 1 ? 'mês seguido' : 'meses seguidos'}

@@ -66,6 +66,7 @@ def listar(
 
 @router.get("/contagem", response_model=ContagemNotificacoes)
 def contar(usuario: Usuario = Depends(get_usuario_atual), db: Session = Depends(get_db)) -> ContagemNotificacoes:
+    """Quantas notificações não lidas a conta tem (o número do sino)."""
     total = db.scalar(
         select(func.count()).select_from(Notificacao).where(Notificacao.usuario_id == usuario.id, Notificacao.lida.is_(False))
     )
@@ -78,6 +79,7 @@ def marcar_lida(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> NotificacaoOut:
+    """Marca uma notificação da conta como lida."""
     n = db.get(Notificacao, notificacao_id)
     if n is None or n.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Notificação não encontrada.")
@@ -89,6 +91,7 @@ def marcar_lida(
 
 @router.post("/marcar-todas-lidas", status_code=status.HTTP_204_NO_CONTENT)
 def marcar_todas(usuario: Usuario = Depends(get_usuario_atual), db: Session = Depends(get_db)) -> Response:
+    """Marca todas as notificações da conta como lidas."""
     db.execute(
         update(Notificacao).where(Notificacao.usuario_id == usuario.id, Notificacao.lida.is_(False)).values(lida=True)
     )

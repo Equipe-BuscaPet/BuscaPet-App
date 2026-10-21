@@ -4,9 +4,21 @@ import { api } from '../api'
 // RF-29: modo comparativo de desempenho, ao vivo. Cada ponto roda no núcleo a mesma etapa em C sequencial e em
 // OpenCL (média de 3, depois de 1 aquecimento) e confere se os resultados bateram.
 const ETAPAS = {
-  busca: { rotulo: 'Busca: 1 foto contra n registros', ns: [100, 1000, 10000, 100000], unidade: 'registros' },
-  lote: { rotulo: 'Monitoramento: 100 fotos novas contra n buscas ativas', ns: [100, 1000, 5000, 20000], unidade: 'buscas ativas' },
-  extracao: { rotulo: 'Extração: n fotos viram descritores', ns: [10, 100, 500, 1000], unidade: 'fotos' },
+  busca: {
+    rotulo: 'Busca: 1 foto contra n registros', ns: [100, 1000, 10000, 100000], unidade: 'registros',
+    explicacao: 'O que acontece quando alguém registra um animal perdido ou avistado: a foto dele é comparada com '
+      + 'todas as fotos já cadastradas para achar as mais parecidas.',
+  },
+  lote: {
+    rotulo: 'Monitoramento: 100 fotos novas contra n buscas ativas', ns: [100, 1000, 5000, 20000], unidade: 'buscas ativas',
+    explicacao: 'O trabalho contínuo do sistema: cada foto nova que chega (abrigos, avistamentos) é comparada com as '
+      + 'buscas de todos os tutores que ainda procuram o seu animal, para avisar quando aparece um parecido.',
+  },
+  extracao: {
+    rotulo: 'Extração: n fotos viram descritores', ns: [10, 100, 500, 1000], unidade: 'fotos',
+    explicacao: 'O passo anterior a qualquer comparação: cada foto é reduzida a um descritor (224 números que resumem '
+      + 'cores, textura e formato). É isso que o núcleo compara, não a imagem em si.',
+  },
 }
 const ms = (v) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: v < 10 ? 2 : 1 })} ms`
 const vezes = (v) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}×`
@@ -14,7 +26,7 @@ const vezes = (v) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
 // Um gráfico só, uma série só: o ganho (speedup) de cada tamanho, com as referências de "empate" (1×) e do número
 // de núcleos. Os tempos ficam na tabela ao lado.
 function GraficoGanho({ pontos, nucleos }) {
-  const L = 520, A = 210, esq = 34, dir = 10, topo = 16, base = A - 30
+  const L = 560, A = 210, esq = 34, dir = 64, topo = 16, base = A - 30
   const teto = Math.max(nucleos || 4, ...pontos.map((p) => p.speedup)) * 1.1
   const y = (v) => base - (v / teto) * (base - topo)
   const passo = (L - esq - dir) / Math.max(pontos.length, 1)
@@ -28,8 +40,8 @@ function GraficoGanho({ pontos, nucleos }) {
           <text x={esq - 4} y={y(ref) + 4} textAnchor="end" className="grafico-ganho__eixo">{ref}×</text>
         </g>
       ))}
-      <text x={L - dir} y={y(1) - 4} textAnchor="end" className="grafico-ganho__eixo">empate</text>
-      {nucleos && <text x={L - dir} y={y(nucleos) - 4} textAnchor="end" className="grafico-ganho__eixo">{nucleos} núcleos</text>}
+      <text x={L - dir + 6} y={y(1) + 4} className="grafico-ganho__eixo">empate</text>
+      {nucleos && <text x={L - dir + 6} y={y(nucleos) + 4} className="grafico-ganho__eixo">{nucleos} núcleos</text>}
       {pontos.map((p, i) => {
         const x = esq + i * passo + (passo - larg) / 2
         return (
@@ -89,6 +101,11 @@ export default function DesempenhoNucleo() {
     <section className="desempenho">
       <div className="cartao">
         <h2>Núcleo OpenCL</h2>
+        <p className="subtitulo">
+          O núcleo é o serviço que compara as fotos dos animais e encontra os parecidos: é ele que faz a busca por foto
+          do Perdi/Encontrei e os alertas automáticos para tutores e abrigos. Ele roda separado da API e usa o
+          OpenCL para dividir as contas entre todos os núcleos do processador ao mesmo tempo.
+        </p>
         {!estado && !erro && <p className="estado">Consultando o núcleo…</p>}
         {estado && (estado.no_ar ? (
           <p className="aviso aviso--ok" role="status" style={{ margin: 0 }}>
@@ -101,7 +118,9 @@ export default function DesempenhoNucleo() {
         ))}
         {estado && (
           <p>
-            Fotos com descritor: <strong>{estado.com_descritor}</strong> de {estado.fotos}.
+            Fotos com descritor: <strong>{estado.com_descritor}</strong> de {estado.fotos}.{' '}
+            <small>Só as fotos com descritor entram na busca. Fotos enviadas com o núcleo fora do ar ficam sem; quando houver alguma,
+            aparece aqui um botão para calcular as que faltam.</small>
             {estado.sem_descritor > 0 && estado.no_ar && <> <button type="button" className="botao botao--pequeno" onClick={indexar}>Calcular os {estado.sem_descritor} que faltam</button></>}
           </p>
         )}
@@ -111,9 +130,10 @@ export default function DesempenhoNucleo() {
       <div className="cartao">
         <h2>Sequencial × OpenCL (RF-29)</h2>
         <p className="subtitulo">
-          Cada tamanho roda no núcleo a mesma conta das duas formas: em C, um núcleo por vez, e em OpenCL, todos os
-          núcleos juntos. Dica para a apresentação: deixe o Gerenciador de Tarefas aberto em Desempenho → CPU →
-          Processadores lógicos e rode o monitoramento.
+          Este teste mede quanto o OpenCL acelera o trabalho. Para cada tamanho de volume, o núcleo faz a mesma conta
+          duas vezes: <strong>sequencial</strong> (em C, usando um núcleo do processador por vez) e{' '}
+          <strong>OpenCL</strong> (todos os núcleos juntos). Os dados são de teste, gerados na hora: nada do banco é
+          alterado.
         </p>
         <div className="semelhanca__filtros">
           <label>Etapa
@@ -125,6 +145,7 @@ export default function DesempenhoNucleo() {
             {rodando !== null ? `Medindo n = ${rodando.toLocaleString('pt-BR')}…` : 'Rodar a curva'}
           </button>
         </div>
+        <p><small>{ETAPAS[etapa].explicacao}</small></p>
         {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
         {pontos.length > 0 && (
           <div className="desempenho__resultado">
@@ -146,10 +167,21 @@ export default function DesempenhoNucleo() {
             </table>
           </div>
         )}
-        <p><small>
-          Com pouco volume o OpenCL perde: o custo fixo de preparar o trabalho domina. Com volume, o ganho se aproxima do
-          número de núcleos, sem passar dele, porque sempre sobra uma parte que não paraleliza (Lei de Amdahl).
-        </small></p>
+        <h3>Como ler o resultado</h3>
+        <ul className="desempenho__guia">
+          <li><strong>Sequencial</strong> e <strong>OpenCL</strong>: tempo de cada forma, em milissegundos (média de 3
+            medições, depois de uma de aquecimento).</li>
+          <li><strong>Ganho</strong>: quantas vezes o OpenCL foi mais rápido (sequencial ÷ OpenCL). Abaixo de 1× ele foi
+            mais lento. Entre parênteses, o ganho só da conta em si (<em>kernel</em>), sem o tempo de enviar e receber
+            os dados.</li>
+          <li><strong>Mesmo resultado</strong>: as duas formas chegaram exatamente aos mesmos números. É a prova de que
+            o OpenCL acelera sem mudar a resposta.</li>
+          <li>No gráfico, a linha <strong>empate</strong> (1×) separa perder de ganhar, e a linha de cima é o limite
+            teórico: o número de núcleos do processador.</li>
+          <li>Com pouco volume o OpenCL perde, porque o custo fixo de preparar o trabalho domina. Com volume, o ganho se
+            aproxima do número de núcleos, sem passar dele, porque sempre sobra uma parte que não paraleliza
+            (Lei de Amdahl).</li>
+        </ul>
       </div>
     </section>
   )

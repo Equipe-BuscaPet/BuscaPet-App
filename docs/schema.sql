@@ -1,4 +1,4 @@
--- BuscaPet — Modelo Relacional (Sprint 2; revisado na Sprint 9 até a migração 0004)
+-- BuscaPet — Modelo Relacional (Sprint 2; revisado na Sprint 10 até a migração 0005)
 -- Postgres. Pode ser rodado direto no SQL Editor do Supabase, OU gerado via
 -- Alembic (api/alembic/versions/0001_initial_schema.py) a partir dos models
 -- em api/app/models/ — as duas fontes descrevem o mesmo schema.
@@ -33,6 +33,8 @@ CREATE TABLE abrigos (
     descricao                   VARCHAR(2000),
     telefone                    VARCHAR(20),
     chave_doacao_financeira     VARCHAR(140), -- só exibida; a plataforma não processa doação financeira (fora do escopo)
+    meta_mensal_centavos        INTEGER,      -- meta de gastos do mês, arrecadada por PIX e confirmada pelo abrigo
+    meta_mensal_descricao       VARCHAR(500), -- para que serve a meta (aparece no perfil público)
     documento_comprobatorio_url VARCHAR(500),
     status_validacao            VARCHAR(10) NOT NULL DEFAULT 'pendente' CHECK (status_validacao IN ('pendente','aprovado','rejeitado')),
     validado_por_id             INTEGER REFERENCES usuarios(id),
@@ -190,13 +192,16 @@ CREATE TABLE necessidades (
     criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Quem doa pode ser apoiador (empresa) ou tutor (pessoa física); por isso apoiador_id aponta para usuarios.
+-- Com valor_centavos, é uma doação em dinheiro (PIX feito fora da plataforma, confirmado pelo abrigo).
 CREATE TABLE doacoes (
     id              SERIAL PRIMARY KEY,
-    apoiador_id     INTEGER NOT NULL REFERENCES apoiadores(usuario_id),
+    apoiador_id     INTEGER NOT NULL REFERENCES usuarios(id),
     abrigo_id       INTEGER NOT NULL REFERENCES abrigos(usuario_id),
     necessidade_id  INTEGER REFERENCES necessidades(id),
     item            VARCHAR(200) NOT NULL,
     quantidade      INTEGER NOT NULL,
+    valor_centavos  INTEGER,
     status          VARCHAR(25) NOT NULL DEFAULT 'aguardando_confirmacao' CHECK (status IN ('aguardando_confirmacao','confirmada','recusada')),
     registrado_em   TIMESTAMPTZ NOT NULL DEFAULT now(),
     confirmado_em   TIMESTAMPTZ
@@ -206,7 +211,7 @@ CREATE TABLE doacoes (
 -- "acumulado do ano" (soma das linhas do ano) sem reprocessar o histórico de doações.
 CREATE TABLE pontuacoes_apoiador (
     id                   SERIAL PRIMARY KEY,
-    apoiador_id          INTEGER NOT NULL REFERENCES apoiadores(usuario_id),
+    apoiador_id          INTEGER NOT NULL REFERENCES usuarios(id),
     mes_referencia        TIMESTAMPTZ NOT NULL, -- sempre dia 1 do mês
     pontos_volume        DOUBLE PRECISION NOT NULL DEFAULT 0,
     pontos_regularidade  DOUBLE PRECISION NOT NULL DEFAULT 0,

@@ -156,7 +156,11 @@ export default function RegistroDetalhe({ tipo }) {
           </div>
           {!ehAutor && (
             <p className="subtitulo" style={{ margin: 0 }}>
-              <small>O contato com quem registrou será feito pela própria plataforma, sem expor telefone nem endereço (em construção).</small>
+              <small>
+                {tipo === 'perdido'
+                  ? 'Viu este animal? Registre o avistamento: o tutor recebe um alerta no BuscaPet, sem que o telefone ou o endereço de ninguém apareça.'
+                  : 'É o seu animal? Ao registrar a perda, você vê os avistamentos parecidos com ele, este incluído, e o BuscaPet avisa quando aparecer um novo.'}
+              </small>
             </p>
           )}
         </div>

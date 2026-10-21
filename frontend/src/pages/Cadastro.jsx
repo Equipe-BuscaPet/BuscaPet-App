@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { destinoPorTipo, useAuth } from '../auth'
-import { limpar, TIPOS_ESTABELECIMENTO } from '../rotulos'
+import { CATEGORIAS_EMPRESA, limpar } from '../rotulos'
 
 const TIPOS = [
   { valor: 'tutor', titulo: 'Tutor', texto: 'Quero adotar ou encontrar meu animal' },
@@ -121,7 +121,8 @@ export default function Cadastro() {
           {tipo === 'abrigo' && (
             <>
               <div className="aviso aviso--atencao">
-                Todo abrigo passa por validação do administrador antes de publicar animais.
+                Você já pode cadastrar animais assim que criar a conta. O selo <strong>Verificado</strong>, concedido pela
+                administração depois de conferir o abrigo, libera o mural de necessidades e as doações.
               </div>
               <div className="campo"><label htmlFor="nome_abrigo">Nome do abrigo</label><input {...campo('nome_abrigo')} required maxLength={150} /></div>
               <div className="campo"><label htmlFor="endereco">Endereço</label><input {...campo('endereco')} required maxLength={255} autoComplete="street-address" /></div>
@@ -148,7 +149,7 @@ export default function Cadastro() {
                 <div className="campo">
                   <label htmlFor="tipo_estabelecimento">Tipo de estabelecimento</label>
                   <select {...campo('tipo_estabelecimento')}>
-                    {Object.entries(TIPOS_ESTABELECIMENTO).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    {CATEGORIAS_EMPRESA.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
                   </select>
                 </div>
               </div>

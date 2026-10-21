@@ -29,7 +29,7 @@ from app.routers import (
 app = FastAPI(
     title="BuscaPet API",
     description="Backend da plataforma de adoção, reencontro e doação de animais.",
-    version="0.4.0",
+    version="1.0.0-rc.1",  # Release Candidate da Sprint 10; a versão final (1.0.0) sai no code freeze da Sprint 12
 )
 
 app.add_middleware(
@@ -59,6 +59,7 @@ app.include_router(desempenho.router)
 
 @app.get("/health", tags=["infra"])
 def healthcheck() -> dict:
+    """A API está no ar (não consulta o banco)."""
     return {"status": "ok"}
 
 

@@ -9,6 +9,7 @@ router = APIRouter(prefix="/fotos", tags=["reencontro"])
 
 @router.get("/{nome}", response_class=FileResponse)
 def baixar(nome: str) -> FileResponse:
+    """Arquivo da foto (JPEG, sem metadados). O nome é aleatório e o conteúdo não muda, por isso fica em cache por 7 dias."""
     arquivo = armazenamento.caminho(nome)
     if arquivo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Foto não encontrada.")
