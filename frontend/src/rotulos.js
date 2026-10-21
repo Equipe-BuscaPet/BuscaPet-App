@@ -22,6 +22,20 @@ export const URGENCIAS = { alta: 'Urgente', media: 'Média', baixa: 'Pode espera
 export const COR_URGENCIA = { alta: 'etiqueta--erro', media: 'etiqueta--atencao', baixa: '' }
 export const STATUS_DOACAO = { aguardando_confirmacao: 'Aguardando o abrigo', confirmada: 'Recebida pelo abrigo', recusada: 'Não recebida' }
 export const COR_DOACAO = { aguardando_confirmacao: 'etiqueta--atencao', confirmada: 'etiqueta--ok', recusada: 'etiqueta--erro' }
+// A conta de apoiador é de empresa; pessoa física doa com a conta de tutor.
+export const CATEGORIAS_EMPRESA = Object.entries(TIPOS_ESTABELECIMENTO).filter(([v]) => v !== 'pessoa_fisica')
+// Dinheiro em centavos (como a API guarda): 5000 → "R$ 50,00".
+export const reais = (centavos) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+// "50", "50,5", "1.234,56" ou "50.50" digitado → centavos; null se não for um valor válido.
+export function paraCentavos(texto) {
+  let limpo = String(texto).trim().replace(/[R$\s]/g, '')
+  // Com vírgula, o ponto é de milhar; sem vírgula, "50.50" é decimal e "1.234" é milhar.
+  limpo = limpo.includes(',') || !/^\d+\.\d{1,2}$/.test(limpo) ? limpo.replace(/\./g, '').replace(',', '.') : limpo
+  if (!/^\d+(\.\d{1,2})?$/.test(limpo)) return null
+  return Math.round(Number(limpo) * 100)
+}
+// Como a doação aparece nas listas: "2 × Ração" ou "R$ 50,00 via PIX".
+export const textoDoacao = (d) => (d.valor_centavos != null ? `${reais(d.valor_centavos)} via PIX` : `${d.quantidade} × ${d.item}`)
 
 export const STATUS_VALIDACAO = { pendente: 'Não verificado', aprovado: 'Verificado', rejeitado: 'Suspenso' }
 

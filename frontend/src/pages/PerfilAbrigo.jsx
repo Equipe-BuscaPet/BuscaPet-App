@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import CartaoNecessidade from '../componentes/CartaoNecessidade'
+import DoarDinheiro from '../componentes/DoarDinheiro'
 import { EMOJI_ESTABELECIMENTO, linkWhatsApp } from '../rotulos'
 import { CartaoAnimal } from './Catalogo'
 
@@ -52,12 +53,6 @@ export default function PerfilAbrigo() {
               <><dt>Telefone</dt><dd>{abrigo.telefone}{whats && <> · <a href={whats} target="_blank" rel="noreferrer">WhatsApp</a></>}</dd></>
             )}
           </dl>
-          {abrigo.chave_doacao_financeira && (
-            <div className="pix">
-              <small>Doação em dinheiro direto ao abrigo (a BuscaPet não intermedia pagamentos):</small>
-              <p style={{ margin: '0.25rem 0 0' }}>Chave PIX: <code>{abrigo.chave_doacao_financeira}</code></p>
-            </div>
-          )}
           {!abrigo.verificado && (
             <div className="aviso aviso--atencao" style={{ margin: 0 }}>
               Este abrigo ainda não foi verificado pela administração. Por segurança, a chave de doação e o mural de necessidades só aparecem depois do selo.
@@ -80,6 +75,10 @@ export default function PerfilAbrigo() {
             )}
         </section>
       </div>
+
+      {abrigo.chave_doacao_financeira && (
+        <div style={{ marginTop: '1rem' }}><DoarDinheiro abrigo={abrigo} aoDoar={recarregar} /></div>
+      )}
 
       {abrigo.verificado && (
         <section aria-labelledby="t-necessidades" style={{ marginTop: '2rem' }}>

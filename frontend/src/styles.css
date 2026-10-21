@@ -48,6 +48,9 @@ body {
   font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.5;
 }
+/* Rodapé sempre no pé da janela: com pouco conteúdo, o miolo estica e empurra o rodapé para baixo. */
+#root { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+#conteudo { flex: 1 0 auto; }
 a { color: var(--accent); }
 h1, h2, h3 { line-height: 1.2; margin: 0 0 0.5rem; }
 h1 { font-size: 1.75rem; font-weight: 800; }
@@ -138,6 +141,7 @@ fieldset { border: 0; padding: 0; margin: 0; }
 .aviso--erro { background: var(--erro-bg); color: var(--erro-ink); }
 .aviso--ok { background: var(--ok-bg); color: var(--ok-ink); }
 .aviso--atencao { background: var(--warn-bg); color: var(--warn-ink); }
+.aviso a { color: inherit; font-weight: 700; } /* link no aviso com a cor do texto: o laranja não tem contraste sobre o amarelo */
 .etiqueta { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; background: var(--surface-2); border: 1px solid var(--line); }
 .etiqueta--ok { background: var(--ok-bg); color: var(--ok-ink); border-color: transparent; }
 .etiqueta--atencao { background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; }
@@ -440,6 +444,10 @@ button.miniatura { cursor: pointer; }
 .chips a:hover { border-color: var(--accent); }
 .pix { border: 1px dashed var(--accent); border-radius: 12px; padding: 0.75rem 1rem; }
 .pix code { font-size: 1rem; font-weight: 700; }
+.doar-dinheiro { display: grid; gap: 0.6rem; }
+.doar-dinheiro__valores { margin: 0; font-size: 1.05rem; }
+.doar-dinheiro__valores strong { font-size: 1.35rem; color: var(--ok-ink); }
+.pix code { word-break: break-all; }
 .resumo-hoje { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 1.5rem; }
 .resumo-hoje a { display: grid; gap: 0.15rem; text-decoration: none; color: var(--ink); }
 .resumo-hoje a:hover { border-color: var(--accent); }
@@ -518,6 +526,7 @@ button.miniatura { cursor: pointer; }
 .desempenho__resultado { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; margin-top: 1rem; }
 @media (max-width: 800px) { .desempenho__resultado { grid-template-columns: 1fr; } }
 .grafico-ganho { width: 100%; height: auto; }
+.desempenho__guia { margin: 0 0 0.75rem; padding-left: 1.2rem; display: grid; gap: 0.35rem; color: var(--ink-dim); }
 .grafico-ganho__barra { fill: var(--serie-1); }
 .grafico-ganho__ref { stroke: var(--line); stroke-dasharray: 4 4; }
 .grafico-ganho__base { stroke: var(--ink-dim); }

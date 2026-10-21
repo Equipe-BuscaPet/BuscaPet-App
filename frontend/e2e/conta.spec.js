@@ -22,7 +22,7 @@ test.describe('Menu da conta', () => {
     await page.goto('/')
     await abrirMenu(page)
     await expect(menu(page)).toContainText(tutor.nome)
-    for (const item of ['Minha conta', 'Meus interesses de adoção', 'Meus registros', 'Notificações']) {
+    for (const item of ['Minha conta', 'Meus interesses de adoção', 'Minhas doações', 'Meus registros', 'Notificações']) {
       await expect(menu(page).getByRole('link', { name: new RegExp(item) })).toBeVisible()
     }
     await expect(menu(page).getByRole('link', { name: /Meus animais/ })).toHaveCount(0)

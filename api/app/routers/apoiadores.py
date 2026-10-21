@@ -2,6 +2,9 @@
 
 O ranking lê o cache mensal `pontuacoes_apoiador` (regra em app/core/pontuacao.py). Dois períodos (escopo
 5.2): o mês (para quem chegou agora aparecer) e o acumulado do ano.
+
+A categoria "pessoa física" reúne os tutores que doam. Por privacidade, aparecem só com o primeiro nome e a
+inicial do sobrenome, e não têm perfil público nem posição no mapa (o perfil e o mapa são das empresas).
 """
 import datetime
 from typing import Literal
@@ -13,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core import pontuacao
 from app.db.session import get_db
 from app.models.doacao import Doacao, PontuacaoApoiador
-from app.models.enums import StatusDoacao, StatusValidacao, TipoEstabelecimento
+from app.models.enums import StatusDoacao, StatusValidacao, TipoConta, TipoEstabelecimento
 from app.models.usuario import Abrigo, Apoiador, Usuario
 from app.schemas.doacao import AbrigoApoiado, ApoiadorPerfilOut, ApoiadorResumo, PosicaoRanking
 
@@ -28,6 +31,20 @@ def _ativos(db: Session, categoria: TipoEstabelecimento | None = None) -> dict[i
     if categoria:
         consulta = consulta.where(Apoiador.tipo_estabelecimento == categoria)
     return {ap.usuario_id: (ap, u) for ap, u in db.execute(consulta).tuples()}
+
+
+def _tutores(db: Session) -> dict[int, Usuario]:
+    """Tutores ativos que já doaram: entram no ranking como pessoa física."""
+    consulta = select(Usuario).where(
+        Usuario.tipo_conta == TipoConta.TUTOR, Usuario.ativo.is_(True), Usuario.id.in_(select(Doacao.apoiador_id)),
+    )
+    return {u.id: u for u in db.scalars(consulta)}
+
+
+def nome_publico(nome: str) -> str:
+    """"Maria da Silva Souza" → "Maria S.": a pessoa física aparece no ranking sem o nome completo."""
+    partes = nome.split()
+    return f"{partes[0]} {partes[-1][0].upper()}." if len(partes) > 1 else partes[0]
 
 
 def _pontos_por_mes(db: Session, ids) -> dict[int, dict[tuple[int, int], PontuacaoApoiador]]:
@@ -59,18 +76,21 @@ def ranking(
     db: Session = Depends(get_db),
 ) -> list[PosicaoRanking]:
     ano, m = _mes_pedido(mes)
-    apoiadores = _ativos(db, categoria)
-    pontos = _pontos_por_mes(db, apoiadores)
+    # id → (nome exibido, categoria, tem perfil público)
+    doadores = {aid: (u.nome, ap.tipo_estabelecimento, True) for aid, (ap, u) in _ativos(db, categoria).items()}
+    if categoria in (None, TipoEstabelecimento.PESSOA_FISICA):
+        doadores |= {tid: (nome_publico(u.nome), TipoEstabelecimento.PESSOA_FISICA, False) for tid, u in _tutores(db).items()}
+    pontos = _pontos_por_mes(db, doadores)
     linhas = []
     for aid, meses in pontos.items():
         escolhidos = [p for (a, mm), p in meses.items() if a == ano and (mm <= m if periodo == "ano" else mm == m)]
         if not escolhidos:
             continue
-        apoiador, usuario = apoiadores[aid]
+        nome, tipo, perfil_publico = doadores[aid]
         ate = [p for (a, mm), p in meses.items() if (a, mm) <= (ano, m)]
         ultimo = max(ate, key=lambda p: p.mes_referencia.replace(tzinfo=None)) if ate else None
         linhas.append(dict(
-            apoiador_id=aid, nome=usuario.nome, tipo_estabelecimento=apoiador.tipo_estabelecimento,
+            apoiador_id=aid, nome=nome, tipo_estabelecimento=tipo, perfil_publico=perfil_publico,
             pontos=sum(p.pontos_total for p in escolhidos), pontos_volume=sum(p.pontos_volume for p in escolhidos),
             pontos_regularidade=sum(p.pontos_regularidade for p in escolhidos),
             doacoes_confirmadas=int(sum(p.pontos_volume for p in escolhidos) // pontuacao.PONTOS_POR_DOACAO),
