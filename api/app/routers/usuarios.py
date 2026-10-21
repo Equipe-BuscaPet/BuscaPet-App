@@ -19,6 +19,7 @@ _CAMPOS_POR_TIPO = {
     TipoConta.ABRIGO: {
         "nome_abrigo", "endereco", "latitude", "longitude",
         "horario_funcionamento", "descricao", "telefone", "chave_doacao_financeira",
+        "meta_mensal_centavos", "meta_mensal_descricao",
     },
     TipoConta.APOIADOR: {"endereco", "latitude", "longitude", "tipo_estabelecimento"},
     TipoConta.ADMIN: set(),

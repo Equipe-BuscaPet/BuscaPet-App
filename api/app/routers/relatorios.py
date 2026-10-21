@@ -25,7 +25,7 @@ from app.core.deps import exigir_tipo, get_abrigo_operante
 from app.db.session import get_db
 from app.models.animal import Animal, Interesse
 from app.models.doacao import Doacao, Necessidade
-from app.models.enums import StatusAnimal, StatusDenuncia, StatusDoacao, StatusNecessidade, StatusValidacao, TipoConta
+from app.models.enums import StatusAnimal, StatusDenuncia, StatusDoacao, StatusNecessidade, StatusValidacao, TipoConta, TipoEstabelecimento
 from app.models.reencontro import AnimalPerdido, Avistamento
 from app.models.transversais import Denuncia, LogAuditoria
 from app.models.usuario import Abrigo, Apoiador, Tutor, Usuario
@@ -457,13 +457,15 @@ def interesses_csv(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_a
 @router.get("/relatorios/abrigo/doacoes.csv")
 def doacoes_csv(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> Response:
     linhas = db.execute(
-        select(Doacao, Usuario, Apoiador).join(Usuario, Usuario.id == Doacao.apoiador_id).join(Apoiador, Apoiador.usuario_id == Doacao.apoiador_id)
+        select(Doacao, Usuario, Apoiador).join(Usuario, Usuario.id == Doacao.apoiador_id).outerjoin(Apoiador, Apoiador.usuario_id == Doacao.apoiador_id)
         .where(Doacao.abrigo_id == abrigo.usuario_id, _no(Doacao.registrado_em, p)).order_by(Doacao.registrado_em.desc())
     ).tuples()
     return _csv(
-        f"doacoes-{p.de}-a-{p.ate}.csv", ["Registrada em", "Apoiador", "Categoria", "Item", "Quantidade", "Situação", "Confirmada em"],
-        ([_data(d.registrado_em), u.nome, ap.tipo_estabelecimento.value, d.item, d.quantidade, STATUS_DOACAO[d.status.value],
-          _data(d.confirmado_em)] for d, u, ap in linhas),
+        f"doacoes-{p.de}-a-{p.ate}.csv",
+        ["Registrada em", "Quem doou", "Categoria", "Item", "Quantidade", "Valor (R$)", "Situação", "Confirmada em"],
+        ([_data(d.registrado_em), u.nome, ap.tipo_estabelecimento.value if ap else TipoEstabelecimento.PESSOA_FISICA.value, d.item,
+          d.quantidade, f"{d.valor_centavos / 100:.2f}".replace(".", ",") if d.valor_centavos is not None else "",
+          STATUS_DOACAO[d.status.value], _data(d.confirmado_em)] for d, u, ap in linhas),
     )
 
 

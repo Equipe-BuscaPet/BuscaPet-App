@@ -68,3 +68,13 @@ def test_demonstracao_poe_capa_nos_animais(client, sessao_factory):
         popular(db)  # rodar de novo não duplica as fotos
     animais = client.get("/animais?limite=50").json()
     assert animais and all(len(a["fotos"]) == 1 for a in animais)
+
+
+def test_demonstracao_traz_meta_do_mes_e_pessoas_fisicas_no_ranking(client, sessao_factory):
+    with sessao_factory() as db:
+        popular(db)
+    patinhas = next(a for a in client.get("/abrigos").json() if a["nome_abrigo"] == "Abrigo Patinhas Felizes")
+    meta = client.get(f"/abrigos/{patinhas['id']}").json()["meta_mensal"]
+    assert meta["valor_centavos"] == 300000 and meta["arrecadado_centavos"] == 11000  # Maria R$ 80 + João R$ 30
+    pf = client.get("/apoiadores/ranking", params={"categoria": "pessoa_fisica"}).json()
+    assert [r["nome"] for r in pf] == ["Maria S.", "João P."]  # Maria doa há 2 meses seguidos

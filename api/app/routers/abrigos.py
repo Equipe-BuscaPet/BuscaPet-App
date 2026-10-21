@@ -15,7 +15,7 @@ from app.models.animal import Animal
 from app.models.doacao import Doacao, PontuacaoApoiador
 from app.models.enums import StatusAnimal, StatusDoacao, StatusValidacao
 from app.models.usuario import Abrigo, Apoiador, Usuario
-from app.routers.doacoes import _necessidade_out, _recebido, necessidades_abertas, ordenar_mural
+from app.routers.doacoes import _necessidade_out, _recebido, meta_do_mes, necessidades_abertas, ordenar_mural
 from app.schemas.abrigo import AbrigoMapaOut
 from app.schemas.doacao import AbrigoPerfilOut, ApoiadorResumo
 
@@ -102,5 +102,6 @@ def perfil(abrigo_id: int, db: Session = Depends(get_db)) -> AbrigoPerfilOut:
         longitude=abrigo.longitude, telefone=abrigo.telefone, horario_funcionamento=abrigo.horario_funcionamento,
         descricao=abrigo.descricao, verificado=verificado, animais_disponiveis=disponiveis or 0,
         chave_doacao_financeira=abrigo.chave_doacao_financeira if verificado else None,
+        meta_mensal=meta_do_mes(db, abrigo) if verificado and abrigo.chave_doacao_financeira else None,
         necessidades=necessidades, apoiadores=apoiadores,
     )
