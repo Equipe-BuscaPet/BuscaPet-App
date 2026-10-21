@@ -31,6 +31,7 @@ def _contagem(db: Session) -> dict:
 
 @router.get("")
 def estado(db: Session = Depends(get_db)) -> dict:
+    """Estado do núcleo OpenCL (no ar? dispositivo, núcleos) e quantas fotos já têm descritor visual."""
     try:
         saude = nucleo.saude()
     except nucleo.NucleoIndisponivel as erro:
@@ -51,6 +52,7 @@ def benchmark(etapa: Literal["busca", "lote", "extracao"] = "busca", n: int = Qu
 
 @router.post("/indexar")
 def indexar(limite: int = Query(default=500, ge=1, le=5000), db: Session = Depends(get_db)) -> dict:
+    """Calcula no núcleo os descritores das fotos que ficaram sem (enviadas com o núcleo fora do ar). 503 se o núcleo não responder."""
     sem = db.scalars(
         select(Foto).outerjoin(DescritorVisual, DescritorVisual.foto_id == Foto.id)
         .where(DescritorVisual.id.is_(None)).order_by(Foto.id).limit(limite)

@@ -267,6 +267,7 @@ def consultar_perdido(
     usuario: Usuario | None = Depends(get_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> PerdidoOut:
+    """Um registro de animal perdido. O local exato só aparece para quem registrou; os outros veem o local aproximado."""
     perdido = db.get(AnimalPerdido, perdido_id)
     if perdido is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
@@ -280,6 +281,7 @@ def excluir_perdido(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> Response:
+    """Quem registrou (ou a administração) exclui o registro e as fotos."""
     perdido = db.get(AnimalPerdido, perdido_id)
     if perdido is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
@@ -418,6 +420,7 @@ def buscar_semelhantes(
 
 @router.get("/avistamentos", response_model=list[AvistamentoOut])
 def listar_avistamentos(filtros: dict = Depends(_filtros), db: Session = Depends(get_db)) -> list[AvistamentoOut]:
+    """Avistamentos de animais na rua, mais recentes primeiro; filtra por espécie, porte e raio a partir de uma posição."""
     consulta = select(Avistamento)
     if filtros["especie"]:
         consulta = consulta.where(Avistamento.especie == filtros["especie"])
@@ -434,6 +437,7 @@ def listar_meus_avistamentos(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> list[AvistamentoOut]:
+    """Avistamentos registrados pela conta logada, com o local exato."""
     avistamentos = list(db.scalars(
         select(Avistamento).where(Avistamento.usuario_id == usuario.id).order_by(Avistamento.criado_em.desc(), Avistamento.id.desc())
     ))
@@ -447,6 +451,7 @@ def consultar_avistamento(
     usuario: Usuario | None = Depends(get_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> AvistamentoOut:
+    """Um avistamento. O local exato só aparece para quem registrou."""
     avistamento = db.get(Avistamento, avistamento_id)
     if avistamento is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")
@@ -461,6 +466,7 @@ def excluir_avistamento(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> Response:
+    """Quem registrou (ou a administração) exclui o avistamento e as fotos."""
     avistamento = db.get(Avistamento, avistamento_id)
     if avistamento is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro não encontrado.")

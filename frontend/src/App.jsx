@@ -91,6 +91,22 @@ function Rodape() {
   )
 }
 
+// Endereço que não existe: diz o que houve e oferece os caminhos principais.
+function NaoEncontrada() {
+  return (
+    <main className="pagina pagina--estreita nao-encontrada">
+      <p className="nao-encontrada__codigo" aria-hidden="true">404</p>
+      <h1>Página não encontrada</h1>
+      <p className="subtitulo">O endereço pode ter sido digitado errado, ou o conteúdo foi removido.</p>
+      <div className="acoes" style={{ justifyContent: 'center' }}>
+        <Link className="botao" to="/">Ver animais para adoção</Link>
+        <Link className="botao botao--leve" to="/reencontro">Perdidos e achados</Link>
+        <Link className="botao botao--leve" to="/mapa">Mapa</Link>
+      </div>
+    </main>
+  )
+}
+
 // Só deixa passar quem está logado com um dos tipos de conta permitidos (controle de perfil).
 function Protegido({ tipos, children }) {
   const { usuario, carregando } = useAuth()
@@ -126,7 +142,7 @@ export default function App() {
         <Route path="/apoiadores/:id" element={<PerfilApoiador />} />
         <Route path="/doacoes" element={<Protegido tipos={['abrigo']}><DoacoesAbrigo /></Protegido>} />
         <Route path="/relatorios" element={<Protegido tipos={['abrigo']}><RelatoriosAbrigo /></Protegido>} />
-        <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador']}><MinhasDoacoes /></Protegido>} />
+        <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador', 'tutor']}><MinhasDoacoes /></Protegido>} />
         <Route path="/reencontro/perdidos/:id" element={<RegistroDetalhe key="perdido" tipo="perdido" />} />
         <Route path="/reencontro/avistamentos/:id" element={<RegistroDetalhe key="avistamento" tipo="avistamento" />} />
         <Route path="/perdi" element={<AssistenteRegistro key="perdido" tipo="perdido" />} />
@@ -142,7 +158,7 @@ export default function App() {
         <Route path="/interessados" element={<Protegido tipos={['abrigo']}><Interessados /></Protegido>} />
         <Route path="/painel" element={<Protegido tipos={['abrigo']}><PainelAbrigo /></Protegido>} />
         <Route path="/admin" element={<Protegido tipos={['admin']}><Admin /></Protegido>} />
-        <Route path="*" element={<main className="pagina"><p className="estado">Página não encontrada.</p></main>} />
+        <Route path="*" element={<NaoEncontrada />} />
       </Routes>
       </div>
       <Rodape />

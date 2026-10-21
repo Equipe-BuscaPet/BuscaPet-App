@@ -1,7 +1,10 @@
-"""Necessidades do abrigo (RF-30) e doações do apoiador com confirmação do abrigo (RF-31, RF-32).
+"""Necessidades do abrigo (RF-30), doações com confirmação do abrigo (RF-31, RF-32) e meta mensal em dinheiro.
 
-Fluxo: o abrigo publica o que precisa → o apoiador registra a doação (do mural ou avulsa) → o abrigo
-confirma quando recebe (ou recusa) → só então a doação pontua no ranking (escopo 5.4).
+Fluxo: o abrigo publica o que precisa → quem quer ajudar (apoiador ou tutor) registra a doação (do mural, avulsa
+ou em dinheiro) → o abrigo confirma quando recebe (ou recusa) → só então a doação pontua no ranking (escopo 5.4).
+
+Dinheiro: não há pagamento dentro da plataforma (fora do escopo). Quem doa faz o PIX para a chave do abrigo e
+registra o valor; o abrigo confirma quando vê o dinheiro na conta, e a meta do mês avança.
 
 O selo Verificado passa a ser exigido aqui, onde há risco de golpe (decisão da Sprint 4):
 só abrigo verificado publica no mural e recebe doação pela plataforma.
@@ -21,9 +24,13 @@ from app.models.doacao import Doacao, Necessidade
 from app.models.enums import StatusDoacao, StatusNecessidade, StatusValidacao, TipoConta, UrgenciaNecessidade
 from app.models.transversais import Notificacao
 from app.models.usuario import Abrigo, Usuario
-from app.schemas.doacao import DecisaoDoacao, DoacaoIn, DoacaoOut, NecessidadeEdicao, NecessidadeIn, NecessidadeOut
+from app.schemas.doacao import DecisaoDoacao, DoacaoIn, DoacaoOut, MetaMensalOut, NecessidadeEdicao, NecessidadeIn, NecessidadeOut
 
 router = APIRouter(tags=["doações"])
+
+DOAM = (TipoConta.APOIADOR, TipoConta.TUTOR)  # empresas (ranking por categoria) e pessoas físicas
+ITEM_DINHEIRO = "Doação em dinheiro (PIX)"
+FUSO = datetime.timezone(datetime.timedelta(hours=-3), "America/Recife")  # a meta é do mês de Recife
 
 ORDEM_URGENCIA = {UrgenciaNecessidade.ALTA: 0, UrgenciaNecessidade.MEDIA: 1, UrgenciaNecessidade.BAIXA: 2}
 SEM_SELO = "Seu abrigo precisa do selo Verificado para publicar necessidades no mural. A administração concede o selo depois de conferir o abrigo."
@@ -71,6 +78,35 @@ def ordenar_mural(itens: list[NecessidadeOut]) -> list[NecessidadeOut]:
     ))
 
 
+def reais(centavos: int) -> str:
+    """5000 → "R$ 50,00"; 123456 → "R$ 1.234,56"."""
+    return "R$ " + f"{centavos / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def descrever(d: Doacao) -> str:
+    """Como a doação aparece nos avisos: "2 × Ração" ou "R$ 50,00 via PIX"."""
+    return f"{reais(d.valor_centavos)} via PIX" if d.valor_centavos is not None else f"{d.quantidade} × {d.item}"
+
+
+def meta_do_mes(db: Session, abrigo: Abrigo, hoje: datetime.date | None = None) -> MetaMensalOut | None:
+    """Meta de gastos do mês corrente e o que já foi confirmado em dinheiro nele (fuso de Recife)."""
+    if abrigo.meta_mensal_centavos is None:
+        return None
+    hoje = hoje or datetime.datetime.now(FUSO).date()
+    inicio = datetime.datetime(hoje.year, hoje.month, 1, tzinfo=FUSO)
+    fim = datetime.datetime(hoje.year + (hoje.month == 12), hoje.month % 12 + 1, 1, tzinfo=FUSO)
+    total, quantas = db.execute(
+        select(func.coalesce(func.sum(Doacao.valor_centavos), 0), func.count(Doacao.id)).where(
+            Doacao.abrigo_id == abrigo.usuario_id, Doacao.valor_centavos.is_not(None), Doacao.status == StatusDoacao.CONFIRMADA,
+            Doacao.confirmado_em >= inicio.astimezone(datetime.UTC), Doacao.confirmado_em < fim.astimezone(datetime.UTC),
+        )
+    ).one()
+    return MetaMensalOut(
+        mes=f"{hoje.year}-{hoje.month:02d}", valor_centavos=abrigo.meta_mensal_centavos, descricao=abrigo.meta_mensal_descricao,
+        arrecadado_centavos=int(total), doacoes_confirmadas=int(quantas),
+    )
+
+
 def _doacao_out(d: Doacao, apoiador: Usuario, abrigo: Abrigo, ver_contato_de: str | None = None) -> DoacaoOut:
     contato = None
     if ver_contato_de == "apoiador":
@@ -78,8 +114,9 @@ def _doacao_out(d: Doacao, apoiador: Usuario, abrigo: Abrigo, ver_contato_de: st
     elif ver_contato_de == "abrigo":
         contato = " · ".join(filter(None, [abrigo.telefone, abrigo.endereco]))
     return DoacaoOut(
-        id=d.id, apoiador_id=d.apoiador_id, nome_apoiador=apoiador.nome, abrigo_id=d.abrigo_id, nome_abrigo=abrigo.nome_abrigo,
-        necessidade_id=d.necessidade_id, item=d.item, quantidade=d.quantidade, status=d.status,
+        id=d.id, apoiador_id=d.apoiador_id, nome_apoiador=apoiador.nome, perfil_publico_doador=apoiador.tipo_conta == TipoConta.APOIADOR,
+        abrigo_id=d.abrigo_id, nome_abrigo=abrigo.nome_abrigo,
+        necessidade_id=d.necessidade_id, item=d.item, quantidade=d.quantidade, valor_centavos=d.valor_centavos, status=d.status,
         registrado_em=d.registrado_em, confirmado_em=d.confirmado_em, contato=contato,
     )
 
@@ -99,6 +136,7 @@ def _minha_necessidade(db: Session, necessidade_id: int, abrigo: Abrigo) -> Nece
 
 @router.post("/necessidades", response_model=NecessidadeOut, status_code=status.HTTP_201_CREATED)
 def publicar_necessidade(dados: NecessidadeIn, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> NecessidadeOut:
+    """O abrigo verificado publica uma necessidade no mural (RF-30). Sem o selo: 403."""
     if abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
     n = Necessidade(abrigo_id=abrigo.usuario_id, **dados.model_dump())
@@ -147,6 +185,7 @@ def minhas_necessidades(abrigo: Abrigo = Depends(get_abrigo_operante), db: Sessi
 def editar_necessidade(
     necessidade_id: int, dados: NecessidadeEdicao, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db),
 ) -> NecessidadeOut:
+    """O abrigo edita a necessidade, marca como atendida (`status: atendida`) ou reabre."""
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if dados.status == StatusNecessidade.ABERTA and abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
@@ -161,6 +200,7 @@ def editar_necessidade(
 
 @router.delete("/necessidades/{necessidade_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_necessidade(necessidade_id: int, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> Response:
+    """O abrigo exclui uma necessidade sem doações; com doações registradas, deve marcá-la como atendida (409)."""
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if db.scalar(select(func.count()).select_from(Doacao).where(Doacao.necessidade_id == n.id)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta necessidade já tem doações registradas e não pode ser excluída. Marque-a como atendida.")
@@ -170,14 +210,13 @@ def excluir_necessidade(necessidade_id: int, abrigo: Abrigo = Depends(get_abrigo
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# ---------- RF-31: doação do apoiador ----------
+# ---------- RF-31: doação (apoiador ou tutor) ----------
 
 @router.post("/doacoes", response_model=DoacaoOut, status_code=status.HTTP_201_CREATED)
-def registrar_doacao(
-    dados: DoacaoIn, usuario: Usuario = Depends(exigir_tipo(TipoConta.APOIADOR)), db: Session = Depends(get_db),
-) -> DoacaoOut:
-    """O apoiador se compromete a doar. Fica "aguardando confirmação" até o abrigo receber."""
-    item = dados.item
+def registrar_doacao(dados: DoacaoIn, usuario: Usuario = Depends(exigir_tipo(*DOAM)), db: Session = Depends(get_db)) -> DoacaoOut:
+    """Quem doa se compromete (itens) ou informa o PIX que fez (dinheiro). Fica "aguardando confirmação" até o abrigo
+    receber; só então conta para a necessidade, para a meta do mês e para o ranking."""
+    item = ITEM_DINHEIRO if dados.valor_centavos is not None else dados.item
     if dados.necessidade_id is not None:
         necessidade = db.get(Necessidade, dados.necessidade_id)
         if necessidade is None:
@@ -192,19 +231,28 @@ def registrar_doacao(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Abrigo não encontrado.")
     if abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_409_CONFLICT, "Este abrigo ainda não tem o selo Verificado e não recebe doações pela plataforma.")
+    if dados.valor_centavos is not None and not abrigo.chave_doacao_financeira:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este abrigo ainda não informou uma chave PIX para receber doações em dinheiro.")
 
-    doacao = Doacao(apoiador_id=usuario.id, abrigo_id=abrigo_id, necessidade_id=dados.necessidade_id, item=item, quantidade=dados.quantidade)
+    doacao = Doacao(apoiador_id=usuario.id, abrigo_id=abrigo_id, necessidade_id=dados.necessidade_id, item=item,
+                    quantidade=dados.quantidade, valor_centavos=dados.valor_centavos)
     db.add(doacao)
     db.flush()
-    _notificar(db, abrigo_id, f"{usuario.nome} vai doar {dados.quantidade} × {item}. Confirme quando receber.", doacao.id)
-    auditoria.registrar(db, usuario.id, "doacao.registrada", "doacao", doacao.id, item=item, quantidade=dados.quantidade, abrigo_id=abrigo_id)
+    if dados.valor_centavos is not None:
+        aviso = f"{usuario.nome} informou um PIX de {reais(dados.valor_centavos)}. Confirme quando o valor aparecer na conta."
+    else:
+        aviso = f"{usuario.nome} vai doar {descrever(doacao)}. Confirme quando receber."
+    _notificar(db, abrigo_id, aviso, doacao.id)
+    auditoria.registrar(db, usuario.id, "doacao.registrada", "doacao", doacao.id, item=item, quantidade=dados.quantidade,
+                        valor_centavos=dados.valor_centavos, abrigo_id=abrigo_id)
     db.commit()
     db.refresh(doacao)
     return _doacao_out(doacao, usuario, abrigo, ver_contato_de="abrigo")
 
 
 @router.get("/doacoes/minhas", response_model=list[DoacaoOut])
-def minhas_doacoes(usuario: Usuario = Depends(exigir_tipo(TipoConta.APOIADOR)), db: Session = Depends(get_db)) -> list[DoacaoOut]:
+def minhas_doacoes(usuario: Usuario = Depends(exigir_tipo(*DOAM)), db: Session = Depends(get_db)) -> list[DoacaoOut]:
+    """Doações de quem está logado (apoiador ou tutor), com a situação e o contato do abrigo."""
     linhas = db.execute(
         select(Doacao, Abrigo).join(Abrigo, Abrigo.usuario_id == Doacao.abrigo_id)
         .where(Doacao.apoiador_id == usuario.id).order_by(Doacao.registrado_em.desc(), Doacao.id.desc())
@@ -213,14 +261,14 @@ def minhas_doacoes(usuario: Usuario = Depends(exigir_tipo(TipoConta.APOIADOR)), 
 
 
 @router.delete("/doacoes/{doacao_id}", status_code=status.HTTP_204_NO_CONTENT)
-def cancelar_doacao(doacao_id: int, usuario: Usuario = Depends(exigir_tipo(TipoConta.APOIADOR)), db: Session = Depends(get_db)) -> Response:
-    """O apoiador desiste enquanto o abrigo não respondeu."""
+def cancelar_doacao(doacao_id: int, usuario: Usuario = Depends(exigir_tipo(*DOAM)), db: Session = Depends(get_db)) -> Response:
+    """Quem doou desiste enquanto o abrigo não respondeu."""
     d = db.get(Doacao, doacao_id)
     if d is None or d.apoiador_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doação não encontrada.")
     if d.status != StatusDoacao.AGUARDANDO_CONFIRMACAO:
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta doação já foi respondida pelo abrigo e não pode ser cancelada.")
-    _notificar(db, d.abrigo_id, f"{usuario.nome} cancelou a doação de {d.quantidade} × {d.item}.", d.id)
+    _notificar(db, d.abrigo_id, f"{usuario.nome} cancelou a doação de {descrever(d)}.", d.id)
     auditoria.registrar(db, usuario.id, "doacao.cancelada", "doacao", d.id, item=d.item, quantidade=d.quantidade)
     db.delete(d)
     db.commit()
@@ -248,6 +296,7 @@ def doacoes_recebidas(
 def decidir_doacao(
     doacao_id: int, dados: DecisaoDoacao, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db),
 ) -> DoacaoOut:
+    """O abrigo confirma (`confirmada`) ou recusa (`recusada`) uma doação, uma vez só (RF-32). Confirmada, ela pontua no ranking, conta para a necessidade e, se for em dinheiro, para a meta do mês."""
     d = db.get(Doacao, doacao_id)
     if d is None or d.abrigo_id != abrigo.usuario_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doação não encontrada.")
@@ -263,9 +312,9 @@ def decidir_doacao(
             n = db.get(Necessidade, d.necessidade_id)
             if _recebido(db, [n.id]).get(n.id, 0) >= n.quantidade:
                 n.status = StatusNecessidade.ATENDIDA
-        _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} confirmou o recebimento de {d.quantidade} × {d.item}. Obrigado! Sua pontuação foi atualizada.", d.id)
+        _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} confirmou o recebimento de {descrever(d)}. Obrigado! Sua pontuação foi atualizada.", d.id)
     else:
-        _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} informou que não recebeu {d.quantidade} × {d.item}. Fale com o abrigo se houver engano.", d.id)
+        _notificar(db, d.apoiador_id, f"{abrigo.nome_abrigo} informou que não recebeu {descrever(d)}. Fale com o abrigo se houver engano.", d.id)
     auditoria.registrar(
         db, abrigo.usuario_id, f"doacao.{dados.status.value}", "doacao", d.id, item=d.item, quantidade=d.quantidade, apoiador_id=d.apoiador_id,
     )

@@ -89,8 +89,8 @@ def cadastrar(dados: Cadastro, db: Session = Depends(get_db)) -> UsuarioOut:
 
 @router.post("/login", response_model=TokenOut)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> TokenOut:
-    """`username` é o e-mail. Segue o padrão OAuth2 para o botão "Authorize" do
-    Swagger funcionar."""
+    """Entra com e-mail e senha e devolve o token de acesso (`access_token`, vale 24 horas) e os dados da conta.
+    Formulário no padrão OAuth2 (`username` = e-mail, `password` = senha), para o botão "Authorize" do Swagger funcionar."""
     usuario = db.scalar(select(Usuario).where(Usuario.email == form.username.strip().lower()))
     senha_ok = verificar_senha(form.password, usuario.senha_hash if usuario else None)
     if usuario is None or not senha_ok or not usuario.ativo:
@@ -105,6 +105,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 
 @router.get("/eu", response_model=UsuarioOut)
 def quem_sou_eu(usuario: Usuario = Depends(get_usuario_atual)) -> UsuarioOut:
+    """Dados da conta logada (mesmo conteúdo de `GET /usuarios/eu`), usado pela interface ao abrir."""
     return usuario_out(usuario)
 
 
@@ -134,6 +135,7 @@ def esqueci_senha(dados: EsqueciSenha, db: Session = Depends(get_db)) -> dict:
 
 @router.post("/redefinir-senha", status_code=status.HTTP_204_NO_CONTENT)
 def redefinir_senha(dados: RedefinirSenha, db: Session = Depends(get_db)) -> Response:
+    """Define a senha nova com o token do link enviado por e-mail (vale 30 minutos e uma vez só)."""
     lido = ler_token_redefinicao(dados.token)
     usuario = db.get(Usuario, lido[0]) if lido else None
     if usuario is None or not usuario.ativo or not impressao_confere(usuario.senha_hash, lido[1]):

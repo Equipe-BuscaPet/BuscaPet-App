@@ -1,0 +1,13 @@
+# Nada disso vai para a imagem: segredos, ambiente local e dados gerados.
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+uploads/
+caixa-de-saida/
