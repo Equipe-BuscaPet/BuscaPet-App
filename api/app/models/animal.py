@@ -39,11 +39,14 @@ class Animal(Base):
     condicao_chegada: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[StatusAnimal] = mapped_column(pg_enum(StatusAnimal, name="status_animal"), default=StatusAnimal.DISPONIVEL)
     criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Moderação (RF-41): anúncio removido pela administração após denúncia. Some do catálogo, mas a linha fica
+    # (denúncias, interesses e o histórico apontam para ele).
+    removido_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 
     fotos: Mapped[list["Foto"]] = relationship(
         primaryjoin="and_(Foto.entidade_tipo=='animal', foreign(Foto.entidade_id)==Animal.id)",
         viewonly=True,
-        order_by="Foto.ordem",
+        order_by="(Foto.ordem, Foto.id)",
     )
     interesses: Mapped[list["Interesse"]] = relationship(back_populates="animal")
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { destinoPorTipo, useAuth } from '../auth'
 import { limpar, TIPOS_ESTABELECIMENTO } from '../rotulos'
@@ -19,7 +19,9 @@ const VAZIO = {
 export default function Cadastro() {
   const { entrar } = useAuth()
   const navegar = useNavigate()
-  const [tipo, setTipo] = useState('tutor')
+  const [params] = useSearchParams()
+  // "Quero apoiar" (Quem apoia) chega com ?tipo=apoiador já escolhido.
+  const [tipo, setTipo] = useState(['tutor', 'abrigo', 'apoiador'].includes(params.get('tipo')) ? params.get('tipo') : 'tutor')
   const [f, setF] = useState(VAZIO)
   const [erro, setErro] = useState('')
   const [camposComErro, setCamposComErro] = useState({})

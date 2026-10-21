@@ -17,8 +17,10 @@ Interdisciplinares de Extensão IV.
 buscapet/
   api/              backend web — FastAPI + SQLAlchemy/Alembic (Python)
   nucleo-opencl/    serviço de comparação por similaridade visual — C + OpenCL (PoCL)
-  frontend/         interface web
+  frontend/         interface web — React + Vite, instalável como app (PWA)
+  frontend/e2e/     testes de ponta a ponta (Playwright)
   docs/schema.sql   modelo relacional (DDL), espelha api/app/models/
+  .github/workflows CI: api, frontend, e2e, nucleo-opencl
   docker-compose.yml
 ```
 
@@ -77,8 +79,9 @@ O último comando carrega o mesmo cenário de demonstração em qualquer máquin
 todas: `Senha1234!`; as contas estão listadas no topo de `api/app/scripts/popular_demo.py`). É seguro repetir e **só roda
 em banco local**: ele se recusa a rodar contra o Supabase.
 
-API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL
-(`http://localhost:8001`) ainda é placeholder, por isso não sobe junto. O Postgres do Docker
+API em `http://localhost:8000/docs` e interface em `http://localhost:5173`. O núcleo OpenCL sobe à
+parte com `docker compose up -d --build nucleo-opencl` (`http://localhost:8001/saude`). Por enquanto ele só
+responde à rota de saúde e roda o spike; detalhes em [`nucleo-opencl/README.md`](nucleo-opencl/README.md). O Postgres do Docker
 começa vazio e é local de cada pessoa (o volume `db_data` guarda os dados entre reinícios;
 `docker compose down` mantém, `docker compose down -v` apaga). Para criar o admin nele:
 `docker compose exec api python -m app.scripts.criar_admin --nome "Seu Nome" --email voce@exemplo.com`.
@@ -89,16 +92,45 @@ Caminho validado em 2026-10-08 (cadastro, login e `/health/db` funcionando).
 
 ### Roteiro rápido para ver tudo funcionando (pela interface)
 
-1. Em **Cadastrar**, crie uma conta de **abrigo**. Ela entra em *Meus animais* e já pode
-   cadastrar, editar e excluir animais: o abrigo nasce **não verificado**, mas opera na hora.
-2. Crie o admin (comando acima), entre com ele: abre em *Verificação de abrigos*. Clique em
-   **Verificar** para dar o selo (ou **Suspender**, que tira o abrigo do catálogo e bloqueia a publicação).
-3. Sem login, abra o catálogo (`/`): os animais aparecem com o selo *Verificado* ou *Não verificado*.
-5. Cadastre um **tutor** e tente abrir `/painel`: a tela barra o acesso (e a API também
-   devolveria 403).
+Com os dados de demonstração (`popular_demo`; senha de todas as contas: `Senha1234!`):
+
+1. **Mapa** (primeiro item do menu): aba *Abrigos* com os abrigos de Recife e região; aba *Perdidos e avistados*
+   com a lista mista. Teste **📍 Perto de mim** e o botão **⚙️ Filtros**.
+2. **Perdi meu animal** (página inicial ou *Perdidos e achados*): preencha o assistente **sem conta** e entre na
+   etapa *Revisar* com `maria@exemplo.com`. As fotos continuam lá. Publique e veja os avistamentos próximos.
+3. Entre como `joao@exemplo.com`, abra a ficha de um animal e clique em **Tenho interesse**.
+4. Entre como `patinhas@exemplo.com` (abrigo): o **sino 🔔** mostra o aviso do interesse; clique para ir a
+   *Interessados* e responder. Em *Meus animais*, cadastre, edite ou exclua animais.
+5. Entre como `admin@exemplo.com`: em *Validar abrigos*, dê ou retire o selo **Verificado** (o abrigo é avisado
+   pelo sino) ou **Suspenda** (some do catálogo e não publica).
+6. Tente abrir `/painel` com um tutor: a tela barra o acesso (e a API também devolveria 403).
+7. No rodapé, **📲 Instalar app** (Chrome/Edge; no iPhone, o passo a passo do Safari). Em produção
+   (`npm run build && npx vite preview`), o app instalado abre até sem internet.
 
 Quem preferir testar sem a interface, tudo isso também está no Swagger (`/docs`): use o botão
 **Authorize** com o e-mail e a senha de cada conta.
+
+## Testes e integração contínua
+
+| Camada | Ferramenta | O que garante | Comando |
+|---|---|---|---|
+| Estilo do código Python | `ruff` | padrão de código e erros comuns | `cd api && ruff check .` |
+| API (unidade e integração) | `pytest` + `pytest-cov` | regras de negócio, matriz de permissões (25 rotas × 5 perfis), validações (CV-01 a CV-29) e e-mail; cobertura mínima de 90% | `cd api && pytest --cov=app` |
+| Interface | `vite build` | a interface compila | `cd frontend && npm run build` |
+| **Ponta a ponta (E2E)** | **Playwright** | um navegador de verdade usa as telas contra a API e um **Postgres real**: cadastro, login, perfis, adoção, perdidos e achados, doações, relatórios, moderação, celular | `cd frontend && npm run e2e` |
+| Varredura de navegação | Playwright (`e2e/varredura.spec.js`) | cada perfil visita todas as telas que alcança e nenhuma dá erro no console, erro 500 ou "página não encontrada" | `npx playwright test varredura` |
+| Acessibilidade | axe-core (`e2e/acessibilidade.spec.js`) | 24 telas sem violação grave das regras WCAG 2.1 A/AA (contraste, rótulos, nomes de botões…) | `npx playwright test acessibilidade` |
+| Núcleo OpenCL | `make teste` | saída paralela igual à sequencial | `docker compose build nucleo-opencl` |
+
+Os testes E2E rodam num **ambiente só deles**, para não sujar o banco de desenvolvimento: banco `buscapet_e2e`
+(criado e migrado sozinho por `app/scripts/preparar_banco_teste.py`, que só aceita banco local terminado em `_e2e`),
+API na porta 8100 e interface na 5174. O `npm run e2e` sobe tudo isso sozinho; basta o Postgres local estar ligado.
+Cada teste cria as próprias contas, com e-mail único, e não depende dos dados de demonstração. `npm run e2e:ver` abre a janela do Playwright para acompanhar passo a passo, e
+`npm run e2e:relatorio` mostra o relatório com captura, vídeo e *trace* das falhas.
+
+A **CI** (`.github/workflows/ci.yml`) roda tudo isso a cada Pull Request (e falha se a cobertura da API cair abaixo de 90%). O job `e2e` só começa depois que lint,
+testes da API e build passam, sobe um Postgres 16, roda a API com a sessão no fuso de Recife (onde o defeito das
+datas aparecia) e publica o relatório do Playwright como artefato.
 
 ## Documentação
 

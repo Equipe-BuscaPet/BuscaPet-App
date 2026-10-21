@@ -6,7 +6,7 @@
   --line: #d9cfba;
   --ink: #23201a;
   --ink-dim: #6b6354;
-  --accent: #c4541a;
+  --accent: #b24c18; /* 4,76:1 no pior caso (texto claro no botão e link no fundo creme); era #c4541a, 4,05:1 — WCAG AA pede 4,5:1 */
   --accent-ink: #fffaf3;
   --navy: #1c3550;
   --ok-bg: #e3ecdf;
@@ -68,6 +68,18 @@ h2 { font-size: 1.25rem; font-weight: 700; }
 .conta { display: flex; align-items: center; gap: 0.5rem; }
 .conta__nome { font-weight: 600; }
 .conta__nome small { color: var(--ink-dim); font-weight: 500; margin-left: 0.25rem; }
+/* Celular: marca e conta na primeira linha; o menu vai para a segunda, com os itens dividindo a largura em colunas
+   iguais. Antes era uma faixa que rolava para o lado e escondia o último item ("Quem apoia"). */
+@media (max-width: 700px) {
+  .cabecalho__interno { gap: 0.5rem 1rem; padding-bottom: 0.5rem; }
+  .conta { margin-left: auto; }
+  .conta__nome small { display: none; }
+  .menu { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.25rem; }
+  .menu a {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 0.4rem 0.2rem; font-size: 0.85rem; line-height: 1.15; min-height: 2.6rem;
+  }
+}
 
 /* Estrutura */
 .pagina { max-width: 1100px; margin: 0 auto; padding: 1.5rem 16px 3rem; }
@@ -165,3 +177,349 @@ th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color
 .topo-pagina { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Reencontro: perdidos e achados (RF-19/RF-20) ---------- */
+
+/* Assistente em etapas */
+.etapas {
+  list-style: none; margin: 0 0 1rem; padding: 0; display: flex; gap: 0.25rem; flex-wrap: wrap; counter-reset: etapa;
+}
+.etapas li {
+  display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.75rem 0.35rem 0.4rem; border-radius: 999px;
+  color: var(--ink-dim); font-weight: 600; font-size: 0.9rem; background: var(--surface-2); border: 1px solid var(--line);
+}
+.etapas__numero {
+  display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line); font-size: 0.8rem;
+}
+.etapas li.atual { color: var(--ink); border-color: var(--accent); background: var(--surface); }
+.etapas li.atual .etapas__numero { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.etapas li.feita { color: var(--ok-ink); background: var(--ok-bg); border-color: transparent; }
+.etapas li.feita .etapas__numero { background: var(--ok-ink); color: var(--surface); border-color: transparent; }
+@media (max-width: 600px) {
+  .etapas li:not(.atual) .etapas__nome { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+.assistente h2:focus { outline: none; }
+.assistente__navegacao { justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 1rem; }
+.campo__rotulo { font-weight: 600; font-size: 0.9rem; }
+.revisao { display: grid; gap: 1rem; }
+.detalhe-lista { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
+.detalhe-lista dt { color: var(--ink-dim); font-weight: 600; }
+.detalhe-lista dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Fotos: zona de envio e miniaturas */
+.zona-fotos {
+  border: 2px dashed var(--line); border-radius: 14px; padding: 1rem; background: var(--surface-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.zona-fotos--ativa { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+.zona-fotos--erro { border-color: var(--erro-ink); }
+.zona-fotos__dica { margin: 0.75rem 0 0; color: var(--ink-dim); font-size: 0.9rem; }
+.miniaturas { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.miniatura {
+  position: relative; width: 104px; height: 104px; border-radius: 12px; overflow: hidden; padding: 0;
+  border: 1px solid var(--line); background: var(--surface); display: block;
+}
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.miniatura { cursor: pointer; }
+.miniatura--atual { outline: 3px solid var(--accent); outline-offset: 1px; }
+.miniatura--adicionar {
+  display: grid; place-content: center; justify-items: center; gap: 0.1rem; color: var(--accent); font: inherit;
+  border-style: dashed; border-width: 2px;
+}
+.miniatura--adicionar span { font-size: 2rem; line-height: 1; font-weight: 300; }
+.miniatura--adicionar small { font-weight: 700; color: var(--ink-dim); }
+.miniatura__principal {
+  position: absolute; left: 4px; bottom: 4px; background: rgba(0, 0, 0, 0.65); color: #fff;
+  font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 999px;
+}
+.miniatura__remover {
+  position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 1.1rem; line-height: 1; display: grid; place-items: center;
+}
+
+/* Mapas do reencontro */
+.mapa--seletor { height: 340px; cursor: crosshair; }
+.mapa--pequeno { height: 240px; margin-bottom: 0.25rem; }
+/* Estes mapas não são "grudentos" como o de abrigos: sem o top herdado, o Leaflet (position: relative) não desloca o desenho. */
+@media (min-width: 900px) { .mapa--seletor, .mapa--pequeno { position: relative; top: auto; } .mapa--seletor { height: 380px; } .mapa--pequeno { height: 260px; } }
+.mapa--erro { border-color: var(--erro-ink); }
+.legenda { display: block; margin-top: 0.4rem; color: var(--ink-dim); }
+
+/* Cartões e galeria */
+.animal__foto--img { width: 100%; object-fit: cover; display: block; background: var(--surface-2); }
+.registro { padding: 0; overflow: hidden; }
+.registro__link { display: grid; gap: 0.4rem; padding: 1rem; text-decoration: none; color: inherit; }
+.registro__topo { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.registro__acoes { padding: 0 1rem 1rem; }
+.galeria { display: grid; gap: 0.75rem; align-content: start; }
+.galeria__principal {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2);
+}
+
+/* Abas */
+.abas { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin: 1.25rem 0 1rem; overflow-x: auto; }
+.abas__item {
+  font: inherit; font-weight: 700; color: var(--ink-dim); background: none; border: 0; cursor: pointer;
+  padding: 0.6rem 0.9rem; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.abas__item--ativa { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ---------- Mapa com camadas (RF-07/08) ---------- */
+.abas--mapa { margin: 0.25rem 0 1rem; }
+.abas--mapa .abas__item { font-size: 1.02rem; }
+.registro-mini__topo { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.camada__total {
+  font-size: 0.75rem; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+/* Marcas da legenda iguais às do mapa: círculo para abrigo, losango para perdido e avistado. */
+.camada__marca { width: 12px; height: 12px; border-radius: 50%; background: var(--cor, #2f7d3a); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); flex: none; }
+.camada__marca--perdidos, .camada__marca--avistamentos { border-radius: 2px; transform: rotate(45deg); width: 11px; height: 11px; }
+.camada__marca--perdidos { background: #c0262d; }
+.camada__marca--avistamentos { background: #7b3fa0; }
+.pino { background: none; border: 0; }
+.pino__losango {
+  display: block; width: 14px; height: 14px; margin: 3px; border: 2px solid #fff; border-radius: 3px;
+  transform: rotate(45deg); box-shadow: 0 1px 4px rgba(0,0,0,.45);
+}
+.pino--perdido .pino__losango { background: #c0262d; }
+.pino--avistamento .pino__losango { background: #7b3fa0; }
+.mapa-secao { margin-bottom: 1.25rem; }
+/* No computador a lista rola ao lado do mapa, na mesma altura; no celular ela segue abaixo do mapa. */
+/* Coluna da lista: barra (resumo + Perto de mim + Filtros) e a lista, que rola na altura do mapa. */
+.mapa-coluna { display: grid; gap: 0.6rem; align-content: start; }
+.mapa-barra { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.mapa-barra__resumo { margin: 0; min-width: 0; display: grid; line-height: 1.25; }
+.mapa-barra__resumo strong { font-size: 1rem; }
+.mapa-barra__resumo small { color: var(--ink-dim); font-size: 0.8rem; }
+.mapa-barra__botoes { display: flex; gap: 0.4rem; flex: none; margin-left: auto; }
+@media (max-width: 899px) { .mapa { height: 380px; } }
+@media (min-width: 900px) { .mapa-lista { max-height: 510px; overflow-y: auto; padding-right: 0.4rem; scrollbar-gutter: stable; } }
+.mapa-secao__titulo { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); margin-bottom: 0.5rem; }
+.registro-mini { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; align-items: center; padding: 0.8rem 1rem; }
+.registro-mini p { margin: 0; color: var(--ink-dim); font-size: 0.9rem; }
+
+/* Destaque do reencontro na página inicial */
+.chamada-reencontro {
+  display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  margin-bottom: 1.5rem; border-left: 5px solid var(--accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface));
+}
+.chamada-reencontro h2 { margin: 0 0 0.2rem; }
+.chamada-reencontro p { margin: 0; color: var(--ink-dim); }
+
+/* Instalar app (PWA) */
+.instalar { position: relative; }
+.instalar__dica {
+  position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 1000; width: min(280px, 80vw);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 0.8rem; font-size: 0.9rem; display: grid; gap: 0.5rem;
+}
+
+/* Botão "Filtros" que abre um painel no cantinho direito */
+.menu-filtros { position: relative; }
+.menu-filtros__botao--ativo { border-color: var(--accent); color: var(--accent); }
+.menu-filtros__painel {
+  position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 1100; width: min(300px, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 1rem; display: grid; gap: 0.75rem;
+}
+.menu-filtros__painel .marcar { gap: 0.45rem; }
+.menu-filtros__rodape { justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 0.75rem; }
+
+/* Rodapé (com o "Instalar app" centralizado) */
+.rodape { border-top: 1px solid var(--line); background: var(--surface); margin-top: 2rem; padding: 1.5rem 16px 2rem; text-align: center; }
+.rodape__interno { max-width: 1100px; margin: 0 auto; display: grid; gap: 0.6rem; justify-items: center; }
+.rodape p { margin: 0; color: var(--ink-dim); font-size: 0.85rem; }
+.rodape .instalar__dica { top: auto; bottom: calc(100% + 0.4rem); right: auto; left: 50%; transform: translateX(-50%); text-align: left; }
+
+/* ---------- Notificações (RF-36) ---------- */
+.pagina--media { max-width: 760px; }
+.sino { position: relative; }
+.sino__botao {
+  position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 1.15rem; padding: 0;
+}
+.sino__botao:hover { background: var(--surface); }
+.sino__contador {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-size: 0.72rem; font-weight: 800; display: grid; place-items: center;
+  border: 2px solid var(--surface);
+}
+.sino__painel {
+  position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 1200; width: min(360px, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+}
+/* Celular: o painel abre logo abaixo do cabeçalho inteiro, ocupando a largura (não cobre o sino). */
+@media (max-width: 700px) {
+  .cabecalho__interno { position: relative; }
+  .sino { position: static; }
+  .sino__painel { left: 16px; right: 16px; top: calc(100% + 0.25rem); width: auto; }
+}
+.sino__topo { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.8rem 1rem; border-bottom: 1px solid var(--line); }
+.sino__painel .estado { padding: 1.25rem 1rem; }
+.sino__todas { display: block; text-align: center; padding: 0.7rem; font-weight: 700; border-top: 1px solid var(--line); text-decoration: none; }
+.lista-notificacoes { list-style: none; margin: 0; padding: 0; }
+.sino__painel .lista-notificacoes { max-height: 360px; overflow-y: auto; }
+.notificacao {
+  width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 0.75rem 1rem 0.75rem 1.6rem; cursor: pointer; display: grid; gap: 0.15rem; position: relative;
+}
+.notificacao:hover { background: var(--surface-2); }
+.notificacao small, .notificacao-linha small { color: var(--ink-dim); }
+.notificacao--nova .notificacao__texto, .notificacao--nova p { font-weight: 700; }
+.notificacao__ponto { position: absolute; left: 0.65rem; top: 1.15rem; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.lista-notificacoes--pagina { display: grid; gap: 0.6rem; }
+.notificacao-linha { position: relative; display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding-left: 1.75rem; }
+.notificacao-linha .notificacao__ponto { top: 50%; transform: translateY(-50%); left: 0.75rem; }
+.notificacao-linha p { margin: 0 0 0.15rem; }
+.notificacao-linha__texto { flex: 1 1 300px; }
+
+/* ---------- Menu da conta (☰) ---------- */
+.menu-conta { position: relative; }
+.menu-conta__botao {
+  display: inline-flex; align-items: center; gap: 0.4rem; height: 40px; padding: 0 0.6rem 0 0.25rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font: inherit; color: var(--ink);
+}
+.menu-conta__botao:hover, .menu-conta__botao[aria-expanded="true"] { background: var(--surface); border-color: var(--ink-dim); }
+.menu-conta__inicial {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--navy); color: var(--surface); font-weight: 800; font-size: 0.95rem;
+}
+.menu-conta__hamburguer { font-size: 1.15rem; line-height: 1; }
+.menu-conta__painel {
+  position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 1200; width: min(300px, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 0.4rem 0;
+}
+.menu-conta__painel ul { list-style: none; margin: 0; padding: 0; }
+.menu-conta__quem { display: grid; padding: 0.6rem 1rem 0.7rem; border-bottom: 1px solid var(--line); margin-bottom: 0.3rem; }
+.menu-conta__quem small { color: var(--ink-dim); overflow-wrap: anywhere; }
+.menu-conta__item {
+  display: flex; gap: 0.6rem; align-items: center; width: 100%; padding: 0.55rem 1rem; text-decoration: none; color: var(--ink);
+  font: inherit; font-weight: 600; background: none; border: 0; text-align: left; cursor: pointer;
+}
+.menu-conta__item:hover, .menu-conta__item.active { background: var(--surface-2); }
+.menu-conta__sair { border-top: 1px solid var(--line); margin-top: 0.3rem; color: var(--erro-ink); }
+@media (max-width: 700px) {
+  .menu-conta { position: static; }
+  .menu-conta__painel { left: 16px; right: 16px; top: calc(100% + 0.25rem); width: auto; }
+}
+
+/* ---------- Doações e "Quem apoia" (RF-30 a RF-35) ---------- */
+.necessidades { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.necessidade { display: grid; gap: 0.5rem; align-content: start; }
+.necessidade h3 { margin: 0; font-size: 1.05rem; }
+.necessidade__topo { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
+.necessidade__topo .etiqueta { white-space: nowrap; flex-shrink: 0; }
+.necessidade__abrigo { color: var(--ink-dim); font-size: 0.9rem; margin: 0; }
+.progresso { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.progresso__barra { height: 100%; background: var(--ok-ink); border-radius: 99px; }
+.progresso__texto { font-size: 0.85rem; color: var(--ink-dim); margin: 0; }
+.doar { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; }
+.doar input { width: 6rem; }
+.chamada-apoio { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--navy); color: #fff; border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 1.5rem; }
+.chamada-apoio h2 { margin: 0 0 0.2rem; color: #fff; }
+.chamada-apoio p { margin: 0; opacity: 0.9; }
+.destaques { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-bottom: 1.5rem; }
+.destaque { text-align: center; display: grid; gap: 0.25rem; }
+.destaque__medalha { font-size: 2rem; }
+.ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.ranking li { display: grid; grid-template-columns: 2.5rem 1fr auto; gap: 0.75rem; align-items: center; }
+.ranking__posicao { font-size: 1.3rem; font-weight: 800; color: var(--ink-dim); text-align: center; }
+.ranking__nome { font-weight: 700; }
+.ranking__detalhe { color: var(--ink-dim); font-size: 0.85rem; }
+.ranking__pontos { font-size: 1.2rem; font-weight: 800; text-align: right; }
+.ranking__pontos small { display: block; font-size: 0.75rem; font-weight: 600; color: var(--ink-dim); }
+.selo-apoio { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
+  background: var(--navy); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.chips a { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.3rem 0.7rem; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.chips a:hover { border-color: var(--accent); }
+.pix { border: 1px dashed var(--accent); border-radius: 12px; padding: 0.75rem 1rem; }
+.pix code { font-size: 1rem; font-weight: 700; }
+.resumo-hoje { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 1.5rem; }
+.resumo-hoje a { display: grid; gap: 0.15rem; text-decoration: none; color: var(--ink); }
+.resumo-hoje a:hover { border-color: var(--accent); }
+.resumo-hoje strong { font-size: 1.8rem; line-height: 1; }
+.resumo-hoje span { color: var(--ink-dim); font-size: 0.9rem; }
+.resumo-hoje .resumo-hoje--acao strong { color: var(--accent); }
+
+/* ---------- Painel, relatórios e histórico (Sprint 7: RF-38 a RF-40) ---------- */
+/* Cores das séries: paleta categórica validada (daltonismo e contraste) para estas superfícies, uma por módulo. */
+:root { --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; }
+@media (prefers-color-scheme: dark) { :root { --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; } }
+.filtro-periodo { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: end; margin-bottom: 1.25rem; }
+.filtro-periodo .campo { min-width: 150px; }
+.indicadores { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-bottom: 1.5rem; }
+.indicador { display: grid; gap: 0.15rem; }
+.indicador strong { font-size: 1.8rem; line-height: 1.1; }
+.indicador span { color: var(--ink-dim); font-size: 0.88rem; }
+.indicador small { color: var(--ink-dim); font-size: 0.78rem; }
+.graficos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 0.5rem; }
+.grafico { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0.75rem 0.9rem 0.5rem; }
+.grafico__titulo { font-weight: 700; font-size: 0.92rem; margin-bottom: 0.25rem; }
+.grafico__area svg { width: 100%; height: auto; display: block; overflow: visible; }
+.grafico__base { stroke: var(--line); stroke-width: 1; }
+.grafico__mes { font-size: 11px; fill: var(--ink-dim); }
+.grafico__valor { font-size: 12px; font-weight: 700; fill: var(--ink); }
+.grafico__area rect:focus { outline: none; }
+.grafico__area rect:focus-visible { stroke: var(--ink); stroke-width: 1.5; }
+.duas-tabelas { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 1.5rem; }
+.duas-tabelas h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.historico td small { color: var(--ink-dim); display: block; }
+.paginacao { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.75rem; }
+/* Cartões de lista do relatório: altura fixa (5 linhas), nomes longos com "…"; "Ver todos" abre a lista completa. */
+.cartao-lista h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.cartao-lista__caixa { height: 17rem; display: flex; flex-direction: column; overflow: hidden; }
+.cartao-lista__caixa table { width: 100%; table-layout: fixed; }
+.cartao-lista__caixa .colunas-2 th:not(:first-child), .cartao-lista__caixa .colunas-2 td:not(:first-child) { width: 6.75rem; }
+.cartao-lista__caixa .colunas-3 th:not(:first-child), .cartao-lista__caixa .colunas-3 td:not(:first-child) { width: 4.4rem; }
+.cartao-lista__rotulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cartao-lista__mais { margin-top: auto; align-self: flex-start; }
+.dialogo-lista { width: min(640px, 92vw); max-height: 82vh; border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.25rem;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.dialogo-lista::backdrop { background: rgba(20, 18, 14, 0.45); }
+.dialogo-lista__topo { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.dialogo-lista__topo h2 { margin: 0; font-size: 1.15rem; }
+.dialogo-lista__corpo { max-height: 55vh; overflow-y: auto; }
+.dialogo-lista__corpo table { width: 100%; }
+
+/* ---------- Sprint 8: fotos dos animais, denúncia, senha e usabilidade ---------- */
+.pular-conteudo { position: absolute; left: 16px; top: -3rem; z-index: 50; background: var(--navy); color: #fff;
+  padding: 0.5rem 0.9rem; border-radius: 8px; font-weight: 700; text-decoration: none; }
+.pular-conteudo:focus { top: 0.5rem; }
+#conteudo:focus { outline: none; }
+.campo-senha { display: flex; gap: 0.4rem; align-items: stretch; }
+.campo-senha input { flex: 1; min-width: 0; }
+.botao-link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.denuncia { margin-top: 1.25rem; }
+.denuncia > .botao-link { color: var(--ink-dim); font-size: 0.9rem; }
+.denuncia__motivo { margin: 0 0 0.75rem; padding: 0.5rem 0.9rem; border-left: 3px solid var(--erro-ink); background: var(--erro-bg); border-radius: 0 8px 8px 0; }
+.foto-gerenciada { display: grid; gap: 0.3rem; justify-items: center; }
+.filtros--extras { align-items: center; margin-top: -0.25rem; margin-bottom: 1rem; }
+/* RF-09: item da lista do ponto clicado no mapa */
+.item-destacado { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+/* Busca por semelhança (RF-22, RF-23): filtros, resumo da comparação no núcleo e a grade de candidatos. */
+.semelhanca { margin-top: 1.5rem; display: grid; gap: 0.75rem; }
+.semelhanca h3 { margin: 0; }
+.semelhanca__filtros { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: center; }
+.semelhanca__filtros label { display: inline-flex; gap: 0.4rem; align-items: center; white-space: nowrap; margin: 0; }
+.semelhanca .registro__topo { flex-wrap: wrap; }
+.semelhanca .etiqueta { white-space: nowrap; }
+.semelhanca__resumo { margin: 0; color: var(--ink); }
+.semelhanca__nota { margin: 0; color: var(--ink-dim); }
+
+/* Desempenho do núcleo (RF-29): gráfico do ganho + tabela dos tempos. */
+.desempenho { display: grid; gap: 1rem; }
+.desempenho__resultado { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; margin-top: 1rem; }
+@media (max-width: 800px) { .desempenho__resultado { grid-template-columns: 1fr; } }
+.grafico-ganho { width: 100%; height: auto; }
+.grafico-ganho__barra { fill: var(--serie-1); }
+.grafico-ganho__ref { stroke: var(--line); stroke-dasharray: 4 4; }
+.grafico-ganho__base { stroke: var(--ink-dim); }
+.grafico-ganho__eixo { fill: var(--ink-dim); font-size: 11px; }
+.grafico-ganho__valor { fill: var(--ink); font-size: 12px; font-weight: 700; }

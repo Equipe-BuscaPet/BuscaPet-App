@@ -1,4 +1,4 @@
--- BuscaPet — Modelo Relacional (Sprint 2)
+-- BuscaPet — Modelo Relacional (Sprint 2; revisado na Sprint 9 até a migração 0004)
 -- Postgres. Pode ser rodado direto no SQL Editor do Supabase, OU gerado via
 -- Alembic (api/alembic/versions/0001_initial_schema.py) a partir dos models
 -- em api/app/models/ — as duas fontes descrevem o mesmo schema.
@@ -81,7 +81,10 @@ CREATE TABLE animais (
     data_entrada                TIMESTAMPTZ,
     condicao_chegada            VARCHAR(500),
     status                      VARCHAR(15) NOT NULL DEFAULT 'disponivel' CHECK (status IN ('disponivel','em_processo','adotado','obito','transferido')),
-    criado_em                   TIMESTAMPTZ NOT NULL DEFAULT now()
+    criado_em                   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Sprint 8 (migração 0004): preenchido quando a moderação tira o anúncio do ar após uma denúncia;
+    -- o animal some das buscas públicas, mas o histórico (interesses, doações, logs) continua no banco.
+    removido_em                 TIMESTAMPTZ
 );
 
 -- Associação polimórfica deliberada: entidade_tipo indica se a foto é de um

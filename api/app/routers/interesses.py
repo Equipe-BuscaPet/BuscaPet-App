@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.deps import exigir_tipo, get_abrigo_operante
 from app.db.session import get_db
 from app.models.animal import Animal, Interesse
@@ -83,6 +84,7 @@ def registrar_interesse(
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, MSG_JA_REGISTROU)
     _notificar(db, abrigo.usuario_id, f"{tutor_usuario.nome} tem interesse em adotar {animal.nome}.", interesse.id)
+    auditoria.registrar(db, tutor_usuario.id, "interesse.registrado", "interesse", interesse.id, animal_id=animal.id, animal=animal.nome)
     db.commit()
     db.refresh(interesse)
     return _saida_tutor(interesse, animal, abrigo)
@@ -137,6 +139,7 @@ def desistir(
         raise HTTPException(status.HTTP_409_CONFLICT, "Este interesse já foi encerrado pelo abrigo e não pode ser cancelado.")
     animal = db.get(Animal, interesse.animal_id)
     _notificar(db, animal.abrigo_id, f"{tutor_usuario.nome} desistiu do interesse em {animal.nome}.", interesse.id)
+    auditoria.registrar(db, tutor_usuario.id, "interesse.desistencia", "interesse", interesse.id, animal_id=animal.id, animal=animal.nome)
     db.delete(interesse)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -175,6 +178,7 @@ def decidir(
         StatusInteresse.RECUSADO: f"O abrigo {abrigo.nome_abrigo} não pôde seguir com seu interesse em {animal.nome}.",
     }
     _notificar(db, interesse.tutor_id, mensagens[novo], interesse.id)
+    auditoria.registrar(db, abrigo.usuario_id, f"interesse.{novo.value}", "interesse", interesse.id, animal_id=animal.id, animal=animal.nome)
     db.commit()
     db.refresh(interesse)
     return _saida_abrigo(interesse, animal, interesse.tutor)

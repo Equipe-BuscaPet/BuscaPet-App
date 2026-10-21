@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import GerenciarFotos from '../componentes/GerenciarFotos'
 import { ESPECIES, PORTES, SEXOS, STATUS_ANIMAL, textoIdade } from '../rotulos'
 
 const FORM_VAZIO = {
@@ -109,6 +110,38 @@ function FormularioAnimal({ inicial, editando, desabilitado, onSalvar, onCancela
   )
 }
 
+// "O que exige ação hoje" (escopo §6.1): junta os módulos de adoção e de doações num resumo só.
+function ResumoHoje({ animais }) {
+  const [n, setN] = useState(null)
+  useEffect(() => {
+    Promise.all([
+      api('/interesses/recebidos?status=aguardando'),
+      api('/doacoes/recebidas?status=aguardando_confirmacao'),
+      api('/necessidades/minhas'),
+    ]).then(([interesses, doacoes, necessidades]) => setN({
+      interesses: interesses.length, doacoes: doacoes.length, necessidades: necessidades.filter((x) => x.status === 'aberta').length,
+    })).catch(() => setN(null))
+  }, [])
+  if (!n) return null
+  const disponiveis = animais.filter((a) => a.status === 'disponivel').length
+  const emProcesso = animais.filter((a) => a.status === 'em_processo').length
+  const itens = [
+    ['/interessados', n.interesses, n.interesses === 1 ? 'interessado aguardando resposta' : 'interessados aguardando resposta', n.interesses > 0],
+    ['/doacoes', n.doacoes, n.doacoes === 1 ? 'doação para confirmar' : 'doações para confirmar', n.doacoes > 0],
+    ['/doacoes', n.necessidades, n.necessidades === 1 ? 'necessidade no mural' : 'necessidades no mural', false],
+    ['#titulo-lista', disponiveis, `disponíveis para adoção${emProcesso ? ` · ${emProcesso} em processo` : ''}`, false],
+  ]
+  return (
+    <section aria-label="Hoje no seu abrigo" className="resumo-hoje">
+      {itens.map(([para, valor, rotulo, acao]) => (
+        para.startsWith('#')
+          ? <a key={rotulo} href={para} className="cartao"><strong>{valor}</strong><span>{rotulo}</span></a>
+          : <Link key={rotulo} to={para} className={`cartao${acao ? ' resumo-hoje--acao' : ''}`}><strong>{valor}</strong><span>{rotulo}</span></Link>
+      ))}
+    </section>
+  )
+}
+
 export default function PainelAbrigo() {
   const { usuario, atualizarUsuario } = useAuth()
   const [animais, setAnimais] = useState([])
@@ -146,9 +179,10 @@ export default function PainelAbrigo() {
       setOk(`${f.nome} foi atualizado.`)
     } else {
       const corpo = Object.fromEntries(Object.entries(paraApi(f)).filter(([, v]) => v !== null))
-      await api('/animais', { metodo: 'POST', corpo })
+      const criado = await api('/animais', { metodo: 'POST', corpo })
       await carregar()
-      setOk(`${f.nome} foi cadastrado.`)
+      setEditando(criado) // abre a edição, com a seção de fotos logo abaixo
+      setOk(`${f.nome} foi cadastrado. Agora adicione as fotos (a primeira vira a capa no catálogo).`)
     }
   }
 
@@ -174,11 +208,17 @@ export default function PainelAbrigo() {
           <h1>Meus animais</h1>
           <p className="subtitulo" style={{ margin: 0 }}>{usuario.perfil?.nome_abrigo}</p>
         </div>
+        <div className="acoes">
+          <Link className="botao botao--leve" to="/relatorios">Relatórios</Link>
+          <Link className="botao botao--leve" to={`/abrigos/${usuario.id}`}>Ver perfil público</Link>
+        </div>
       </div>
+
+      {ativo && <ResumoHoje animais={animais} />}
 
       {status === 'pendente' && (
         <div className="aviso aviso--atencao" role="status">
-          Seu abrigo ainda não tem o selo Verificado. Você já pode cadastrar animais; o selo, concedido pela administração, é o que libera a exibição da chave de doação e a entrada no ranking.
+          Seu abrigo ainda não tem o selo Verificado. Você já pode cadastrar animais; o selo, concedido pela administração, é o que libera a chave de doação no perfil e o mural de necessidades (doações).
         </div>
       )}
       {status === 'rejeitado' && (
@@ -204,7 +244,10 @@ export default function PainelAbrigo() {
                       <td><Link to={`/animais/${a.id}`}>{a.nome}</Link></td>
                       <td>{ESPECIES[a.especie]}</td>
                       <td>{textoIdade(a.idade_estimada_meses)}</td>
-                      <td><span className={`etiqueta ${a.status === 'disponivel' ? 'etiqueta--ok' : ''}`}>{STATUS_ANIMAL[a.status]}</span></td>
+                      <td>
+                        <span className={`etiqueta ${a.status === 'disponivel' ? 'etiqueta--ok' : ''}`}>{STATUS_ANIMAL[a.status]}</span>
+                        {a.removido_em && <span className="etiqueta etiqueta--erro" title="Removido pela administração após denúncia">Removido</span>}
+                      </td>
                       <td>
                         <div className="acoes">
                           <button className="botao botao--leve botao--pequeno" disabled={!ativo} onClick={() => { setEditando(a); setOk('') }}>Editar</button>
@@ -226,14 +269,19 @@ export default function PainelAbrigo() {
           )}
         </section>
 
-        <FormularioAnimal
-          key={editando ? `editar-${editando.id}` : 'novo'}
-          inicial={editando ? doAnimal(editando) : FORM_VAZIO}
-          editando={Boolean(editando)}
-          desabilitado={!ativo}
-          onSalvar={salvar}
-          onCancelar={() => setEditando(null)}
-        />
+        <div>
+          <FormularioAnimal
+            key={editando ? `editar-${editando.id}` : 'novo'}
+            inicial={editando ? doAnimal(editando) : FORM_VAZIO}
+            editando={Boolean(editando)}
+            desabilitado={!ativo}
+            onSalvar={salvar}
+            onCancelar={() => setEditando(null)}
+          />
+          {editando && ativo && (
+            <GerenciarFotos animal={editando} aoMudar={(atualizado) => { setEditando(atualizado); carregar() }} />
+          )}
+        </div>
       </div>
     </main>
   )

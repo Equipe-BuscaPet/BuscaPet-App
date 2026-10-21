@@ -1,0 +1,23 @@
+{
+  "name": "BuscaPet — adoção, reencontro e doações",
+  "short_name": "BuscaPet",
+  "description": "Adote, encontre animais perdidos por foto e apoie abrigos perto de você.",
+  "lang": "pt-BR",
+  "id": "/",
+  "start_url": "/mapa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#c4541a",
+  "categories": ["lifestyle", "social"],
+  "icons": [
+    { "src": "/icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icones/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Perdi meu animal", "url": "/perdi", "icons": [{ "src": "/icones/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Encontrei um animal", "url": "/encontrei", "icons": [{ "src": "/icones/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Mapa", "url": "/mapa", "icons": [{ "src": "/icones/icone-192.png", "sizes": "192x192" }] }
+  ]
+}

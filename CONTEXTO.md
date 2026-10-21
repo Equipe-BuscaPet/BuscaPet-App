@@ -54,19 +54,38 @@ Repositórios (organização `Equipe-BuscaPet`):
 
 Ao falar "Sprint N", diga qual das duas.
 
-## 4. Onde estamos (2026-10-08)
+## 4. Onde estamos (2026-10-16)
 
-**Funciona, validado no banco real:**
-- Cadastro e login (JWT) de tutor, abrigo e apoiador; admin criado só por script.
-- Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface
-  apenas reflete).
+> Parte do que está abaixo ainda está em **Pull Requests empilhados** (cada um depende do anterior):
+> #5 API de perdidos/avistamentos → `feature/telas-perdi-encontrei` → `feature/e2e-playwright` →
+> `feature/mapa-camadas-reencontro` → `feature/pwa-instalar` → `feature/notificacoes` → `feature/menu-conta` →
+> `feature/reencontro-completo` (alerta e caso resolvido) → `feature/doacoes` (3º módulo) → `feature/relatorios` (Sprint 7) → `feature/sprint8` → `feature/sprint9`. Independente:
+> `feature/nucleo-spike-servico`. Fazer o merge nessa ordem.
+
+**Funciona, validado no Postgres local e por testes automatizados:**
+- Cadastro e login (JWT) de tutor, abrigo e apoiador; admin criado só por script. Login volta para a página que o
+  pediu (`?voltar=`, só caminhos internos).
+- Perfis e permissões: cada tipo de conta só acessa o que lhe cabe (a regra vale na API; a interface apenas reflete).
 - CRUD de animais pelo abrigo; catálogo público com busca e filtros (inclusive por abrigo); ficha do animal.
-- **Mapa de abrigos** (`/mapa`, OpenStreetMap + Leaflet): `GET /abrigos` público, com distância e filtro por raio
-  a partir da posição da pessoa ("Abrigos perto de mim"). As coordenadas do abrigo são informadas no cadastro.
-- Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender).
+- **Mapa** (`/mapa`, primeiro item do menu; OpenStreetMap + Leaflet; RF-07 a RF-09): acima do mapa só as abas
+  **Abrigos** e **Perdidos e avistados**; sobre a lista, contagem, **Perto de mim** e **Filtros** (painel: tipo,
+  espécie, porte, período e distância para animais; só verificados, só com animais e distância para abrigos).
+  A lista acompanha a aba (mista para animais). URL: `?ver=animais&mostrar=perdidos`.
+- Verificação de abrigos pelo administrador (selo Verificado, retirar o selo ou suspender), com aviso ao abrigo.
 - Interesse de adoção completo (API e telas: ficha do animal, Meus interesses, Interessados).
-- Migrations `0001` (schema), `0002` (alinha models e banco) e `0003` (interesse). 59 testes automatizados passando.
-- Docker Compose validado em 2026-10-08 (`db`, `redis`, `api`, `frontend`).
+- **Perdidos e achados (RF-19/RF-20)**: API e telas (detalhes abaixo).
+- **Notificações (RF-36)**: `GET /notificacoes`, `GET /notificacoes/contagem`, `PATCH /notificacoes/{id}/lida`,
+  `POST /notificacoes/marcar-todas-lidas`. Cada uma traz o `destino` (tela que abre). Sino com contador no cabeçalho
+  e página `/notificacoes`. Geradas hoje por: interesse de adoção (cada passo) e mudança do selo do abrigo.
+- **Cabeçalho com menu ☰ da conta** (`feature/menu-conta`): menu principal só com Mapa, Animais e Perdidos e achados;
+  o resto (Minha conta, itens do perfil, Meus registros, Notificações, "Em breve", Sair) fica no ☰. Página
+  **Minha conta** (`/conta`, RF-37) usando a API `/usuarios/eu` que já existia: editar dados/perfil e trocar senha.
+- **PWA**: instalável na tela inicial (manifesto, ícones do logo oficial, service worker só em produção, botão
+  "Instalar app" no rodapé). O celular não roda OpenCL: só envia a foto; o núcleo roda no servidor.
+- **Núcleo OpenCL** (PR `feature/nucleo-spike-servico`): spike `soma_vetores` com teste de equivalência
+  (gate da Sprint 1 interna), serviço HTTP em C com `GET /saude`; descritores e comparação ainda a fazer.
+- Migrations `0001` a `0003`. **Testes:** 87 na API (`pytest`) e 50 de ponta a ponta (Playwright, banco `buscapet_e2e`
+  isolado). CI: `api`, `frontend`, `e2e` e `nucleo-opencl`.
 
 **Interesse de adoção (Sprint 4):** tutor registra interesse
 (`POST /animais/{id}/interesses`), lista os seus (`GET /interesses/meus`) e pode desistir
@@ -75,11 +94,98 @@ e decide (`PATCH /interesses/{id}`: em conversa / aprovado / recusado). Aprovar 
 `em_processo`. O telefone do abrigo só vem na resposta de quem registrou interesse. Cada passo gera uma
 `Notificacao`. Migration `0003` (coluna `mensagem` e unicidade tutor+animal).
 
-**Existe só como modelo de dados, sem rota nem tela:** animal
-perdido, avistamento, busca salva, correspondência, necessidade, doação, ranking de apoiadores,
-denúncia, notificação, log de auditoria. As notificações são gravadas, mas não há tela para lê-las. O módulo `nucleo-opencl/` é só contrato e Dockerfile.
+**Animal perdido e avistamento (RF-19/RF-20):** `POST /perdidos` (tutor) e
+`POST /avistamentos` (qualquer conta logada) recebem um formulário multipart com as características, o
+local, a data e de 1 a 5 fotos (campo `fotos`). Consulta pública em `GET /perdidos` e `GET /avistamentos`
+(filtros de espécie, porte e raio a partir de `lat`/`lng`), `GET .../meus` e `DELETE` pelo autor ou admin.
+Privacidade (escopo §9): a resposta pública não traz dados de quem registrou e o local sai arredondado
+(perdido ~1 km, avistamento ~100 m). Fotos: validadas e regravadas como JPEG **sem metadados** (remove o
+GPS da foto de celular), até 1280 px, nome aleatório, em `api/uploads/fotos/` (fora do Git), servidas por
+`GET /fotos/{nome}` (`app/core/fotos.py`). Dependência: `pillow` (no Docker: `docker compose up -d --build api`).
+Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/perdi` e `/encontrei` (5 etapas; o
+visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
+da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
 
-**Próximo passo:** a Sprint 5 oficial da disciplina ainda não foi informada; confirmar o roteiro antes de planejar. Em paralelo segue obrigatório, para Tópicos Avançados, o núcleo OpenCL e o reencontro (RF-19 a RF-29). Pendências conhecidas: tela de notificações, doações e ranking (onde o selo Verificado passa a ser exigido).
+**Núcleo OpenCL e busca por foto (RF-21 a RF-29):** serviço em C (`nucleo-opencl/`, porta 8001; detalhes no README dele):
+descritores e comparação em duas versões (sequencial e OpenCL, iguais bit a bit), `POST /extrair-descritor`,
+`POST /comparar`, `GET /benchmark`. Na API: `core/nucleo.py` (cliente com disjuntor de 30 s; `indexar` grava
+`descritores_visuais` a cada foto nova), `core/semelhanca.py` (filtros prévios e nota por candidato = maior entre
+as fotos), `GET /reencontro/semelhantes` (perdido → avistamentos + animais dos abrigos; avistamento → perdidos),
+busca salva criada no registro da perda (RF-24), alerta de avistamento por semelhança alta/média com registro em
+`correspondencias` (sem núcleo: por distância), alerta ao abrigo no envio de foto (RF-26), `/admin/nucleo`
+(estado, benchmark, indexar) e `python -m app.scripts.indexar_fotos`. Telas: `ResultadosSemelhanca.jsx` (passo 5
+do Perdi/Encontrei e detalhe do registro). Testes: `nucleo_falso` (conftest) e `test_nucleo_real.py` (CI do núcleo).
+Local: `NUCLEO_OPENCL_URL=http://127.0.0.1:8001` no `api/.env`; E2E roda sem núcleo (`E2E_NUCLEO_URL` para usar).
+
+**Alerta e caso resolvido (fecha o fluxo do reencontro, Sprint 5 oficial):** todo `POST /avistamentos` cria
+uma notificação (`referencia_tipo="avistamento"`, o clique abre o avistamento) para o tutor com perda ativa da
+mesma espécie, sumida até a data do avistamento e dentro do `raio_busca_km` dele — **um alerta por tutor**, com
+a perda mais próxima (versão por distância do RF-25; o núcleo vai somar a semelhança da foto).
+`PATCH /perdidos/{id}/resolvido` (RF-28, só o tutor autor; 409 se já resolvido): o caso sai da lista pública e
+do mapa, a `BuscaSalva` vira `resolvida` e para de gerar alertas. Na interface: botão "Encontrei meu animal" no
+detalhe e em Meus registros.
+**Datas "do dia"** (`data_entrada`, `data_desaparecimento`, `data_avistamento`) são colunas `DateTime` gravadas como
+meia-noite UTC; a saída usa o tipo `DataDoDia` (`app/schemas/datas.py`) para não voltar um dia no Postgres em UTC-3.
+
+**Doações e apoiadores (3º módulo, Sprint 6 oficial — RF-12, RF-30 a RF-35):** `routers/doacoes.py`
+(`/necessidades`: abrigo **verificado** publica, mural público por urgência, `/minhas`, PATCH/DELETE;
+`/doacoes`: apoiador registra do mural ou avulsa, `/minhas`, cancela enquanto aguarda; abrigo vê `/recebidas` e
+confirma/recusa com `PATCH`, uma vez só) e `routers/apoiadores.py` (`/apoiadores/ranking?categoria&periodo=mes|ano`,
+`/apoiadores` para o mapa, `/apoiadores/{id}` perfil). `GET /abrigos/{id}` = perfil público (animais, necessidades,
+apoiadores; chave PIX e necessidades só com selo). Pontuação em `core/pontuacao.py`: **10 por doação confirmada +
+10 por mês seguido**, cache mensal em `pontuacoes_apoiador` recalculado a cada confirmação; selo "Apoiador ativo" =
+doação confirmada no mês atual ou anterior. Necessidade vira `atendida` sozinha quando a soma confirmada alcança o
+pedido. Notificações `referencia_tipo="doacao"` (abrigo → `/doacoes`, apoiador → `/minhas-doacoes`). Telas:
+`/quem-apoia`, `/abrigos/:id`, `/apoiadores/:id`, `/doacoes` (abrigo), `/minhas-doacoes` (apoiador); painel do
+abrigo com o resumo "o que exige ação hoje". Demo: 4 apoiadores (`amigofiel@`, `petcenter@`, `clinicaboavista@`,
+`racaonordeste@exemplo.com`). E2E: admin só de teste `admin-e2e@teste.buscapet.dev` criado por `preparar_banco_teste`.
+
+**Painel, relatórios e histórico (Sprint 7 oficial — RF-38, RF-39, RF-40):** `core/auditoria.py` —
+`auditoria.registrar(db, usuario_id, "entidade.verbo", tipo, id, **detalhes)` em **toda ação sensível**, antes do
+commit da própria ação (mesma transação; ação que falha não deixa log; nunca senha/token nos detalhes); rótulos em
+`ROTULOS`. `routers/relatorios.py`: `/admin/painel` (indicadores do período + "agora" + série de 6 meses + últimas
+ações), `/admin/logs` (+ `.csv`; filtros `de`, `ate`, `acao`, `q`, `entidade`), `/admin/usuarios` (pesquisa),
+`/admin/relatorios/abrigos.csv`, `/relatorios/abrigo` (+ `/historico`, `interesses.csv`, `doacoes.csv`,
+`animais.csv`). Período: dias no fuso de Recife (UTC-3), padrão 90 dias; limites convertidos para UTC antes do banco.
+"Tempo até a adoção" = dias de calendário da entrada (ou cadastro) do animal até o log `interesse.aprovado`.
+CSV com `;` e BOM (Excel pt-BR); o CORS expõe `Content-Disposition`. Telas: `/admin` em abas (Painel, Verificar
+abrigos, Histórico, Contas) e `/relatorios` (abrigo). Gráficos: `componentes/GraficoMensal.jsx` (SVG, uma série por
+gráfico, cores `--serie-1..3` validadas para daltonismo, opção "ver como tabela").
+**Cuidado:** `GROUP BY` com expressão + parâmetro (ex.: `coalesce(cidade, '...')`) passa no SQLite e quebra no
+Postgres — teste as consultas novas contra o Postgres.
+
+**Sprint 8 oficial (tudo implementado, permissões, usabilidade, regras):**
+- **Fotos dos animais (RF-17):** `POST /animais/{id}/fotos` (até 5, tudo ou nada), `DELETE .../fotos/{foto_id}`,
+  `PATCH .../fotos/{foto_id}/capa`; `AnimalOut.fotos` vem do relacionamento `Animal.fotos` com `selectinload` (sem
+  N+1). Excluir o animal apaga os arquivos. Demo: capa a partir de `app/scripts/fotos_demo/`.
+- **Denúncia (RF-41):** `routers/denuncias.py`; **migration `0004`** (`animais.removido_em`): anúncio removido some
+  do público (catálogo, ficha, perfil, mapa), mas a linha fica. Decisões: ignorado, advertido, removido, banido
+  (suspende o abrigo); resolve todas as pendentes do anúncio. **Aplicar `alembic upgrade head` no Supabase.**
+- **Senha e e-mail (RF-05, RF-36):** `core/email.py` (SMTP via `SMTP_HOST`/`SMTP_PORTA`/`SMTP_USUARIO`/`SMTP_SENHA`/
+  `EMAIL_REMETENTE`; sem SMTP grava `.eml` em `api/caixa-de-saida/`, fora do Git). Toda `Notificacao` também vira
+  e-mail (gancho `before_flush`/`after_commit` do SQLAlchemy). `/auth/esqueci-senha` (mesma resposta sempre) e
+  `/auth/redefinir-senha` (link de 30 min, uso único; token com `fim` — `decodificar_token` recusa tokens com `fim`).
+  Em produção, configurar também `URL_INTERFACE` (links dos e-mails).
+- **Regras revisadas (`core/regras.py`):** animal adotado/óbito/transferido/removido encerra interesses abertos;
+  animal que volta de "em processo" para "disponível" desfaz a aprovação (nunca dois aprovados).
+- **Permissões:** `tests/test_permissoes.py` = matriz 25 rotas × 5 perfis.
+- **Usabilidade:** Mostrar senha (`CampoSenha`), "Pular para o conteúdo", título da aba por página.
+
+**Sprint 9 oficial (testes completos):**
+- `frontend/e2e/varredura.spec.js` (navegação por perfil, 225 páginas), `frontend/e2e/acessibilidade.spec.js`
+  (axe-core, WCAG 2.1 AA), `api/tests/test_validacoes.py` (CV-01 a CV-29), `api/tests/test_email_smtp.py`.
+- Cobertura com `pytest-cov`: 94%; a CI falha abaixo de 90% (`--cov-fail-under=90`).
+- Cor de destaque `--accent` agora é `#b24c18` (a antiga `#c4541a` reprovava no contraste 4,5:1). Ao mexer em
+  cores, rode `npx playwright test acessibilidade`.
+- A fixture `contas` (uma conta de cada perfil + um animal) está no `tests/conftest.py`.
+- Em máquina com pouca memória: `npx playwright test --workers=2`.
+
+**Existe só como modelo de dados, sem rota nem tela:** busca salva (usada só ao resolver o caso), correspondência,
+descritor visual (dependem do núcleo OpenCL), membros da equipe do abrigo.
+
+**Próximo passo:** confirmar o roteiro da **Sprint 5 oficial** (entrega no Teams). Pelo plano interno: núcleo
+(descritores e comparação, com o Nivaldo) → busca por foto (RF-21 a 23) → busca salva e alertas (RF-24 a 27) →
+doações e ranking (RF-30 a 34, onde o selo Verificado passa a ser exigido) → painel admin e relatórios → deploy.
 
 **Mudança da Sprint 4 (já implementada):** abrigo **não depende mais de aprovação humana para usar a
 conta**. Cadastra e opera na hora, aparece como "não verificado", e o administrador só concede o selo
@@ -119,7 +225,9 @@ Detalhes completos no `README.md`. Resumo:
 - **Python direto (usado na demonstração):** venv em `api/`, `api/.env` com `DATABASE_URL` e
   `JWT_SECRET`, `alembic upgrade head`, `uvicorn app.main:app --reload`; front com `npm install && npm run dev`.
 - **Testes:** `cd api && pytest` (SQLite em memória). **Atenção:** SQLite não pega tudo — o bug dos enums
-  da Sprint 3 só apareceu no Postgres. Valide mudanças de banco num Postgres real (o do Docker serve).
+  da Sprint 3 e o das datas "um dia antes" (fuso) só apareceram no Postgres. Valide mudanças de banco num
+  Postgres real. **Ponta a ponta:** `cd frontend && npm run e2e` (Playwright; cria e usa o banco `buscapet_e2e`,
+  API :8100 e interface :5174, sem sujar o banco de desenvolvimento).
 - O login da API usa formulário OAuth2 (`username` = e-mail, `password`), não JSON.
 - Criar administrador: `python -m app.scripts.criar_admin --nome "..." --email ...`.
 
@@ -149,9 +257,9 @@ pausa após ~1 semana sem uso; quem tem acesso restaura pelo painel.
 
 1. Base inicial de fotos para desenvolvimento e teste de escala do núcleo.
 2. Características da ficha do animal (definir com o abrigo parceiro).
-3. Peso exato volume × regularidade no ranking.
+3. ~~Peso exato volume × regularidade no ranking.~~ **Decidido (20/10): 10 por doação confirmada + 10 por mês seguido** (`core/pontuacao.py`).
 4. Abrangência inicial: uma cidade ou a região metropolitana.
-5. Visitante completa os assistentes "Perdi/Encontrei" e só é barrado na ação final? (recomendado: sim)
+5. ~~Visitante completa os assistentes "Perdi/Encontrei" e só é barrado na ação final?~~ **Decidido (16/10): sim**, com login dentro da etapa de revisão, sem perder as fotos.
 6. "Encontrei um animal" tem monitoramento contínuo ou só publica avistamento? (recomendado: só avistamento)
 7. Apoiador precisa de verificação (CNPJ falso entra no ranking)? Encaixa no novo modelo de selo.
 8. Data da oficina de capacitação com a instituição parceira (Extensão IV).

@@ -139,6 +139,17 @@ class AtualizaUsuario(BaseModel):
     tipo_estabelecimento: TipoEstabelecimento | None = None
 
 
+class EsqueciSenha(BaseModel):
+    email: EmailStr
+
+
+class RedefinirSenha(BaseModel):
+    token: str = Field(min_length=10)
+    senha_nova: str = Field(min_length=8)
+
+    _checa_senha = field_validator("senha_nova")(_senha_valida)
+
+
 class TrocaSenha(BaseModel):
     senha_atual: str
     senha_nova: str = Field(min_length=8)

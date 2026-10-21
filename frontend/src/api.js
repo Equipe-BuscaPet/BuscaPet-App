@@ -2,7 +2,7 @@
 // backend rodando localmente.
 import { ROTULO_CAMPO } from './rotulos'
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const CHAVE_TOKEN = 'buscapet_token'
 
 export const token = {
@@ -69,13 +69,19 @@ function interpretarErro(status, detail) {
   return { mensagem: status >= 500 ? ERRO_GENERICO : 'Não foi possível concluir a ação. Tente novamente.', campos: {} }
 }
 
-export async function api(caminho, { metodo = 'GET', corpo, formulario } = {}) {
+// As fotos vêm da API como caminho relativo (/fotos/abc.jpg); o navegador precisa do endereço completo.
+export const urlFoto = (url) => (/^https?:\/\//.test(url) ? url : `${BASE}${url}`)
+
+// `multipart` recebe um FormData (campos + arquivos); o navegador monta o Content-Type sozinho.
+export async function api(caminho, { metodo = 'GET', corpo, formulario, multipart } = {}) {
   const headers = {}
   const jwt = token.ler()
   if (jwt) headers.Authorization = `Bearer ${jwt}`
 
   let body
-  if (formulario) {
+  if (multipart) {
+    body = multipart
+  } else if (formulario) {
     body = new URLSearchParams(formulario)
   } else if (corpo !== undefined) {
     headers['Content-Type'] = 'application/json'
@@ -86,7 +92,11 @@ export async function api(caminho, { metodo = 'GET', corpo, formulario } = {}) {
   try {
     resposta = await fetch(`${BASE}${caminho}`, { method: metodo, headers, body })
   } catch {
-    throw new ApiError(0, 'Não foi possível falar com o servidor. Verifique se a API está rodando.')
+    // Sem internet (comum no celular, e o app instalado abre mesmo assim) × servidor fora do ar.
+    if (navigator.onLine === false) {
+      throw new ApiError(0, 'Você está sem internet. Assim que a conexão voltar, tente de novo.')
+    }
+    throw new ApiError(0, 'Não foi possível falar com o servidor. Tente de novo em instantes.')
   }
 
   if (resposta.status === 204) return null
@@ -97,4 +107,23 @@ export async function api(caminho, { metodo = 'GET', corpo, formulario } = {}) {
     throw new ApiError(resposta.status, mensagem, campos)
   }
   return dados
+}
+
+// Baixa um arquivo da API (ex.: relatório CSV) com o token de login e salva com o nome que a API sugerir.
+export async function baixarArquivo(caminho, nomePadrao = 'relatorio.csv') {
+  const headers = {}
+  const jwt = token.ler()
+  if (jwt) headers.Authorization = `Bearer ${jwt}`
+  const resposta = await fetch(`${BASE}${caminho}`, { headers })
+  if (!resposta.ok) {
+    const dados = await resposta.json().catch(() => null)
+    throw new ApiError(resposta.status, interpretarErro(resposta.status, dados?.detail).mensagem)
+  }
+  const nome = /filename="([^"]+)"/.exec(resposta.headers.get('Content-Disposition') || '')?.[1] || nomePadrao
+  const url = URL.createObjectURL(await resposta.blob())
+  const link = Object.assign(document.createElement('a'), { href: url, download: nome })
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

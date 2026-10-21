@@ -1,56 +1,91 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from '../api'
-import { linkWhatsApp } from '../rotulos'
+import { TIPOS_REGISTRO, resumoCaracteristicas } from '../componentes/CartaoRegistro'
+import MenuFiltros from '../componentes/MenuFiltros'
+import { ESPECIES, PORTES, linkWhatsApp, textoData, textoHaQuanto, textoKm } from '../rotulos'
 
-// Mapa de abrigos com OpenStreetMap (gratuito, sem chave de API). Centro padrão: Recife.
+// Mapa com abas acima dele (RF-07 a RF-09, protótipo da Sprint 2):
+//   Abrigos                → o mapa e a lista lateral mostram os abrigos;
+//   Perdidos e avistados   → o mapa e uma lista MISTA mostram os animais.
+// Acima do mapa ficam só as abas (o mapa sobe). As opções ficam sobre a lista: "Perto de mim" e "Filtros".
+// OpenStreetMap (gratuito, sem chave de API). Centro padrão: Recife.
 const RECIFE = [-8.0476, -34.877]
 const RAIOS = [['', 'Qualquer distância'], ['5', 'Até 5 km'], ['10', 'Até 10 km'], ['25', 'Até 25 km']]
-const COR_VERIFICADO = '#2f7d3a'
-const COR_COMUM = '#c4541a'
+const PERIODOS = [['', 'Qualquer data'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 3 meses']]
+const COR = { verificado: '#2f7d3a', comum: '#c4541a', voce: '#2b6cb0' }
+
+const ABAS = [
+  { chave: 'abrigos', rotulo: 'Abrigos', icone: '🏠' },
+  { chave: 'animais', rotulo: 'Perdidos e avistados', icone: '🐾' },
+]
+const TIPOS = [
+  { chave: 'perdidos', tipo: 'perdido', rotulo: 'Perdidos' },
+  { chave: 'avistamentos', tipo: 'avistamento', rotulo: 'Avistados' },
+]
+const FILTROS_ANIMAIS = { especie: '', porte: '', periodo: '' }
+const FILTROS_ABRIGOS = { verificados: false, comAnimais: false }
 
 const texto = (n) => (n === 1 ? '1 animal disponível' : `${n} animais disponíveis`)
-const distancia = (km) => `${String(km).replace('.', ',')} km`
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
 
-// O conteúdo do balão é montado com nós de texto (nunca HTML), porque o nome do abrigo é digitado por usuários.
-function montarBalao(abrigo, aoVerAnimais) {
+// Data do registro (sumiu em / visto em) já está ≥ hoje − N dias?
+function dentroDoPeriodo(r, dias) {
+  if (!dias) return true
+  const t = TIPOS_REGISTRO[r.tipo]
+  const limite = new Date()
+  limite.setDate(limite.getDate() - Number(dias))
+  return String(r[t.campoData]).slice(0, 10) >= limite.toISOString().slice(0, 10)
+}
+
+// Balões montados com nós de texto (nunca HTML), porque os textos são digitados por usuários.
+function caixaBalao(titulo, linhas, botao) {
   const caixa = document.createElement('div')
-  const titulo = document.createElement('strong')
-  titulo.textContent = abrigo.nome_abrigo
-  caixa.append(titulo)
-  const linha = (conteudo) => { const p = document.createElement('div'); p.textContent = conteudo; caixa.append(p) }
-  linha(abrigo.verificado ? 'Abrigo verificado' : 'Abrigo não verificado')
-  linha(abrigo.endereco)
-  linha(texto(abrigo.animais_disponiveis))
-  if (abrigo.distancia_km != null) linha(`A ${distancia(abrigo.distancia_km)} de você`)
-  const botao = document.createElement('button')
-  botao.type = 'button'
-  botao.className = 'botao botao--pequeno'
-  botao.style.marginTop = '0.5rem'
-  botao.textContent = 'Ver animais deste abrigo'
-  botao.addEventListener('click', () => aoVerAnimais(abrigo.id))
-  caixa.append(botao)
+  const forte = document.createElement('strong')
+  forte.textContent = titulo
+  caixa.append(forte)
+  linhas.filter(Boolean).forEach((conteudo) => {
+    const p = document.createElement('div')
+    p.textContent = conteudo
+    caixa.append(p)
+  })
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'botao botao--pequeno'
+  b.style.marginTop = '0.5rem'
+  b.textContent = botao.texto
+  b.addEventListener('click', botao.acao)
+  caixa.append(b)
   return caixa
 }
 
 export default function Mapa() {
   const navegar = useNavigate()
+  const [params, setParams] = useSearchParams()
+  // A aba e o tipo ficam na URL (/mapa?ver=animais&mostrar=perdidos), para dar para compartilhar o link.
+  const aba = params.get('ver') === 'animais' ? 'animais' : 'abrigos'
+  const mostrarParam = params.get('mostrar')
+  const tiposAtivos = TIPOS.map((t) => t.chave).filter((c) => !mostrarParam || mostrarParam === c)
   const elementoMapa = useRef(null)
   const mapa = useRef(null)
   const camada = useRef(null)
   const marcadores = useRef(new Map())
-  const [abrigos, setAbrigos] = useState([])
+  const [dados, setDados] = useState({ abrigos: [], perdidos: [], avistamentos: [] })
+  const [filtrosAnimais, setFiltrosAnimais] = useState(FILTROS_ANIMAIS)
+  const [filtrosAbrigos, setFiltrosAbrigos] = useState(FILTROS_ABRIGOS)
   const [posicao, setPosicao] = useState(null)
   const [raio, setRaio] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [avisoLocal, setAvisoLocal] = useState('')
+  const [podeMarcar, setPodeMarcar] = useState(false) // RF-11: localização negada → marcar a posição no mapa
+  const [marcando, setMarcando] = useState(false)
+  const [destacado, setDestacado] = useState(null) // RF-09: o ponto clicado destaca o item na lista
 
-  const verAnimais = useCallback((id) => navegar(`/?abrigo=${id}`), [navegar])
+  const ir = useCallback((caminho) => navegar(caminho), [navegar])
 
-  // Cria o mapa uma única vez.
   useEffect(() => {
     const m = L.map(elementoMapa.current, { scrollWheelZoom: false }).setView(RECIFE, 12)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -62,123 +97,322 @@ export default function Mapa() {
     return () => { m.remove(); mapa.current = null }
   }, [])
 
-  // Busca os abrigos (com a distância, se a pessoa informou onde está).
+  // Busca só o que a aba mostra. Espécie e porte são filtrados na API; o resto, aqui na tela.
   useEffect(() => {
     setCarregando(true)
     setErro('')
-    const params = new URLSearchParams()
+    const consulta = new URLSearchParams()
     if (posicao) {
-      params.set('lat', posicao.lat)
-      params.set('lng', posicao.lng)
-      if (raio) params.set('raio_km', raio)
+      consulta.set('lat', posicao.lat)
+      consulta.set('lng', posicao.lng)
+      if (raio) consulta.set('raio_km', raio)
     }
-    api(`/abrigos${params.size ? `?${params}` : ''}`)
-      .then(setAbrigos)
-      .catch((e) => setErro(e.message))
-      .finally(() => setCarregando(false))
-  }, [posicao, raio])
+    let busca
+    if (aba === 'abrigos') {
+      busca = api(`/abrigos${consulta.size ? `?${consulta}` : ''}`).then((abrigos) => ({ abrigos, perdidos: [], avistamentos: [] }))
+    } else {
+      consulta.set('limite', 100)
+      if (filtrosAnimais.especie) consulta.set('especie', filtrosAnimais.especie)
+      if (filtrosAnimais.porte) consulta.set('porte', filtrosAnimais.porte)
+      busca = Promise.all([api(`/perdidos?${consulta}`), api(`/avistamentos?${consulta}`)])
+        .then(([perdidos, avistamentos]) => ({ abrigos: [], perdidos, avistamentos }))
+    }
+    let valido = true // vira false se a aba ou o filtro mudar antes da resposta (evita condição de corrida)
+    busca
+      .then((d) => valido && setDados(d))
+      .catch((e) => valido && setErro(e.message))
+      .finally(() => valido && setCarregando(false))
+    return () => { valido = false }
+  }, [aba, posicao, raio, filtrosAnimais.especie, filtrosAnimais.porte])
 
-  // Redesenha os marcadores quando a lista muda e ajusta o enquadramento.
+  const abrigos = useMemo(
+    () => dados.abrigos.filter((a) => (!filtrosAbrigos.verificados || a.verificado) && (!filtrosAbrigos.comAnimais || a.animais_disponiveis > 0)),
+    [dados.abrigos, filtrosAbrigos],
+  )
+
+  // Lista mista: perdidos e avistados juntos, do mais perto ao mais longe (com posição) ou do mais recente.
+  const chaveTipos = tiposAtivos.join(',')
+  const animais = useMemo(() => {
+    const ativos = chaveTipos.split(',')
+    const lista = TIPOS.filter((t) => ativos.includes(t.chave))
+      .flatMap((t) => dados[t.chave].map((r) => ({ ...r, tipo: t.tipo })))
+      .filter((r) => dentroDoPeriodo(r, filtrosAnimais.periodo))
+    return lista.sort((a, b) => (a.distancia_km != null ? a.distancia_km - b.distancia_km : String(b.criado_em).localeCompare(String(a.criado_em))))
+  }, [dados, chaveTipos, filtrosAnimais.periodo])
+  const contagem = useMemo(() => {
+    const c = {}
+    for (const t of TIPOS) c[t.chave] = dados[t.chave].filter((r) => dentroDoPeriodo({ ...r, tipo: t.tipo }, filtrosAnimais.periodo)).length
+    return c
+  }, [dados, filtrosAnimais.periodo])
+
+  // Redesenha os marcadores da aba atual e ajusta o enquadramento.
   useEffect(() => {
     const m = mapa.current
     if (!m) return
     camada.current.clearLayers()
     marcadores.current = new Map()
     const pontos = []
+
     abrigos.forEach((a) => {
-      const cor = a.verificado ? COR_VERIFICADO : COR_COMUM
-      const marcador = L.circleMarker([a.latitude, a.longitude], { radius: 11, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 0.95 })
-      marcador.bindPopup(() => montarBalao(a, verAnimais))
+      const marcador = L.circleMarker([a.latitude, a.longitude], { radius: 11, color: '#fff', weight: 2, fillColor: a.verificado ? COR.verificado : COR.comum, fillOpacity: 0.95 })
+      marcador.bindPopup(() => caixaBalao(a.nome_abrigo, [
+        a.verificado ? 'Abrigo verificado' : 'Abrigo não verificado', a.endereco, texto(a.animais_disponiveis),
+        a.distancia_km != null && `A ${textoKm(a.distancia_km)} de você`,
+      ], { texto: 'Ver perfil do abrigo', acao: () => ir(`/abrigos/${a.id}`) }))
       marcador.bindTooltip(a.nome_abrigo)
+      marcador.on('click', () => setDestacado(`abrigo-${a.id}`))
       marcador.addTo(camada.current)
-      marcadores.current.set(a.id, marcador)
+      marcadores.current.set(`abrigo-${a.id}`, marcador)
       pontos.push([a.latitude, a.longitude])
     })
+
+    animais.forEach((r) => {
+      const t = TIPOS_REGISTRO[r.tipo]
+      // Losango: diferencia registro de abrigo também para quem não distingue cores.
+      // O Leaflet posiciona o ícone pelo transform do próprio elemento; quem gira é o filho.
+      const marcador = L.marker([r.latitude, r.longitude], {
+        icon: L.divIcon({ className: `pino pino--${r.tipo}`, html: '<span class="pino__losango"></span>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+        title: t.titulo(r.especie),
+      })
+      marcador.bindPopup(() => caixaBalao(t.titulo(r.especie), [
+        resumoCaracteristicas(r), `${t.rotuloData} ${textoData(r[t.campoData])}`, 'Local aproximado',
+        r.distancia_km != null && `A ${textoKm(r.distancia_km)} de você`,
+      ], { texto: 'Ver registro', acao: () => ir(`${t.caminhoTela}/${r.id}`) }))
+      marcador.on('click', () => setDestacado(`${r.tipo}-${r.id}`))
+      marcador.addTo(camada.current)
+      marcadores.current.set(`${r.tipo}-${r.id}`, marcador)
+      pontos.push([r.latitude, r.longitude])
+    })
+
     if (posicao) {
-      L.circleMarker([posicao.lat, posicao.lng], { radius: 8, color: '#fff', weight: 2, fillColor: '#2b6cb0', fillOpacity: 1 })
+      L.circleMarker([posicao.lat, posicao.lng], { radius: 8, color: '#fff', weight: 2, fillColor: COR.voce, fillOpacity: 1 })
         .bindTooltip('Você está aqui').addTo(camada.current)
       pontos.push([posicao.lat, posicao.lng])
     }
     if (pontos.length > 1) m.fitBounds(pontos, { padding: [40, 40], maxZoom: 15 })
     else if (pontos.length === 1) m.setView(pontos[0], 14)
-  }, [abrigos, posicao, verAnimais])
+  }, [abrigos, animais, posicao, ir])
+
+  // RF-09: o item do ponto clicado aparece destacado e a lista rola até ele.
+  useEffect(() => {
+    if (!destacado) return
+    document.querySelector(`[data-chave="${destacado}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [destacado])
+
+  // RF-11: no modo "marcar minha posição", o próximo clique no mapa vira a posição da pessoa.
+  useEffect(() => {
+    const m = mapa.current
+    if (!m || !marcando) return
+    m.getContainer().style.cursor = 'crosshair'
+    const aoClicar = (e) => {
+      setPosicao({ lat: Number(e.latlng.lat.toFixed(5)), lng: Number(e.latlng.lng.toFixed(5)) })
+      setMarcando(false)
+      setPodeMarcar(false)
+      setAvisoLocal('')
+    }
+    m.once('click', aoClicar)
+    return () => { m.off('click', aoClicar); m.getContainer().style.cursor = '' }
+  }, [marcando])
+
+  function trocarAba(chave) {
+    setParams(chave === 'animais' ? { ver: 'animais' } : {}, { replace: true })
+  }
+
+  // Liga/desliga Perdidos ou Avistados. Desligar o último religa os dois: lista vazia não ajuda ninguém.
+  function alternarTipo(chave) {
+    const novos = tiposAtivos.includes(chave) ? tiposAtivos.filter((c) => c !== chave) : [...tiposAtivos, chave]
+    const proximo = { ver: 'animais' }
+    if (novos.length === 1) proximo.mostrar = novos[0]
+    setParams(proximo, { replace: true })
+  }
+
+  const mudarAnimais = (nome) => (e) => setFiltrosAnimais((f) => ({ ...f, [nome]: e.target.value }))
+  const mudarAbrigos = (nome) => (e) => setFiltrosAbrigos((f) => ({ ...f, [nome]: e.target.checked }))
+  const ativosAnimais = [filtrosAnimais.especie, filtrosAnimais.porte, filtrosAnimais.periodo, mostrarParam, raio].filter(Boolean).length
+  const ativosAbrigos = [filtrosAbrigos.verificados, filtrosAbrigos.comAnimais, raio].filter(Boolean).length
+
+  function limpar() {
+    setRaio('')
+    if (aba === 'abrigos') setFiltrosAbrigos(FILTROS_ABRIGOS)
+    else {
+      setFiltrosAnimais(FILTROS_ANIMAIS)
+      setParams({ ver: 'animais' }, { replace: true })
+    }
+  }
 
   function perto() {
     setAvisoLocal('')
-    if (!navigator.geolocation) return setAvisoLocal('Seu navegador não oferece localização. O mapa continua mostrando todos os abrigos.')
+    if (posicao) { setPosicao(null); setRaio(''); return } // segundo clique desliga
+    if (marcando) { setMarcando(false); return }
+    const semLocalizacao = (texto) => { setAvisoLocal(texto); setPodeMarcar(true) }
+    if (!navigator.geolocation) return semLocalizacao('Seu navegador não oferece localização.')
     navigator.geolocation.getCurrentPosition(
       (p) => setPosicao({ lat: Number(p.coords.latitude.toFixed(5)), lng: Number(p.coords.longitude.toFixed(5)) }),
-      () => setAvisoLocal('Não foi possível obter sua localização. Verifique a permissão do navegador; enquanto isso o mapa mostra todos os abrigos.'),
+      () => semLocalizacao('Não foi possível obter sua localização (permissão negada ou indisponível).'),
       { timeout: 10000 },
     )
   }
 
-  function limparLocal() {
-    setPosicao(null)
-    setRaio('')
-  }
-
-  function focar(a) {
-    mapa.current.setView([a.latitude, a.longitude], 15)
-    marcadores.current.get(a.id)?.openPopup()
+  function focar(chave, lat, lng) {
+    mapa.current.setView([lat, lng], 15)
+    marcadores.current.get(chave)?.openPopup()
     elementoMapa.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  const total = aba === 'abrigos' ? abrigos.length : animais.length
+  const ordem = posicao ? 'mais perto primeiro' : aba === 'animais' ? 'mais recentes primeiro' : ''
+
+  const distancia = posicao && (
+    <div className="campo">
+      <label htmlFor="raio">Distância máxima</label>
+      <select id="raio" value={raio} onChange={(e) => setRaio(e.target.value)}>
+        {RAIOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+      </select>
+    </div>
+  )
+
   return (
     <main className="pagina">
-      <h1>Mapa de abrigos</h1>
-      <p className="subtitulo">Encontre abrigos e protetores perto de você. <span style={{ color: COR_VERIFICADO }}>●</span> verificado · <span style={{ color: COR_COMUM }}>●</span> ainda não verificado</p>
+      <h1>Mapa</h1>
 
-      <div className="acoes" style={{ marginBottom: '1rem' }}>
-        {posicao ? (
-          <>
-            <div className="campo" style={{ minWidth: 190 }}>
-              <label htmlFor="raio">Distância máxima</label>
-              <select id="raio" value={raio} onChange={(e) => setRaio(e.target.value)}>
-                {RAIOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
-              </select>
-            </div>
-            <button className="botao botao--leve" onClick={limparLocal} style={{ alignSelf: 'flex-end' }}>Mostrar todos</button>
-          </>
-        ) : (
-          <button className="botao" onClick={perto}>Abrigos perto de mim</button>
-        )}
+      <div className="abas abas--mapa" role="tablist" aria-label="O que ver no mapa">
+        {ABAS.map((a) => (
+          <button
+            key={a.chave} type="button" role="tab" id={`aba-${a.chave}`} aria-selected={aba === a.chave} aria-controls="painel-mapa"
+            className={`abas__item${aba === a.chave ? ' abas__item--ativa' : ''}`} onClick={() => trocarAba(a.chave)}
+          >
+            <span aria-hidden="true">{a.icone}</span> {a.rotulo}
+          </button>
+        ))}
       </div>
 
-      {avisoLocal && <div className="aviso aviso--atencao" role="status">{avisoLocal}</div>}
-      {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
+      <div className="duas-colunas" id="painel-mapa" role="tabpanel" aria-labelledby={`aba-${aba}`}>
+        <div ref={elementoMapa} className="mapa" role="region" aria-label={aba === 'abrigos' ? 'Mapa dos abrigos' : 'Mapa dos animais perdidos e avistados'} />
 
-      <div className="duas-colunas">
-        <div ref={elementoMapa} className="mapa" role="region" aria-label="Mapa com a localização dos abrigos" />
-        <div>
-          {carregando && <p className="estado">Carregando…</p>}
-          {!carregando && !erro && abrigos.length === 0 && (
-            <p className="estado">{posicao && raio ? 'Nenhum abrigo nessa distância. Tente aumentar o raio.' : 'Nenhum abrigo cadastrado ainda.'}</p>
+        <div className="mapa-coluna">
+          {/* Barra da lista: resumo à esquerda; Perto de mim e Filtros no cantinho direito. */}
+          <div className="mapa-barra">
+            <p className="mapa-barra__resumo" aria-live="polite">
+              {carregando ? 'Carregando…' : <strong>{aba === 'abrigos' ? plural(total, 'abrigo', 'abrigos') : plural(total, 'animal', 'animais')}</strong>}
+              {!carregando && ordem && <small>{ordem}</small>}
+            </p>
+            <div className="mapa-barra__botoes">
+              <button type="button" className={`botao botao--leve botao--pequeno${posicao ? ' menu-filtros__botao--ativo' : ''}`} onClick={perto} aria-pressed={Boolean(posicao)}>
+                📍 Perto de mim
+              </button>
+              {aba === 'abrigos' ? (
+                <MenuFiltros ativos={ativosAbrigos} aoLimpar={limpar}>
+                  <label className="marcar"><input type="checkbox" checked={filtrosAbrigos.verificados} onChange={mudarAbrigos('verificados')} /> Só abrigos verificados</label>
+                  <label className="marcar"><input type="checkbox" checked={filtrosAbrigos.comAnimais} onChange={mudarAbrigos('comAnimais')} /> Só com animais disponíveis</label>
+                  {distancia}
+                </MenuFiltros>
+              ) : (
+                <MenuFiltros ativos={ativosAnimais} aoLimpar={limpar}>
+                  <fieldset className="campo">
+                    <legend>Mostrar</legend>
+                    {TIPOS.map((t) => (
+                      <label key={t.chave} className="marcar">
+                        <input type="checkbox" checked={tiposAtivos.includes(t.chave)} onChange={() => alternarTipo(t.chave)} />
+                        <span className={`camada__marca camada__marca--${t.chave}`} aria-hidden="true" />
+                        {t.rotulo} <small>({carregando ? '…' : contagem[t.chave]})</small>
+                      </label>
+                    ))}
+                  </fieldset>
+                  <div className="campo">
+                    <label htmlFor="f-especie">Espécie</label>
+                    <select id="f-especie" value={filtrosAnimais.especie} onChange={mudarAnimais('especie')}>
+                      <option value="">Todas</option>
+                      {Object.entries(ESPECIES).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div className="campo">
+                    <label htmlFor="f-porte">Porte</label>
+                    <select id="f-porte" value={filtrosAnimais.porte} onChange={mudarAnimais('porte')}>
+                      <option value="">Todos</option>
+                      {Object.entries(PORTES).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div className="campo">
+                    <label htmlFor="f-periodo">Período</label>
+                    <select id="f-periodo" value={filtrosAnimais.periodo} onChange={mudarAnimais('periodo')}>
+                      {PERIODOS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                    </select>
+                  </div>
+                  {distancia}
+                </MenuFiltros>
+              )}
+            </div>
+          </div>
+
+          {avisoLocal && (
+            <div className="aviso aviso--atencao" role="status">
+              {avisoLocal}{' '}
+              {marcando ? 'Clique no mapa no lugar onde você está.' : podeMarcar && (
+                <>Você pode <button type="button" className="botao-link" onClick={() => setMarcando(true)}>marcar sua posição no mapa</button> ou continuar vendo tudo.</>
+              )}
+            </div>
           )}
-          <ul className="lista-abrigos">
-            {abrigos.map((a) => {
-              const whats = linkWhatsApp(a.telefone)
-              return (
-                <li key={a.id} className="cartao" data-abrigo={a.id}>
-                  <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
-                    <h2 style={{ marginBottom: 0, fontSize: '1.05rem' }}>{a.nome_abrigo}</h2>
-                    <span className={`etiqueta ${a.verificado ? 'etiqueta--ok' : 'etiqueta--atencao'}`}>{a.verificado ? 'Verificado' : 'Não verificado'}</span>
-                  </div>
-                  <p style={{ margin: '0 0 0.25rem' }}>{a.endereco}</p>
-                  <p style={{ margin: '0 0 0.5rem' }}>
-                    {texto(a.animais_disponiveis)}
-                    {a.distancia_km != null && <> · <strong>{distancia(a.distancia_km)}</strong></>}
-                  </p>
-                  {a.horario_funcionamento && <p style={{ margin: '0 0 0.5rem' }}><small>Horário: {a.horario_funcionamento}</small></p>}
-                  <div className="acoes">
-                    <button className="botao botao--leve botao--pequeno" onClick={() => focar(a)}>Ver no mapa</button>
-                    <button className="botao botao--pequeno" onClick={() => verAnimais(a.id)}>Ver animais</button>
-                    {whats && <a className="botao botao--leve botao--pequeno" href={whats} target="_blank" rel="noreferrer">WhatsApp</a>}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
+
+          <div className="mapa-lista">
+            {!carregando && !erro && total === 0 && (
+              <p className="estado">
+                {aba === 'abrigos' ? 'Nenhum abrigo com esses filtros.' : 'Nenhum animal com esses filtros.'} Tente limpar os filtros ou aumentar a distância.
+              </p>
+            )}
+
+            {aba === 'abrigos' && !carregando && (
+              <ul className="lista-abrigos" aria-label="Abrigos">
+                {abrigos.map((a) => {
+                  const whats = linkWhatsApp(a.telefone)
+                  return (
+                    <li key={a.id} className={`cartao${destacado === `abrigo-${a.id}` ? ' item-destacado' : ''}`} data-abrigo={a.id} data-chave={`abrigo-${a.id}`}>
+                      <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
+                        <h2 style={{ marginBottom: 0, fontSize: '1.05rem' }}>{a.nome_abrigo}</h2>
+                        <span className={`etiqueta ${a.verificado ? 'etiqueta--ok' : 'etiqueta--atencao'}`}>{a.verificado ? 'Verificado' : 'Não verificado'}</span>
+                      </div>
+                      <p style={{ margin: '0 0 0.25rem' }}>{a.endereco}</p>
+                      <p style={{ margin: '0 0 0.5rem' }}>
+                        {texto(a.animais_disponiveis)}
+                        {a.distancia_km != null && <> · <strong>{textoKm(a.distancia_km)}</strong></>}
+                      </p>
+                      {a.horario_funcionamento && <p style={{ margin: '0 0 0.5rem' }}><small>Horário: {a.horario_funcionamento}</small></p>}
+                      <div className="acoes">
+                        <button className="botao botao--leve botao--pequeno" onClick={() => focar(`abrigo-${a.id}`, a.latitude, a.longitude)}>Ver no mapa</button>
+                        <button className="botao botao--pequeno" onClick={() => ir(`/abrigos/${a.id}`)}>Ver abrigo</button>
+                        {whats && <a className="botao botao--leve botao--pequeno" href={whats} target="_blank" rel="noreferrer">WhatsApp</a>}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {aba === 'animais' && !carregando && animais.length > 0 && (
+              <ul className="lista-abrigos" aria-label="Animais perdidos e avistados">
+                {animais.map((r) => {
+                  const t = TIPOS_REGISTRO[r.tipo]
+                  return (
+                    <li key={`${r.tipo}-${r.id}`} className={`cartao registro-mini${destacado === `${r.tipo}-${r.id}` ? ' item-destacado' : ''}`} data-chave={`${r.tipo}-${r.id}`}>
+                      <span className={`camada__marca camada__marca--${r.tipo === 'perdido' ? 'perdidos' : 'avistamentos'}`} aria-hidden="true" />
+                      <div>
+                        <div className="registro-mini__topo">
+                          <Link to={`${t.caminhoTela}/${r.id}`}><strong>{t.titulo(r.especie)}</strong></Link>
+                          <span className={`etiqueta ${t.etiqueta[1]}`}>{t.etiqueta[0]}</span>
+                        </div>
+                        <p>{resumoCaracteristicas(r)}</p>
+                        <p>
+                          {t.rotuloData} {textoData(r[t.campoData])}
+                          {r.distancia_km != null ? <> · <strong>{textoKm(r.distancia_km)}</strong></> : <> · publicado {textoHaQuanto(r.criado_em)}</>}
+                        </p>
+                      </div>
+                      <button className="botao botao--leve botao--pequeno" onClick={() => focar(`${r.tipo}-${r.id}`, r.latitude, r.longitude)}>Ver no mapa</button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </main>

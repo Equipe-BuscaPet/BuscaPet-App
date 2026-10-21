@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.deps import get_usuario_atual
 from app.core.seguranca import hash_senha, verificar_senha
 from app.db.session import get_db
@@ -62,6 +63,7 @@ def atualizar(
             usuario.nome = valor.strip()
         else:
             setattr(perfil, campo, valor)
+    auditoria.registrar(db, usuario.id, "conta.atualizada", "usuario", usuario.id, campos=sorted(enviados))
     db.commit()
     db.refresh(usuario)
     return usuario_out(usuario)
@@ -76,6 +78,7 @@ def trocar_senha(
     if not verificar_senha(dados.senha_atual, usuario.senha_hash):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Senha atual incorreta.")
     usuario.senha_hash = hash_senha(dados.senha_nova)
+    auditoria.registrar(db, usuario.id, "conta.senha_trocada", "usuario", usuario.id)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -88,5 +91,6 @@ def excluir_conta(usuario: Usuario = Depends(get_usuario_atual), db: Session = D
     if usuario.tipo_conta == TipoConta.ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Contas de administrador não podem ser excluídas por aqui.")
     usuario.ativo = False
+    auditoria.registrar(db, usuario.id, "conta.desativada", "usuario", usuario.id)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

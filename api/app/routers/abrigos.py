@@ -1,4 +1,4 @@
-"""Mapa de abrigos — consulta pública (RF-09).
+"""Mapa de abrigos e perfil público do abrigo — consultas públicas (RF-09, RF-12).
 
 Lista os abrigos ativos e não suspensos, com a quantidade de animais disponíveis. Se a pessoa
 informar a própria posição (`lat` e `lng`), devolve também a distância e ordena do mais perto
@@ -8,12 +8,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import pontuacao
 from app.core.geo import distancia_km
 from app.db.session import get_db
 from app.models.animal import Animal
-from app.models.enums import StatusAnimal, StatusValidacao
-from app.models.usuario import Abrigo, Usuario
+from app.models.doacao import Doacao, PontuacaoApoiador
+from app.models.enums import StatusAnimal, StatusDoacao, StatusValidacao
+from app.models.usuario import Abrigo, Apoiador, Usuario
+from app.routers.doacoes import _necessidade_out, _recebido, necessidades_abertas, ordenar_mural
 from app.schemas.abrigo import AbrigoMapaOut
+from app.schemas.doacao import AbrigoPerfilOut, ApoiadorResumo
 
 router = APIRouter(prefix="/abrigos", tags=["abrigos"])
 
@@ -32,7 +36,7 @@ def listar(
 
     disponiveis = (
         select(Animal.abrigo_id, func.count(Animal.id).label("total"))
-        .where(Animal.status == StatusAnimal.DISPONIVEL)
+        .where(Animal.status == StatusAnimal.DISPONIVEL, Animal.removido_em.is_(None))
         .group_by(Animal.abrigo_id)
         .subquery()
     )
@@ -65,3 +69,38 @@ def listar(
         )
     saida.sort(key=lambda a: (a.distancia_km is None, a.distancia_km or 0, a.nome_abrigo.lower()))
     return saida
+
+
+@router.get("/{abrigo_id}", response_model=AbrigoPerfilOut)
+def perfil(abrigo_id: int, db: Session = Depends(get_db)) -> AbrigoPerfilOut:
+    """Perfil público (RF-12): integra os três módulos — animais para adoção, necessidades em aberto e quem apoia.
+    A chave de doação e as necessidades só aparecem com o selo Verificado (risco de golpe)."""
+    abrigo = db.get(Abrigo, abrigo_id)
+    if abrigo is None or not abrigo.usuario.ativo or abrigo.status_validacao == StatusValidacao.REJEITADO:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Abrigo não encontrado.")
+    verificado = abrigo.status_validacao == StatusValidacao.APROVADO
+    disponiveis = db.scalar(
+        select(func.count(Animal.id)).where(Animal.abrigo_id == abrigo_id, Animal.status == StatusAnimal.DISPONIVEL, Animal.removido_em.is_(None))
+    )
+    necessidades = []
+    if verificado:
+        linhas = necessidades_abertas(db, abrigo_id)
+        recebido = _recebido(db, [n.id for n, _ in linhas])
+        necessidades = ordenar_mural([_necessidade_out(n, a, recebido.get(n.id, 0)) for n, a in linhas])
+    apoiadores = []
+    for ap, u in db.execute(
+        select(Apoiador, Usuario).join(Usuario, Usuario.id == Apoiador.usuario_id)
+        .where(Apoiador.usuario_id.in_(
+            select(Doacao.apoiador_id).where(Doacao.abrigo_id == abrigo_id, Doacao.status == StatusDoacao.CONFIRMADA)
+        ), Usuario.ativo.is_(True))
+        .order_by(Usuario.nome)
+    ).tuples():
+        meses = {pontuacao.mes_de(p.mes_referencia) for p in db.scalars(select(PontuacaoApoiador).where(PontuacaoApoiador.apoiador_id == ap.usuario_id))}
+        apoiadores.append(ApoiadorResumo(id=ap.usuario_id, nome=u.nome, tipo_estabelecimento=ap.tipo_estabelecimento, selo_ativo=pontuacao.selo_ativo(meses)))
+    return AbrigoPerfilOut(
+        id=abrigo.usuario_id, nome_abrigo=abrigo.nome_abrigo, endereco=abrigo.endereco, latitude=abrigo.latitude,
+        longitude=abrigo.longitude, telefone=abrigo.telefone, horario_funcionamento=abrigo.horario_funcionamento,
+        descricao=abrigo.descricao, verificado=verificado, animais_disponiveis=disponiveis or 0,
+        chave_doacao_financeira=abrigo.chave_doacao_financeira if verificado else None,
+        necessidades=necessidades, apoiadores=apoiadores,
+    )

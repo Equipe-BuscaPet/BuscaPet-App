@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import Especie, Sexo, StatusAnimal
+from app.schemas.datas import DataDoDia
 
 Porte = Literal["pequeno", "medio", "grande"]
 
@@ -50,6 +51,13 @@ class AnimalUpdate(BaseModel):
     status: StatusAnimal | None = None
 
 
+class FotoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+
+
 class AnimalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,7 +78,9 @@ class AnimalOut(BaseModel):
     convivencia_criancas: bool | None
     convivencia_outros_animais: bool | None
     historia_resgate: str | None
-    data_entrada: datetime.datetime | None
+    data_entrada: DataDoDia | None
     condicao_chegada: str | None
     status: StatusAnimal
     criado_em: datetime.datetime
+    removido_em: datetime.datetime | None = None  # anúncio removido pela moderação (RF-41)
+    fotos: list[FotoOut] = []  # a primeira é a capa (RF-17)
