@@ -1,7 +1,12 @@
 """Núcleo OpenCL na administração: estado, benchmark (RF-29) e indexação das fotos sem descritor (RF-21)."""
 import io
 
+import httpx
+import pytest
 from PIL import Image
+
+from app.core import nucleo
+from app.core.nucleo import _pedir as pedir_de_verdade  # importado antes da fixture trocar
 
 from tests.conftest import cabecalho, dados_tutor
 
@@ -42,3 +47,23 @@ def test_benchmark_limita_o_tamanho(client, admin):
     r = client.get("/admin/nucleo/benchmark?etapa=extracao&n=5000", headers=admin)
     assert r.status_code == 422 and "2.000" in r.json()["detail"]
     assert client.get("/admin/nucleo/benchmark?etapa=outra", headers=admin).status_code == 422
+
+
+def test_disjuntor_nao_insiste_no_nucleo_fora_do_ar(monkeypatch):
+    """Depois de uma falha de conexão, as chamadas seguintes falham na hora, sem esperar a rede de novo."""
+    tentativas = []
+
+    def conexao_recusada(*_a, **_k):
+        tentativas.append(1)
+        raise httpx.ConnectError("recusada")
+
+    monkeypatch.setattr(nucleo._cliente, "request", conexao_recusada)
+    monkeypatch.setattr(nucleo, "_fora_do_ar_ate", 0.0)
+    for _ in range(3):
+        with pytest.raises(nucleo.NucleoIndisponivel):
+            pedir_de_verdade("GET", "/saude", timeout=1)
+    assert len(tentativas) == 1
+    monkeypatch.setattr(nucleo, "_fora_do_ar_ate", 0.0)  # passado o intervalo, tenta de novo
+    with pytest.raises(nucleo.NucleoIndisponivel):
+        pedir_de_verdade("GET", "/saude", timeout=1)
+    assert len(tentativas) == 2

@@ -9,6 +9,7 @@ ou pelo script `python -m app.scripts.indexar_fotos`) e a busca avisa que a comp
 import base64
 import json
 import logging
+import time
 from pathlib import Path
 
 import httpx
@@ -42,11 +43,20 @@ def _url(caminho: str) -> str:
 # custava ~0,4 s por busca, mais que toda a comparação no núcleo.
 _cliente = httpx.Client()
 
+# "Disjuntor": se o núcleo não respondeu, nem tenta de novo por alguns segundos. Sem isso, cada página que mostra
+# semelhança esperaria a conexão falhar (no Windows, ~2 s por tentativa numa porta fechada).
+ESPERA_APOS_FALHA_S = 30
+_fora_do_ar_ate = 0.0
+
 
 def _pedir(metodo: str, caminho: str, timeout: float, **kwargs) -> dict:
+    global _fora_do_ar_ate
+    if time.monotonic() < _fora_do_ar_ate:
+        raise NucleoIndisponivel("núcleo fora do ar (nova tentativa em instantes)")
     try:
         resposta = _cliente.request(metodo, _url(caminho), timeout=timeout, **kwargs)
     except httpx.HTTPError as erro:
+        _fora_do_ar_ate = time.monotonic() + ESPERA_APOS_FALHA_S
         raise NucleoIndisponivel(f"núcleo fora do ar ({erro.__class__.__name__})") from erro
     if resposta.status_code != 200:
         raise NucleoIndisponivel(f"núcleo respondeu {resposta.status_code}: {resposta.text[:200]}")
