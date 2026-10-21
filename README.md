@@ -207,7 +207,8 @@ Com os dados de demonstração (senha de todas as contas: `Senha1234!`):
 ## Documentação da API
 
 - **Guia das rotas:** [`docs/api.md`](docs/api.md): autenticação, perfis, todas as rotas por módulo, com
-  parâmetros, respostas, erros e exemplos.
+  quem pode usar, parâmetros, corpo, respostas, erros e exemplos. É **gerado do código**
+  (`cd api && python -m app.scripts.gerar_doc_api`), e um teste falha se ficar desatualizado.
 - **Documentação interativa:** <http://localhost:8000/docs> (Swagger) e <http://localhost:8000/redoc>, geradas pela
   própria API e sempre iguais ao código. O botão **Authorize** do Swagger aceita o e-mail e a senha de uma conta.
 - **Contrato do núcleo OpenCL:** [`nucleo-opencl/README.md`](nucleo-opencl/README.md).

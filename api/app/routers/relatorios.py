@@ -189,6 +189,7 @@ def logs(
     _: Usuario = Depends(somente_admin),
     db: Session = Depends(get_db),
 ) -> PaginaLogs:
+    """Histórico de operações (RF-39), paginado; filtra por período, ação, entidade e texto."""
     consulta = _consulta_logs(p, acao, q, entidade)
     total = db.scalar(select(func.count()).select_from(consulta.subquery()))
     linhas = db.execute(consulta.order_by(LogAuditoria.criado_em.desc(), LogAuditoria.id.desc()).offset(deslocamento).limit(limite)).tuples()
@@ -200,6 +201,7 @@ def logs_csv(
     p: Periodo = Depends(periodo), acao: str | None = None, q: str | None = None, entidade: str | None = None,
     _: Usuario = Depends(somente_admin), db: Session = Depends(get_db),
 ) -> Response:
+    """O histórico de operações em CSV, com os mesmos filtros."""
     linhas = db.execute(_consulta_logs(p, acao, q, entidade).order_by(LogAuditoria.criado_em.desc(), LogAuditoria.id.desc())).tuples()
     return _csv(
         f"historico-{p.de}-a-{p.ate}.csv", ["Data", "Quem", "E-mail", "Tipo de conta", "Ação", "Registro", "Detalhes"],
@@ -219,6 +221,7 @@ def pesquisar_usuarios(
     _: Usuario = Depends(somente_admin),
     db: Session = Depends(get_db),
 ) -> list[UsuarioResumoOut]:
+    """Pesquisa de contas pela administração: por nome, e-mail ou nome do abrigo, tipo de conta e situação."""
     consulta = select(Usuario).outerjoin(Abrigo, Abrigo.usuario_id == Usuario.id)
     if q:
         termo = f"%{q.strip().lower()}%"
@@ -247,6 +250,7 @@ def pesquisar_usuarios(
 
 @router.get("/admin/painel", response_model=PainelAdminOut)
 def painel_admin(p: Periodo = Depends(periodo), _: Usuario = Depends(somente_admin), db: Session = Depends(get_db)) -> PainelAdminOut:
+    """Painel da administração (RF-38): contas, abrigos, animais e a atividade do período (interesses, adoções, reencontros, doações)."""
     contar = lambda modelo, *cond: db.scalar(select(func.count()).select_from(modelo).where(*cond)) or 0  # noqa: E731
     contas = db.execute(select(Usuario.tipo_conta, func.count()).where(Usuario.ativo.is_(True)).group_by(Usuario.tipo_conta)).all()
     abrigos = db.execute(select(Abrigo.status_validacao, func.count()).group_by(Abrigo.status_validacao)).all()
@@ -374,6 +378,7 @@ LISTAS = {
 
 @router.get("/relatorios/abrigo", response_model=RelatorioAbrigoOut)
 def relatorio_abrigo(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> RelatorioAbrigoOut:
+    """Relatório do abrigo (RF-40) no período: animais, interesses, adoções e tempo médio, doações, apoiadores e necessidades."""
     aid = abrigo.usuario_id
     animais = db.execute(select(Animal.status, func.count()).where(Animal.abrigo_id == aid).group_by(Animal.status)).all()
     interesses = db.execute(
@@ -443,6 +448,7 @@ STATUS_DOACAO = {"aguardando_confirmacao": "Aguardando confirmação", "confirma
 
 @router.get("/relatorios/abrigo/interesses.csv")
 def interesses_csv(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> Response:
+    """Interesses recebidos no período, em CSV."""
     linhas = db.execute(
         select(Interesse, Animal, Usuario, Tutor).join(Animal, Animal.id == Interesse.animal_id)
         .join(Usuario, Usuario.id == Interesse.tutor_id).join(Tutor, Tutor.usuario_id == Interesse.tutor_id)
@@ -456,6 +462,7 @@ def interesses_csv(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_a
 
 @router.get("/relatorios/abrigo/doacoes.csv")
 def doacoes_csv(p: Periodo = Depends(periodo), abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> Response:
+    """Doações registradas no período, em CSV (inclui pessoa física e o valor das doações em dinheiro)."""
     linhas = db.execute(
         select(Doacao, Usuario, Apoiador).join(Usuario, Usuario.id == Doacao.apoiador_id).outerjoin(Apoiador, Apoiador.usuario_id == Doacao.apoiador_id)
         .where(Doacao.abrigo_id == abrigo.usuario_id, _no(Doacao.registrado_em, p)).order_by(Doacao.registrado_em.desc())

@@ -59,6 +59,7 @@ app.include_router(desempenho.router)
 
 @app.get("/health", tags=["infra"])
 def healthcheck() -> dict:
+    """A API está no ar (não consulta o banco)."""
     return {"status": "ok"}
 
 

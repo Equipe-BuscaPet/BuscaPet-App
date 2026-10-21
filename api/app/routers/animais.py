@@ -76,6 +76,7 @@ def cadastrar(
     abrigo: Abrigo = Depends(get_abrigo_operante),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
+    """O abrigo cadastra um animal para adoção (RF-13). As fotos vão depois, em `POST /animais/{id}/fotos`."""
     campos = dados.model_dump()
     campos["data_entrada"] = _para_datetime(campos["data_entrada"])
     animal = Animal(abrigo_id=abrigo.usuario_id, **campos)
@@ -167,6 +168,7 @@ def consultar(
     usuario: Usuario | None = Depends(get_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
+    """Ficha do animal. Anúncio removido pela moderação só aparece para o próprio abrigo e para a administração."""
     animal, abrigo = _buscar_visivel(animal_id, usuario, db)
     return _saida(animal, abrigo)
 
@@ -187,6 +189,7 @@ def atualizar(
     abrigo: Abrigo = Depends(get_abrigo_operante),
     db: Session = Depends(get_db),
 ) -> AnimalOut:
+    """O abrigo dono edita o animal; só os campos enviados mudam."""
     animal = _animal_do_abrigo(animal_id, abrigo, db)
     enviados = dados.model_dump(exclude_unset=True)
     obrigatorios = {"nome", "especie", "porte", "sexo", "status"}
@@ -357,6 +360,7 @@ def _foto_do_animal(db: Session, animal: Animal, foto_id: int) -> Foto:
 
 @router.delete("/{animal_id}/fotos/{foto_id}", response_model=AnimalOut)
 def excluir_foto(animal_id: int, foto_id: int, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> AnimalOut:
+    """O abrigo dono remove uma foto do animal (e o descritor visual dela)."""
     animal = _animal_do_abrigo(animal_id, abrigo, db)
     foto = _foto_do_animal(db, animal, foto_id)
     url = foto.url

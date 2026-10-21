@@ -136,6 +136,7 @@ def _minha_necessidade(db: Session, necessidade_id: int, abrigo: Abrigo) -> Nece
 
 @router.post("/necessidades", response_model=NecessidadeOut, status_code=status.HTTP_201_CREATED)
 def publicar_necessidade(dados: NecessidadeIn, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> NecessidadeOut:
+    """O abrigo verificado publica uma necessidade no mural (RF-30). Sem o selo: 403."""
     if abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
     n = Necessidade(abrigo_id=abrigo.usuario_id, **dados.model_dump())
@@ -184,6 +185,7 @@ def minhas_necessidades(abrigo: Abrigo = Depends(get_abrigo_operante), db: Sessi
 def editar_necessidade(
     necessidade_id: int, dados: NecessidadeEdicao, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db),
 ) -> NecessidadeOut:
+    """O abrigo edita a necessidade, marca como atendida (`status: atendida`) ou reabre."""
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if dados.status == StatusNecessidade.ABERTA and abrigo.status_validacao != StatusValidacao.APROVADO:
         raise HTTPException(status.HTTP_403_FORBIDDEN, SEM_SELO)
@@ -198,6 +200,7 @@ def editar_necessidade(
 
 @router.delete("/necessidades/{necessidade_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_necessidade(necessidade_id: int, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db)) -> Response:
+    """O abrigo exclui uma necessidade sem doações; com doações registradas, deve marcá-la como atendida (409)."""
     n = _minha_necessidade(db, necessidade_id, abrigo)
     if db.scalar(select(func.count()).select_from(Doacao).where(Doacao.necessidade_id == n.id)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta necessidade já tem doações registradas e não pode ser excluída. Marque-a como atendida.")
@@ -249,6 +252,7 @@ def registrar_doacao(dados: DoacaoIn, usuario: Usuario = Depends(exigir_tipo(*DO
 
 @router.get("/doacoes/minhas", response_model=list[DoacaoOut])
 def minhas_doacoes(usuario: Usuario = Depends(exigir_tipo(*DOAM)), db: Session = Depends(get_db)) -> list[DoacaoOut]:
+    """Doações de quem está logado (apoiador ou tutor), com a situação e o contato do abrigo."""
     linhas = db.execute(
         select(Doacao, Abrigo).join(Abrigo, Abrigo.usuario_id == Doacao.abrigo_id)
         .where(Doacao.apoiador_id == usuario.id).order_by(Doacao.registrado_em.desc(), Doacao.id.desc())
@@ -292,6 +296,7 @@ def doacoes_recebidas(
 def decidir_doacao(
     doacao_id: int, dados: DecisaoDoacao, abrigo: Abrigo = Depends(get_abrigo_operante), db: Session = Depends(get_db),
 ) -> DoacaoOut:
+    """O abrigo confirma (`confirmada`) ou recusa (`recusada`) uma doação, uma vez só (RF-32). Confirmada, ela pontua no ranking, conta para a necessidade e, se for em dinheiro, para a meta do mês."""
     d = db.get(Doacao, doacao_id)
     if d is None or d.abrigo_id != abrigo.usuario_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doação não encontrada.")
