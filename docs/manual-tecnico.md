@@ -19,25 +19,17 @@ Sumário: [1. Visão geral](#1-visão-geral-da-arquitetura) · [2. Tecnologias](
 
 O BuscaPet tem **três serviços** e um banco de dados:
 
-```
- Navegador / celular (PWA)
-          │  HTTPS + JSON
-          ▼
- ┌────────────────────┐   HTTP + JSON    ┌──────────────────────────┐
- │  Interface          │ ───────────────▶ │  API (FastAPI, Python)    │ ──── SQL ────▶ PostgreSQL 16
- │  React + Vite       │                  │  regras, permissões,      │               (Supabase na
- │  (arquivos estáticos)│ ◀─────────────── │  fotos, e-mail, relatórios│                demonstração)
- └────────────────────┘                  └────────────┬─────────────┘
-                                                      │ HTTP + JSON (descritores, comparações)
-                                                      ▼
-                                         ┌──────────────────────────┐
-                                         │  Núcleo OpenCL (C)        │
-                                         │  descritores das fotos e  │
-                                         │  comparação em paralelo   │
-                                         └──────────────────────────┘
+```mermaid
+flowchart LR
+    P["Pessoa no navegador<br/>ou no celular (PWA)"] --> I["Interface<br/>React + Vite<br/>(arquivos estáticos)"]
+    I -- "HTTP + JSON" --> A["API<br/>FastAPI (Python)<br/>regras, permissões,<br/>fotos, e-mail, relatórios"]
+    A -- "SQL" --> B[("PostgreSQL 16<br/>(Supabase na demonstração)")]
+    A -- "HTTP + JSON<br/>descritores e comparações" --> N["Núcleo OpenCL (C)<br/>descritores das fotos e<br/>comparação em paralelo"]
+    A -. "SMTP (opcional)" .-> E["Servidor de e-mail"]
+    I -. "imagens do mapa" .-> O["OpenStreetMap"]
 ```
 
-- **Interface** (`frontend/`): aplicação React de página única, instalável no celular (PWA). Só conversa com a API.
+- **Interface** (`frontend/`): aplicação React de página única, instalável no celular (PWA). Busca todos os dados na API; só as imagens do mapa vêm direto do OpenStreetMap.
 - **API** (`api/`): toda regra de negócio, autenticação (JWT), permissões por perfil, armazenamento das fotos,
   e-mails, relatórios e histórico de operações. É a única que acessa o banco.
 - **Núcleo OpenCL** (`nucleo-opencl/`): serviço separado, em C, que transforma cada foto num **descritor** (224
