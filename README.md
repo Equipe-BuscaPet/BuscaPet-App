@@ -69,6 +69,7 @@ BuscaPet-App/
     kernels/                código que roda em paralelo (descritor.cl, comparar.cl)
     src/                    servidor HTTP, descritores e versão sequencial equivalente
   docs/schema.sql           modelo relacional (DDL), espelha api/app/models/
+  docs/mer.md               diagrama entidade-relacionamento (gerado dos modelos)
   docs/api.md               guia das rotas da API
   .github/workflows/ci.yml  CI: api, frontend, e2e, nucleo-opencl
   docker-compose.yml
@@ -158,8 +159,9 @@ docker compose up -d --build db redis api frontend nucleo-opencl
 4. **Descritores das fotos** (com o núcleo no ar): `python -m app.scripts.indexar_fotos` calcula os descritores das
    fotos enviadas enquanto o núcleo estava fora do ar. Também há um botão para isso em Administração → Núcleo OpenCL.
 
-O modelo completo está em [`docs/schema.sql`](docs/schema.sql) e, com o diagrama, no
-[`BuscaPet-Docs`](https://github.com/Equipe-BuscaPet/BuscaPet-Docs/tree/main/sprints).
+O modelo está em [`docs/mer.md`](docs/mer.md) (diagrama entidade-relacionamento, completo e por módulo, gerado dos
+modelos por `python -m app.scripts.gerar_mer`) e em [`docs/schema.sql`](docs/schema.sql) (as instruções SQL). Um teste
+confere que os dois batem com os modelos, tabela por tabela e coluna por coluna.
 
 ## Execução
 
@@ -237,6 +239,7 @@ no fuso de Recife. O job do núcleo compila, roda o teste de equivalência e tes
 
 ## Mais documentação
 
+- [`docs/mer.md`](docs/mer.md): diagrama entidade-relacionamento
 - [`docs/schema.sql`](docs/schema.sql): modelo relacional
 - [`docs/api.md`](docs/api.md): guia das rotas da API
 - [`nucleo-opencl/README.md`](nucleo-opencl/README.md): como o núcleo funciona, benchmark e contrato HTTP
