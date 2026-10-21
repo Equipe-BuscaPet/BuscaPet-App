@@ -58,9 +58,10 @@ test('o abrigo envia fotos, escolhe a capa e ela aparece no catálogo e na ficha
   await page.getByLabel('Adicionar fotos').setInputFiles([caminhoFoto('cachorro-caramelo.jpg'), caminhoFoto('gato-cinza.jpg')])
   const fotos = page.getByRole('list', { name: `Fotos de ${animal.nome}` })
   await expect(fotos.locator('img')).toHaveCount(2)
+  const capa = await fotos.locator('li').nth(1).locator('img').getAttribute('src')
   await fotos.getByRole('button', { name: 'Tornar capa' }).click()
-  await expect(fotos.locator('li').first().getByText('Capa')).toBeVisible()
-  const capa = await fotos.locator('li').first().locator('img').getAttribute('src')
+  // O primeiro item sempre diz "Capa": o que prova a troca é a segunda foto subir para o primeiro lugar.
+  await expect(fotos.locator('li').first().locator('img')).toHaveAttribute('src', capa)
 
   await page.goto(`/?abrigo=${abrigo.usuario.id}`)
   await expect(page.locator(`a[href="/animais/${animal.id}"] img`)).toHaveAttribute('src', capa)
