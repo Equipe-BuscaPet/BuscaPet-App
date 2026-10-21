@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import HistoricoOperacoes from '../componentes/HistoricoOperacoes'
 import { STATUS_VALIDACAO } from '../rotulos'
+import DesempenhoNucleo from './DesempenhoNucleo'
 import ModeracaoDenuncias from './ModeracaoDenuncias'
 import PainelAdmin from './PainelAdmin'
 import PesquisaContas from './PesquisaContas'
@@ -97,6 +98,7 @@ const ABAS_ADMIN = [
   ['denuncias', 'Denúncias'],
   ['historico', 'Histórico de operações'],
   ['contas', 'Contas'],
+  ['nucleo', 'Núcleo OpenCL'],
 ]
 
 // Área da administração (RF-38, RF-39): painel com indicadores, verificação de abrigos, histórico e pesquisa de contas.
@@ -119,6 +121,7 @@ export default function Admin() {
       {aba === 'denuncias' && <ModeracaoDenuncias />}
       {aba === 'historico' && <HistoricoOperacoes rota="/admin/logs" rotaCsv="/admin/logs.csv" />}
       {aba === 'contas' && <PesquisaContas />}
+      {aba === 'nucleo' && <DesempenhoNucleo />}
     </main>
   )
 }

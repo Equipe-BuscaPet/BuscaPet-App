@@ -512,3 +512,14 @@ button.miniatura { cursor: pointer; }
 .semelhanca .etiqueta { white-space: nowrap; }
 .semelhanca__resumo { margin: 0; color: var(--ink); }
 .semelhanca__nota { margin: 0; color: var(--ink-dim); }
+
+/* Desempenho do núcleo (RF-29): gráfico do ganho + tabela dos tempos. */
+.desempenho { display: grid; gap: 1rem; }
+.desempenho__resultado { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; margin-top: 1rem; }
+@media (max-width: 800px) { .desempenho__resultado { grid-template-columns: 1fr; } }
+.grafico-ganho { width: 100%; height: auto; }
+.grafico-ganho__barra { fill: var(--serie-1); }
+.grafico-ganho__ref { stroke: var(--line); stroke-dasharray: 4 4; }
+.grafico-ganho__base { stroke: var(--ink-dim); }
+.grafico-ganho__eixo { fill: var(--ink-dim); font-size: 11px; }
+.grafico-ganho__valor { fill: var(--ink); font-size: 12px; font-weight: 700; }

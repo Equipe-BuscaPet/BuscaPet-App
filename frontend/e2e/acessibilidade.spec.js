@@ -24,7 +24,7 @@ const TELAS = [
     `/animais/${cenario.animal.id}`, `/abrigos/${cenario.abrigo.usuario.id}`]],
   ['tutor', () => ['/conta', '/notificacoes', '/interesses', '/meus-registros']],
   ['abrigo', () => ['/painel', '/interessados', '/doacoes', '/relatorios']],
-  ['admin', () => ['/admin', '/admin?aba=abrigos', '/admin?aba=denuncias', '/admin?aba=historico', '/admin?aba=contas']],
+  ['admin', () => ['/admin', '/admin?aba=abrigos', '/admin?aba=denuncias', '/admin?aba=historico', '/admin?aba=contas', '/admin?aba=nucleo']],
 ]
 
 for (const [perfil, rotas] of TELAS) {
