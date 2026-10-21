@@ -1,4 +1,6 @@
 .env
+.env.example
+CONTEXTO.md
 registro-sessoes/
 api/uploads/
 api/caixa-de-saida/

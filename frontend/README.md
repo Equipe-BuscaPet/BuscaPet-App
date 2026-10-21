@@ -37,7 +37,7 @@ contrato em `http://localhost:8000/docs`). Protótipo e identidade visual em
 Segue o protótipo da Sprint 2 (escopo §4.2): **Fotos → Características → Local e data → Revisar → Resultados**.
 
 - **Visitante preenche tudo** e só entra na hora de publicar, com um login na própria etapa de revisão, sem perder
-  as fotos (CONTEXTO §8, ponto 5).
+  as fotos.
 - Fotos: de 1 a 5, JPEG/PNG/WebP até 8 MB, com pré-visualização e arrastar-e-soltar. A API remove os metadados
   (inclusive o GPS da foto de celular).
 - Local marcado no mapa ou pela localização do aparelho. Em público o ponto aparece **aproximado** (perdido ~1 km,
@@ -94,7 +94,7 @@ celular (PWA)            API (FastAPI)                 núcleo OpenCL (C + PoCL,
   candidatos    ◀──────  ordena e devolve     ◀──────  com milhares de registros
 ```
 
-- O núcleo é um serviço separado (CONTEXTO §5) que roda onde a API roda: no computador de quem desenvolve, no Docker
+- O núcleo é um serviço separado (decisão de arquitetura da equipe) que roda onde a API roda: no computador de quem desenvolve, no Docker
   e, na demonstração, no servidor de hospedagem. Os "núcleos trabalhando" são os da **CPU do servidor**, via PoCL.
 - Por isso o resultado é o mesmo em qualquer aparelho, de um celular simples a um computador: o aparelho não precisa de
   GPU, de driver nem de app nativo, e a bateria do celular não é gasta com o cálculo pesado.
