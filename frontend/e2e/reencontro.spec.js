@@ -56,7 +56,8 @@ test.describe('Perdi meu animal', () => {
     // Etapa 5: resultados
     await etapa(page, 5, 'Resultados')
     await expect(page.getByText('Pronto! O seu animal está registrado como perdido.')).toBeVisible()
-    await expect(page.getByText('A comparação por foto está em construção.')).toBeVisible()
+    // O E2E roda sem o núcleo OpenCL (igual na CI): a busca avisa e lista por distância.
+    await expect(page.getByText('Comparação por foto indisponível agora.')).toBeVisible()
 
     // O detalhe mostra a data exatamente como foi digitada (regressão do defeito do fuso horário).
     await page.getByRole('link', { name: 'Ver o registro' }).click()
@@ -102,7 +103,7 @@ test.describe('Encontrei um animal', () => {
     await page.getByRole('button', { name: 'Publicar avistamento' }).click()
 
     await etapa(page, 5, 'Resultados')
-    await expect(page.getByRole('heading', { name: 'Animais perdidos perto daqui' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Animais perdidos parecidos com o que você viu' })).toBeVisible()
     await expect(page.locator(`a[href="/reencontro/perdidos/${perdido.id}"]`)).toBeVisible()
   })
 })

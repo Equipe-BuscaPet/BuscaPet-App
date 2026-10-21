@@ -406,7 +406,8 @@ def buscar_semelhantes(
             distancia_km=round(distancia_km(lat0, lng0, lat, lng), 1), data=a.data,
             caminho=CAMINHO[a.tipo].format(a.registro.id),
         ))
-    candidatos.sort(key=lambda c: (c.nota is None, -(c.nota or 0), c.distancia_km))
+    # mais parecido primeiro; empate (ou sem núcleo): mais perto, e então o mais recente
+    candidatos.sort(key=lambda c: (c.nota is None, -(c.nota or 0), c.distancia_km, -c.id))
     return SemelhantesOut(
         comparacao_por_foto=resultado.disponivel, motivo=resultado.motivo, registros_comparados=len(alvos),
         comparacoes=resultado.fotos_comparadas, tempo_nucleo_ms=round(resultado.tempo_nucleo_ms, 2),

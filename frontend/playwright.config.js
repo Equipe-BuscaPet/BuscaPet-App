@@ -49,6 +49,9 @@ export default defineConfig({
         DATABASE_URL: BANCO,
         CORS_ORIGENS: `["http://localhost:${PORTA_WEB}"]`,
         PASTA_FOTOS: 'uploads/fotos-e2e', // fotos dos testes separadas das do desenvolvimento
+        // Sem núcleo OpenCL nos E2E (a CI não o sobe): porta fechada = falha na hora, e a busca avisa e lista
+        // por distância. Para testar com o núcleo no ar: E2E_NUCLEO_URL=http://127.0.0.1:8001 npm run e2e
+        NUCLEO_OPENCL_URL: process.env.E2E_NUCLEO_URL || 'http://127.0.0.1:9',
         PGTZ: 'America/Recife',
         PYTHONIOENCODING: 'utf-8',
       },
