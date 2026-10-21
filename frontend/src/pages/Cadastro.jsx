@@ -121,7 +121,8 @@ export default function Cadastro() {
           {tipo === 'abrigo' && (
             <>
               <div className="aviso aviso--atencao">
-                Todo abrigo passa por validação do administrador antes de publicar animais.
+                Você já pode cadastrar animais assim que criar a conta. O selo <strong>Verificado</strong>, concedido pela
+                administração depois de conferir o abrigo, libera o mural de necessidades e as doações.
               </div>
               <div className="campo"><label htmlFor="nome_abrigo">Nome do abrigo</label><input {...campo('nome_abrigo')} required maxLength={150} /></div>
               <div className="campo"><label htmlFor="endereco">Endereço</label><input {...campo('endereco')} required maxLength={255} autoComplete="street-address" /></div>

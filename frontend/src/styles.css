@@ -87,6 +87,8 @@ h2 { font-size: 1.25rem; font-weight: 700; }
 /* Estrutura */
 .pagina { max-width: 1100px; margin: 0 auto; padding: 1.5rem 16px 3rem; }
 .pagina--estreita { max-width: 560px; }
+.nao-encontrada { text-align: center; padding-top: 3rem; }
+.nao-encontrada__codigo { margin: 0; font-size: 4rem; font-weight: 800; color: var(--accent); line-height: 1; }
 .cartao {
   background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
   padding: 1.25rem; box-shadow: var(--shadow);
@@ -176,8 +178,8 @@ th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color
 @media (min-width: 900px) { .mapa { height: 560px; position: sticky; top: 1rem; } }
 .lista-abrigos { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #23201a; }
-.duas-colunas { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .duas-colunas { grid-template-columns: 1.3fr 1fr; align-items: start; } }
+.duas-colunas { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); } /* minmax(0, …): a tabela rola dentro da coluna em vez de alargar a página */
+@media (min-width: 900px) { .duas-colunas { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; } }
 .topo-pagina { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -7,6 +7,28 @@ import { COR_DOACAO, STATUS_DOACAO, textoDoacao, URGENCIAS } from '../rotulos'
 import MetaDoMes from '../componentes/MetaDoMes'
 
 const VAZIA = { item: '', quantidade: 1, urgencia: 'media' }
+const HISTORICO_INICIAL = 5
+
+// Uma doação recebida: quem doou, o quê e, se ainda aguarda, os botões para responder.
+function CartaoDoacao({ doacao: d, decidir }) {
+  return (
+    <article className="cartao" aria-label={`Doação de ${d.nome_apoiador}`}>
+      <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
+        <div>
+          <strong>{textoDoacao(d)}</strong>
+          <div><small>de {d.perfil_publico_doador ? <Link to={`/apoiadores/${d.apoiador_id}`}>{d.nome_apoiador}</Link> : <>{d.nome_apoiador} (pessoa física)</>} · {new Date(d.registrado_em).toLocaleDateString('pt-BR')} · <a href={`mailto:${d.contato}`}>{d.contato}</a></small></div>
+        </div>
+        <span className={`etiqueta ${COR_DOACAO[d.status]}`}>{STATUS_DOACAO[d.status]}</span>
+      </div>
+      {decidir && d.status === 'aguardando_confirmacao' && (
+        <div className="acoes">
+          <button className="botao" onClick={() => decidir(d, 'confirmada')}>{d.valor_centavos != null ? 'Confirmar: o PIX chegou' : 'Confirmar recebimento'}</button>
+          <button className="botao botao--leve" onClick={() => decidir(d, 'recusada')}>Não recebi</button>
+        </div>
+      )}
+    </article>
+  )
+}
 
 // Área do abrigo para doações (RF-30 e RF-32): meta do mês em dinheiro, necessidades e confirmação do que recebeu.
 export default function DoacoesAbrigo() {
@@ -18,6 +40,7 @@ export default function DoacoesAbrigo() {
   const [erro, setErro] = useState('')
   const [camposComErro, setCamposComErro] = useState({})
   const [ok, setOk] = useState('')
+  const [verTodas, setVerTodas] = useState(false)
 
   const carregar = useCallback(() => {
     api('/necessidades/minhas').then(setNecessidades).catch((e) => setErro(e.message))
@@ -54,6 +77,7 @@ export default function DoacoesAbrigo() {
       : `Doação de ${d.nome_apoiador} marcada como não recebida.`,
   )
   const pendentes = doacoes?.filter((d) => d.status === 'aguardando_confirmacao') ?? []
+  const respondidas = doacoes?.filter((d) => d.status !== 'aguardando_confirmacao') ?? []
 
   return (
     <main className="pagina">
@@ -67,27 +91,27 @@ export default function DoacoesAbrigo() {
       <section aria-labelledby="t-recebidas" style={{ marginBottom: '2rem' }}>
         <h2 id="t-recebidas">Doações para confirmar {pendentes.length > 0 && <span className="etiqueta etiqueta--atencao">{pendentes.length}</span>}</h2>
         {doacoes === null && <p className="estado">Carregando…</p>}
-        {doacoes?.length === 0 && <p className="estado">Nenhuma doação registrada ainda.</p>}
+        {doacoes !== null && pendentes.length === 0 && <p className="estado">Nenhuma doação esperando a sua confirmação.</p>}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {doacoes?.map((d) => (
-            <article key={d.id} className="cartao" aria-label={`Doação de ${d.nome_apoiador}`}>
-              <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
-                <div>
-                  <strong>{textoDoacao(d)}</strong>
-                  <div><small>de {d.perfil_publico_doador ? <Link to={`/apoiadores/${d.apoiador_id}`}>{d.nome_apoiador}</Link> : <>{d.nome_apoiador} (pessoa física)</>} · {new Date(d.registrado_em).toLocaleDateString('pt-BR')} · <a href={`mailto:${d.contato}`}>{d.contato}</a></small></div>
-                </div>
-                <span className={`etiqueta ${COR_DOACAO[d.status]}`}>{STATUS_DOACAO[d.status]}</span>
-              </div>
-              {d.status === 'aguardando_confirmacao' && (
-                <div className="acoes">
-                  <button className="botao" onClick={() => decidir(d, 'confirmada')}>{d.valor_centavos != null ? 'Confirmar: o PIX chegou' : 'Confirmar recebimento'}</button>
-                  <button className="botao botao--leve" onClick={() => decidir(d, 'recusada')}>Não recebi</button>
-                </div>
-              )}
-            </article>
-          ))}
+          {pendentes.map((d) => <CartaoDoacao key={d.id} doacao={d} decidir={decidir} />)}
         </div>
       </section>
+
+      {respondidas.length > 0 && (
+        <section aria-labelledby="t-historico-doacoes" style={{ marginBottom: '2rem' }}>
+          <h2 id="t-historico-doacoes">Histórico de doações <span className="etiqueta">{respondidas.length}</span></h2>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            {(verTodas ? respondidas : respondidas.slice(0, HISTORICO_INICIAL)).map((d) => <CartaoDoacao key={d.id} doacao={d} />)}
+          </div>
+          {respondidas.length > HISTORICO_INICIAL && (
+            <div className="acoes" style={{ marginTop: '0.75rem' }}>
+              <button type="button" className="botao botao--leve botao--pequeno" onClick={() => setVerTodas((v) => !v)} aria-expanded={verTodas}>
+                {verTodas ? 'Mostrar só as mais recentes' : `Ver todas as ${respondidas.length}`}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="t-publicar" className="cartao" style={{ marginBottom: '2rem' }}>
         <h2 id="t-publicar">Publicar necessidade</h2>

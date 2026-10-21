@@ -34,7 +34,9 @@ test.describe('Navegação', () => {
 
   test('endereço inexistente mostra página não encontrada', async ({ page }) => {
     await page.goto('/isto-nao-existe')
-    await expect(page.getByText('Página não encontrada.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Página não encontrada' })).toBeVisible()
+    await page.getByRole('link', { name: 'Ver animais para adoção' }).click() // oferece o caminho de volta
+    await expect(page).toHaveURL(/\/$/)
   })
 
   test('página protegida pede login e depois volta para ela', async ({ page, request }) => {
