@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.seguranca import hash_senha
 from app.db.session import SessionLocal
+from app.routers.relatorios import FUSO
 from pathlib import Path
 
 from app.core import auditoria, pontuacao
@@ -218,8 +219,9 @@ def _dias_atras(dias: int) -> datetime.datetime:
 
 
 def _dia_utc(dias: int) -> datetime.datetime:
-    """Data "do dia" como o sistema grava (meia-noite UTC)."""
-    d = _dias_atras(dias).date()
+    """Data "do dia" como o sistema grava (meia-noite UTC). O dia é o do calendário de Recife, como a pessoa
+    escolheria no formulário: entre 21h e 0h em Recife, a data UTC já é a de amanhã."""
+    d = _dias_atras(dias).astimezone(FUSO).date()
     return datetime.datetime(d.year, d.month, d.day, tzinfo=datetime.UTC)
 
 
