@@ -50,12 +50,15 @@ test.describe('Navegação', () => {
     await expect(page.getByRole('heading', { name: 'Meus registros' })).toBeVisible()
   })
 
-  test('o retorno do login não leva para fora do site', async ({ page, request, baseURL }) => {
-    const tutor = await criarConta(request, 'tutor')
-    await page.goto('/login?voltar=//exemplo-malicioso.com')
-    await page.getByLabel('E-mail').fill(tutor.email)
-    await page.getByLabel('Senha').fill(SENHA)
-    await page.getByRole('button', { name: 'Entrar' }).click()
-    await expect(page).toHaveURL(`${baseURL}/`) // ficou no próprio site, na página inicial
-  })
+  // "/\site" passa por "começa com / e não com //", mas o navegador trata "/\" como "//" (outro site).
+  for (const destino of ['//exemplo-malicioso.com', '/\\exemplo-malicioso.com', 'https://exemplo-malicioso.com']) {
+    test(`o retorno do login não leva para fora do site: ${destino}`, async ({ page, request, baseURL }) => {
+      const tutor = await criarConta(request, 'tutor')
+      await page.goto(`/login?voltar=${encodeURIComponent(destino)}`)
+      await page.getByLabel('E-mail').fill(tutor.email)
+      await page.getByLabel('Senha').fill(SENHA)
+      await page.getByRole('button', { name: 'Entrar' }).click()
+      await expect(page).toHaveURL(`${baseURL}/`) // ficou no próprio site, na página inicial
+    })
+  }
 })

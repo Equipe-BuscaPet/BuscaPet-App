@@ -45,6 +45,12 @@ export function AuthProvider({ children }) {
 
 export const useAuth = () => useContext(AuthContext)
 
+// Só aceita caminho interno ("/pagina"): nada de "//site", "/\site" (o navegador trata "/\" como "//"), "https://…"
+// nem caracteres de controle. Assim o link de volta do login nunca leva a outro site (redirecionamento aberto).
+export function destinoInterno(caminho) {
+  return typeof caminho === 'string' && /^\/(?![/\\])[^\\\s]*$/.test(caminho) ? caminho : null
+}
+
 // Página inicial de cada perfil depois do login.
 export function destinoPorTipo(tipo) {
   if (tipo === 'admin') return '/admin'

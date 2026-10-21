@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { destinoPorTipo, useAuth } from '../auth'
+import { destinoInterno, destinoPorTipo, useAuth } from '../auth'
 import CampoSenha from '../componentes/CampoSenha'
 
 export default function Login() {
@@ -9,8 +9,7 @@ export default function Login() {
   const [params] = useSearchParams()
   const { state } = useLocation()
   // Volta para a página que pediu login. Só caminhos internos ("/..."), para o link não levar a outro site.
-  const voltar = params.get('voltar')
-  const destinoSeguro = voltar && voltar.startsWith('/') && !voltar.startsWith('//') ? voltar : null
+  const destinoSeguro = destinoInterno(params.get('voltar'))
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
