@@ -106,7 +106,16 @@ Telas: `/reencontro` (lista pública), detalhe de cada registro, assistentes `/p
 visitante preenche e entra só para publicar) e `/meus-registros`. A etapa de resultados mostra registros reais
 da outra base por distância até o núcleo comparar as fotos (detalhes em `frontend/README.md`).
 
-**Núcleo OpenCL (`nucleo-opencl/`):** serviço HTTP em C (porta 8001) com o spike de soma de vetores e `GET /saude`; descritores, comparação e benchmark em desenvolvimento na branch `feature/nucleo-busca-por-foto`.
+**Núcleo OpenCL e busca por foto (RF-21 a RF-29):** serviço em C (`nucleo-opencl/`, porta 8001; detalhes no README dele):
+descritores e comparação em duas versões (sequencial e OpenCL, iguais bit a bit), `POST /extrair-descritor`,
+`POST /comparar`, `GET /benchmark`. Na API: `core/nucleo.py` (cliente com disjuntor de 30 s; `indexar` grava
+`descritores_visuais` a cada foto nova), `core/semelhanca.py` (filtros prévios e nota por candidato = maior entre
+as fotos), `GET /reencontro/semelhantes` (perdido → avistamentos + animais dos abrigos; avistamento → perdidos),
+busca salva criada no registro da perda (RF-24), alerta de avistamento por semelhança alta/média com registro em
+`correspondencias` (sem núcleo: por distância), alerta ao abrigo no envio de foto (RF-26), `/admin/nucleo`
+(estado, benchmark, indexar) e `python -m app.scripts.indexar_fotos`. Telas: `ResultadosSemelhanca.jsx` (passo 5
+do Perdi/Encontrei e detalhe do registro). Testes: `nucleo_falso` (conftest) e `test_nucleo_real.py` (CI do núcleo).
+Local: `NUCLEO_OPENCL_URL=http://127.0.0.1:8001` no `api/.env`; E2E roda sem núcleo (`E2E_NUCLEO_URL` para usar).
 
 **Alerta e caso resolvido (fecha o fluxo do reencontro, Sprint 5 oficial):** todo `POST /avistamentos` cria
 uma notificação (`referencia_tipo="avistamento"`, o clique abre o avistamento) para o tutor com perda ativa da

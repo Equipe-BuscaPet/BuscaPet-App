@@ -1,20 +1,21 @@
 # Núcleo OpenCL — `/nucleo-opencl`
 
 Serviço HTTP separado do backend web, responsável por toda a etapa computacionalmente pesada do
-reencontro por similaridade visual (RF-19 a RF-29). Escrito em **C** com a API oficial do OpenCL
+reencontro por similaridade visual (RF-21 a RF-29). Escrito em **C** com a API oficial do OpenCL
 (`CL/cl.h`) e roda em **dispositivo CPU** via **PoCL** (runtime OpenCL por software, que não exige GPU).
-O backend nunca executa OpenCL: ele chama este serviço via HTTP (`NUCLEO_OPENCL_URL`).
+O backend nunca executa OpenCL: ele chama este serviço via HTTP (`NUCLEO_OPENCL_URL`), em `api/app/core/nucleo.py`.
 
 ## Estado atual
 
 | Item | Situação |
 |---|---|
-| Spike: kernel `soma_vetores` + teste de equivalência (gate da Sprint 1 do plano interno) | ✅ |
-| Serviço HTTP (`libmicrohttpd` + `cJSON`) com `GET /saude` | ✅ |
-| Build em Docker multi-stage que só gera a imagem se o teste passar | ✅ |
-| Job `nucleo-opencl` na CI (compila, testa, sobe o serviço e consulta `/saude`) | ✅ |
-| Pré-processamento e extração de descritores (sequencial + kernels) | ⏳ Sprint 3, semana 6 |
-| `POST /comparar`, `POST /extrair-descritor`, `GET /benchmark` | ⏳ respondem `501` por enquanto |
+| Spike: kernel `soma_vetores` + teste de equivalência | ✅ |
+| Serviço HTTP (`libmicrohttpd` + `cJSON`) | ✅ `GET /saude`, `POST /extrair-descritor`, `POST /comparar`, `GET /benchmark` |
+| Pré-processamento e descritores (RF-21): tamanho, iluminação, recorte do animal, cor, textura, proporções | ✅ sequencial + OpenCL, **iguais bit a bit** |
+| Comparação em massa (RF-22, RF-25): 1 × N (busca) e M × N (monitoramento) | ✅ sequencial + OpenCL, mesmo ranking |
+| Modo comparativo de desempenho (RF-29) | ✅ `GET /benchmark`, `bench curva`, `bench moer` |
+| Build em Docker que só gera a imagem se todos os testes passarem | ✅ |
+| CI: compila, testa, sobe o serviço e roda a API contra ele com fotos reais | ✅ |
 
 ## Como rodar
 
@@ -27,107 +28,129 @@ docker compose up -d --build nucleo-opencl
 curl localhost:8001/saude
 ```
 
-Resposta (na máquina de referência do time, um i5-2400 com 4 núcleos):
+Para a API usar o núcleo rodando fora do Docker Compose (desenvolvimento local), defina no `api/.env`:
+`NUCLEO_OPENCL_URL=http://127.0.0.1:8001`. Fotos enviadas com o núcleo desligado ficam sem descritor; depois
+rode `python -m app.scripts.indexar_fotos` (ou o botão da administração) para calcular os que faltam.
 
-```json
-{"servico":"nucleo-opencl","versao":"0.1.0","status":"ok",
- "opencl":{"plataforma":"Portable Computing Language","versao":"OpenCL 3.0 PoCL 3.1+debian ...",
-           "dispositivo":"pthread-sandybridge-Intel(R) Core(TM) i5-2400 CPU @ 3.10GHz",
-           "tipo":"CPU","unidades_computo":4,"memoria_global_mb":2183}}
-```
+## Teste visual: ver os núcleos trabalhando
 
-Para rodar o spike à mão, com o tamanho que quiser:
+1. Abra o **Gerenciador de Tarefas** → **Desempenho** → **CPU** → botão direito no gráfico →
+   **Alterar gráfico para → Processadores lógicos** (um gráfico por núcleo).
+2. Rode (20 segundos em cada modo):
 
 ```bash
-docker compose run --rm nucleo-opencl ./spike 10000000
+docker compose run --rm nucleo-opencl ./bench moer 20
 ```
 
-## O spike e o que ele mede
+No modo **sequencial** só um núcleo fica cheio; no **OpenCL** todos sobem juntos. O processo que aparece é o
+da máquina virtual do Docker (`Vmmem` no Windows). Resultado na máquina de referência (i5-2400, 4 núcleos):
+**1,06 milhão → 3,26 milhões de comparações por segundo (3,1×)**.
 
-O `spike` soma dois vetores de N números de duas formas, uma **sequencial na CPU** (referência) e outra
-**via OpenCL**, e confere se as respostas são iguais posição por posição. Os tempos do OpenCL vêm dos
-eventos de *profiling* da fila e são medidos separadamente: o envio dos dados (host → device), o kernel e
-o retorno (device → host).
+> No Git Bash do Windows, ao montar pastas com `docker run -v`, use `MSYS_NO_PATHCONV=1` na frente do comando:
+> sem isso o Git Bash troca `/src` por `C:/Program Files/Git/src`.
 
-Medição de 16/10/2026, i5-2400, N = 4.194.304 (16 MB por vetor):
+## O pipeline
 
-| Etapa | Tempo (ms) |
-|---|---:|
-| CPU sequencial (referência) | 16,9 |
-| OpenCL: envio (host → device) | 29,1 |
-| OpenCL: kernel | 8,9 |
-| OpenCL: retorno (device → host) | 4,6 |
-| OpenCL: total de ponta a ponta | 43,5 |
+Cada foto vira um **descritor** de 224 números (versão `v1`). Toda a conta é feita com inteiros até o fim, de
+propósito: assim a versão paralela devolve exatamente os mesmos números que a sequencial.
 
-**Leitura honesta:** o kernel em si foi ~1,9× mais rápido que o laço sequencial, mas o total ficou
-mais lento, porque somar vetores faz só **uma** conta por número transferido e a cópia dos dados domina o
-tempo. É exatamente o efeito que a Lei de Amdahl prevê. O ganho real aparece quando há muito cálculo por
-dado transferido, como nas etapas de descritores e de comparação em massa abaixo. Medir a transferência à
-parte desde o spike é o que vai permitir mostrar isso no benchmark do RF-29.
+| Etapa | Kernel | O que faz |
+|---|---|---|
+| Pré-processamento | `redimensionar` | qualquer tamanho → 128×128 (bilinear em ponto fixo) |
+| | `somar_canais` | médias de R, G, B da foto e da moldura (cor do fundo) |
+| Descritores | `descrever` | corrige a iluminação (cor e brilho), separa o animal do fundo, histograma de **cor** (52 tons × 4 regiões), **textura** da pelagem (LBP, 10 classes) e **proporções** do animal |
+| Comparação | `comparar` | qui-quadrado entre histogramas + diferença de proporções → nota de 0 a 1 → grau **alta** (≥ 0,75), **média** (≥ 0,55) ou **baixa** |
+
+O sistema nunca afirma que encontrou o animal: a nota só ordena os candidatos (escopo, seção 4.3).
+
+**Decisões de desempenho** (cada uma medida antes e depois):
+- **Itens de trabalho por bloco de 8 linhas, não por pixel.** Por pixel, 16 mil itens minúsculos por foto
+  disputavam os mesmos contadores e o OpenCL não ganhava do sequencial; por bloco, cada item faz bastante conta
+  e a disputa acontece uma vez por bloco.
+- **Sem cópia (zero-copy, `CL_MEM_USE_HOST_PTR`).** Como o dispositivo é a própria CPU, o kernel lê os dados
+  direto da memória do programa. Copiar 90 MB de candidatos por busca era o que dominava o tempo antes.
+- **Aquecimento na partida.** O PoCL termina de compilar cada kernel no primeiro uso (~0,5 s); o servidor faz
+  isso ao subir, para a primeira busca de verdade não ficar lenta.
+
+## Benchmark (RF-29)
+
+Curva de escala de 20/10/2026 (`bench curva`, média de 3 execuções após 1 de aquecimento, i5-2400, 4 núcleos;
+CSV completo em [`bench/curva-2026-10-20-i5-2400.csv`](bench/curva-2026-10-20-i5-2400.csv)):
+
+| Etapa | n | Sequencial (ms) | OpenCL (ms) | Speedup |
+|---|---:|---:|---:|---:|
+| Busca: 1 foto × n candidatos | 1.000 | 1,1 | 1,5 | 0,7× |
+| | 10.000 | 14,0 | 4,3 | 3,2× |
+| | 100.000 | 104,3 | 31,9 | **3,3×** |
+| Lote: 100 fotos novas × n buscas ativas | 1.000 | 101,9 | 25,5 | 4,0× |
+| | 10.000 | 1.030,3 | 269,2 | **3,8×** |
+| Extração: n fotos 320×240 | 10 | 11,9 | 7,5 | 1,6× |
+| | 1.000 | 1.165,9 | 554,5 | **2,1×** (kernel 3,1×) |
+
+**Leitura (Lei de Amdahl):** com poucos registros o OpenCL perde, porque o custo fixo de enfileirar o trabalho
+domina; o ganho cresce com o volume e chega perto do número de núcleos (4), mas não passa dele, e sobra sempre
+uma parte serial (juntar as fotos, montar o descritor, ordenar). Na extração, a parte serial é maior, e por isso
+o total (2,1×) fica abaixo do kernel (3,1×). O RF-29 também está na API: `GET /admin/nucleo/benchmark`.
 
 ## Testes
 
-`make teste` (executado automaticamente no `docker build` e na CI) roda o spike com três tamanhos:
+`make teste` (executado no `docker build` e na CI):
 
-| N | Por quê |
+| Teste | O que garante |
 |---|---|
-| 1 | caso mínimo |
-| 1.000.003 | número primo: não é múltiplo de nenhum tamanho de grupo de trabalho, então pega erro de borda |
-| 4.194.304 | volume realista |
+| `spike` com N = 1, 1.000.003 (primo) e 4.194.304 | OpenCL funcionando, sem erro de borda |
+| `teste-nucleo`: equivalência dos descritores | sequencial × OpenCL **iguais bit a bit** em fotos de 1×1, 3×2, 37×501, 128×128, 640×480 e 1024×768, uma a uma e em lote |
+| `teste-nucleo`: equivalência da comparação | 3 × 1.003 notas com diferença ≤ 1e-5 e o mesmo ranking |
+| `teste-nucleo`: comportamento | mesma cena em outro tamanho ou com 40% menos luz = alta; outro animal = baixa |
 
-**Regra para todo kernel novo** (plano interno, semana 6): ele só entra quando a saída paralela bater com a
-versão sequencial no `make teste`.
+Na API, `api/tests/test_nucleo_real.py` (rodado na CI com o serviço no ar) manda fotos reais: o mesmo cão,
+espelhado, mais escuro e recortado, sai em primeiro e "alta"; o gato sai "baixa"; OpenCL e sequencial dão o
+mesmo ranking.
+
+**Regra para todo kernel novo:** ele só entra quando a saída paralela bater com a versão sequencial.
+
+## Contrato de API
+
+```
+GET  /saude
+     → {servico, versao, status, versao_descritor, dimensao_descritor, opencl: {plataforma, dispositivo, unidades_computo, ...}}
+
+POST /extrair-descritor   {"largura": int, "altura": int, "pixels": "<RGB em base64>"}   (até 2048×2048)
+     → {"descritor": [224 números], "versao": "v1", "tempos": {envio_ms, kernel_ms, retorno_ms, total_ms}}
+
+POST /comparar            {"consultas": [[224]...], "candidatos": [{"id": int, "descritor": [224]}], "modo": "opencl"|"sequencial"}
+     → {"modo", "resultados": [[{"id", "nota", "grau"}...] por consulta, do mais parecido ao menos], "tempos"}
+
+GET  /benchmark?etapa=busca|lote|extracao&n=1000
+     → {etapa, n, sequencial: {tempos}, opencl: {tempos}, speedup, speedup_kernel, resultados_iguais, comparacoes_por_s_*}
+```
+
+A API abre a foto com o Pillow e manda os pixels (no máximo 512 px de lado; o núcleo reduz para 128×128):
+assim o núcleo não precisa decodificar JPEG nem buscar arquivos. Erros seguem o formato do FastAPI:
+`{"detail": "mensagem"}`, com `400`, `404`, `405`, `413` e `422`.
 
 ## Estrutura
 
 ```
 nucleo-opencl/
-  kernels/            código OpenCL C (.cl), compilado em tempo de execução pelo PoCL
+  kernels/
     soma_vetores.cl   kernel do spike
+    descritor.cl      pré-processamento e descritores (redimensionar, somar_canais, descrever)
+    comparar.cl       comparação em massa
   src/
     ocl.c / ocl.h     utilidades: escolher dispositivo, compilar kernel, medir tempo, traduzir erros
-    spike.c           teste de equivalência + medição de tempos
+    descritor.c / .h  as duas versões (sequencial e OpenCL) de cada etapa
     servidor.c        serviço HTTP (porta 8001, variável PORTA)
+    teste_nucleo.c    testes de equivalência e de comportamento
+    bench.c           benchmark: curva de escala (CSV) e o "teste visual"
+    spike.c           teste de equivalência do spike + medição de tempos
+  bench/              resultados do benchmark (CSV), um arquivo por máquina
   Makefile            make · make teste · make limpar
   Dockerfile          estágio 1 compila e testa; estágio 2 leva só os binários (usuário sem root)
 ```
 
-Variáveis de ambiente: `PORTA` (padrão `8001`), `NUCLEO_KERNELS` (pasta dos `.cl`, padrão `kernels`) e
-`POCL_CACHE_DIR` (cache dos kernels já compilados pelo PoCL).
+Variáveis de ambiente: `PORTA` (padrão `8001`), `NUCLEO_KERNELS` (pasta dos `.cl`, padrão `kernels`),
+`POCL_CACHE_DIR` (cache dos kernels já compilados) e `NUCLEO_PERFIL=1` (imprime o tempo de cada kernel).
 
 A imagem final tem ~850 MB porque o PoCL traz o LLVM/Clang: ele compila os kernels `.cl` na hora em que o
 serviço sobe. É o preço de não depender de GPU.
-
-## Contrato de API (provisório — versionar no OpenAPI junto com o backend)
-
-```
-GET /saude                                                   ✅ implementado
-Resp: { "servico", "versao", "status", "opencl": { "plataforma", "versao", "dispositivo", "tipo", ... } }
-
-POST /comparar                                               ⏳ 501
-Body: { "foto_url": string, "filtros": { "especie": string, "porte": string, "cor": string }, "candidatos": [{"id": int, "foto_url": string}] }
-Resp: { "candidatos_ordenados": [{"id": int, "score": float, "grau_semelhanca": "alta"|"media"|"baixa"}] }
-
-POST /extrair-descritor                                      ⏳ 501
-Body: { "foto_url": string }
-Resp: { "histograma_cor": [...], "textura": [...], "proporcoes": [...] }
-
-GET /benchmark?n=1000&modo=opencl|sequencial                 ⏳ 501
-Resp: { "tempo_ms": float, "breakdown": {...} }
-```
-
-Erros seguem o formato do FastAPI: `{"detail": "mensagem"}`, com `404` (rota inexistente), `405` (método
-errado) e `501` (rota prevista e ainda não implementada).
-
-## Pipeline (escopo, seção 4.6)
-
-| Etapa | O que faz | Por que paraleliza |
-|---|---|---|
-| Pré-processamento | normaliza tamanho/iluminação, recorta a região do animal | cada pixel é independente |
-| Extração de descritores | histograma de cor, textura, proporções | milhões de vizinhanças independentes |
-| Comparação em massa | distância entre a foto de busca e cada candidato | milhares de comparações independentes |
-| Lote de monitoramento | cada nova foto × todas as buscas ativas | carga recorrente que cresce com o uso |
-
-Planejamento completo em
-[`plano-sprints-equipe-3.md`](https://github.com/Equipe-BuscaPet/BuscaPet-Docs/blob/main/planejamento/plano-sprints-equipe-3.md)
-(repositório `BuscaPet-Docs`).

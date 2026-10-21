@@ -103,3 +103,16 @@ jobs:
           done
           docker logs nucleo
           exit 1
+      # Integração de verdade: a API manda fotos reais para o núcleo e confere o ranking (OpenCL × sequencial).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: API contra o núcleo (fotos reais)
+        working-directory: api
+        env:
+          NUCLEO_REAL_URL: http://127.0.0.1:8001
+        run: |
+          pip install -r requirements.txt
+          pytest tests/test_nucleo_real.py -v
+      - name: Benchmark rápido (sequencial × OpenCL)
+        run: curl -sf "localhost:8001/benchmark?etapa=lote&n=1000"
