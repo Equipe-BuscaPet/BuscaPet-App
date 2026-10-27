@@ -83,6 +83,20 @@ Sprint) fica no repositório [`BuscaPet-Docs`](https://github.com/Equipe-BuscaPe
 
 Há dois caminhos. O **A** é o que a demonstração usa; o **B** sobe tudo em containers.
 
+### Início rápido (Windows, só com o Docker Desktop)
+
+Para ver o sistema funcionando sem instalar Python nem Node, abra o Docker Desktop e, no PowerShell, dentro da pasta
+do projeto:
+
+```powershell
+.\iniciar-demo.ps1
+```
+
+O script cria o `.env`, sobe banco, núcleo OpenCL, API e interface, aplica as migrações, cria os dados de
+demonstração (com fotos reais de cães) e calcula os descritores das fotos. Ao terminar, abra
+http://localhost:5173 (contas e senha no roteiro mais abaixo). Pode rodar de novo à vontade; `docker compose down`
+para parar (os dados ficam guardados). Na primeira vez, o download e a construção do núcleo levam alguns minutos.
+
 ### A) Direto na máquina (Windows, macOS ou Linux)
 
 **1. API**
