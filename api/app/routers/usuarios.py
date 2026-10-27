@@ -39,6 +39,7 @@ def _perfil(usuario: Usuario):
 
 @router.get("/eu", response_model=UsuarioOut)
 def consultar(usuario: Usuario = Depends(get_usuario_atual)) -> UsuarioOut:
+    """Dados da conta logada, com o perfil do tipo de conta (tutor, abrigo ou apoiador)."""
     return usuario_out(usuario)
 
 
@@ -48,6 +49,7 @@ def atualizar(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> UsuarioOut:
+    """Atualiza só os campos enviados. Cada tipo de conta tem os seus campos; campo de outro tipo é recusado (422)."""
     enviados = dados.model_dump(exclude_unset=True)
     permitidos = _CAMPOS_POR_TIPO[usuario.tipo_conta] | {"nome"}
     invalidos = sorted(set(enviados) - permitidos)
@@ -76,6 +78,7 @@ def trocar_senha(
     usuario: Usuario = Depends(get_usuario_atual),
     db: Session = Depends(get_db),
 ) -> Response:
+    """Troca a senha, conferindo a senha atual."""
     if not verificar_senha(dados.senha_atual, usuario.senha_hash):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Senha atual incorreta.")
     usuario.senha_hash = hash_senha(dados.senha_nova)

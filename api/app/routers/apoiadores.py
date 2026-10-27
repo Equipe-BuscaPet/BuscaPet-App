@@ -75,6 +75,7 @@ def ranking(
     limite: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[PosicaoRanking]:
+    """Ranking de quem apoia (RF-33): por categoria (`petshop`, `clinica`, `distribuidora`, `pessoa_fisica`), no mês ou no ano. Pessoa física aparece como "Maria S."."""
     ano, m = _mes_pedido(mes)
     # id → (nome exibido, categoria, tem perfil público)
     doadores = {aid: (u.nome, ap.tipo_estabelecimento, True) for aid, (ap, u) in _ativos(db, categoria).items()}
@@ -116,6 +117,7 @@ def listar(db: Session = Depends(get_db)) -> list[ApoiadorResumo]:
 
 @router.get("/{apoiador_id}", response_model=ApoiadorPerfilOut)
 def perfil(apoiador_id: int, db: Session = Depends(get_db)) -> ApoiadorPerfilOut:
+    """Perfil público do apoiador (RF-34): pontos, meses seguidos e abrigos apoiados. Só empresas têm perfil (pessoa física: 404)."""
     ativos = _ativos(db)
     if apoiador_id not in ativos:
         raise HTTPException(404, "Apoiador não encontrado.")

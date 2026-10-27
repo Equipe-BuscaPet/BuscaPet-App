@@ -69,6 +69,7 @@ def registrar_interesse(
     tutor_usuario: Usuario = Depends(exigir_tipo(TipoConta.TUTOR)),
     db: Session = Depends(get_db),
 ) -> InteresseTutorOut:
+    """O tutor demonstra interesse em adotar (RF-16); o abrigo é avisado. Um interesse por animal."""
     animal, abrigo = _buscar_visivel(animal_id, tutor_usuario, db)
     if animal.status != StatusAnimal.DISPONIVEL:
         raise HTTPException(status.HTTP_409_CONFLICT, "Este animal não está mais disponível para adoção.")
@@ -95,6 +96,7 @@ def listar_meus(
     tutor_usuario: Usuario = Depends(exigir_tipo(TipoConta.TUTOR)),
     db: Session = Depends(get_db),
 ) -> list[InteresseTutorOut]:
+    """Interesses do tutor, com a situação de cada um e o contato do abrigo."""
     linhas = db.execute(
         select(Interesse, Animal, Abrigo)
         .join(Animal, Animal.id == Interesse.animal_id)
@@ -112,6 +114,7 @@ def listar_recebidos(
     usuario: Usuario = Depends(exigir_tipo(TipoConta.ABRIGO)),
     db: Session = Depends(get_db),
 ) -> list[InteresseAbrigoOut]:
+    """Interesses recebidos pelo abrigo, com os dados do interessado; filtra por situação e por animal."""
     consulta = (
         select(Interesse, Animal, Tutor)
         .join(Animal, Animal.id == Interesse.animal_id)
@@ -132,6 +135,7 @@ def desistir(
     tutor_usuario: Usuario = Depends(exigir_tipo(TipoConta.TUTOR)),
     db: Session = Depends(get_db),
 ) -> Response:
+    """O tutor desiste enquanto o abrigo não encerrou o interesse; o abrigo é avisado."""
     interesse = db.get(Interesse, interesse_id)
     if interesse is None or interesse.tutor_id != tutor_usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Interesse não encontrado.")

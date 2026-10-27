@@ -29,6 +29,7 @@ def listar(
     raio_km: float | None = Query(default=None, gt=0, le=2000, description="Só abrigos até esta distância"),
     db: Session = Depends(get_db),
 ) -> list[AbrigoMapaOut]:
+    """Abrigos ativos para o mapa, com a quantidade de animais disponíveis. Com `lat`/`lng`, ordena por distância; com `raio_km`, filtra."""
     if (lat is None) != (lng is None):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Informe latitude e longitude juntas.")
     if raio_km is not None and lat is None:

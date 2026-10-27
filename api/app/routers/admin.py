@@ -57,6 +57,7 @@ def validar_abrigo(
     admin: Usuario = Depends(exigir_tipo(TipoConta.ADMIN)),
     db: Session = Depends(get_db),
 ) -> UsuarioOut:
+    """A administração dá ou retira o selo Verificado, ou suspende o abrigo (RF-06); o abrigo é avisado."""
     abrigo = db.get(Abrigo, usuario_id)
     if abrigo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Abrigo não encontrado.")

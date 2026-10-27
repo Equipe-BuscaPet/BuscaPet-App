@@ -43,6 +43,7 @@ AVISO_ABRIGO = {
 def denunciar(
     animal_id: int, dados: DenunciaIn, usuario: Usuario = Depends(get_usuario_atual), db: Session = Depends(get_db),
 ) -> dict:
+    """Denuncia um anúncio (RF-41): a administração é avisada. Uma denúncia pendente por pessoa e anúncio."""
     animal, abrigo = _buscar_visivel(animal_id, usuario, db)
     if usuario.id == animal.abrigo_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Você não pode denunciar o anúncio do seu próprio abrigo.")
@@ -96,6 +97,7 @@ def listar(
 def decidir(
     denuncia_id: int, dados: DecisaoDenuncia, admin: Usuario = Depends(somente_admin), db: Session = Depends(get_db),
 ) -> DenunciaOut:
+    """A administração decide a denúncia (`removido`, `advertido`, `banido` ou `ignorado`). Removido ou banido tira o anúncio do ar (banido também suspende o abrigo); quem denunciou e o abrigo são avisados."""
     denuncia = db.get(Denuncia, denuncia_id)
     if denuncia is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Denúncia não encontrada.")
