@@ -14,6 +14,7 @@ import re
 import sys
 from pathlib import Path
 
+from fastapi import routing
 from fastapi.routing import APIRoute
 
 from app.core import deps
@@ -44,6 +45,19 @@ ROTULO_STATUS = {
     200: "OK", 201: "criado", 204: "sem conteúdo", 400: "pedido inválido", 401: "não autenticado", 403: "sem permissão",
     404: "não encontrado", 409: "conflito com o estado atual", 422: "dados inválidos", 503: "serviço indisponível",
 }
+
+
+# ---------- rotas ----------
+
+def rotas_da_api() -> list[APIRoute]:
+    """As rotas como a API as atende: com o prefixo e as dependências do roteador já aplicados. A partir do FastAPI
+    0.15x, os roteadores incluídos ficam embrulhados em `app.routes`; `iter_route_contexts` (o mesmo que o OpenAPI
+    usa) os desembrulha. Nas versões antigas, `app.routes` já é a lista plana."""
+    if hasattr(routing, "iter_route_contexts"):
+        rotas = [c.route for c in routing.iter_route_contexts(app.routes)]
+    else:
+        rotas = list(app.routes)
+    return [r for r in rotas if isinstance(r, APIRoute)]
 
 
 # ---------- quem pode usar ----------
@@ -124,7 +138,7 @@ def tipo(esquemas: dict, s: dict) -> str:
     t = s.get("type", "qualquer")
     if t == "array":
         return f"lista de {tipo(esquemas, s.get('items', {}))}"
-    if s.get("format") == "binary":
+    if s.get("format") == "binary" or "contentMediaType" in s:  # arquivo enviado (OpenAPI 3.0 e 3.1)
         return "arquivo"
     if s.get("format") in ("date-time", "date", "email"):
         return {"date-time": "data e hora (ISO 8601)", "date": "data (AAAA-MM-DD)", "email": "e-mail"}[s["format"]]
@@ -193,7 +207,7 @@ def _ancora(texto: str) -> str:
 def gerar() -> str:
     openapi = app.openapi()
     esquemas = openapi["components"]["schemas"]
-    rotas = [r for r in app.routes if isinstance(r, APIRoute) and r.include_in_schema]
+    rotas = [r for r in rotas_da_api() if r.include_in_schema]
     por_modulo: dict[str, list[tuple[str, APIRoute, dict]]] = {m: [] for m in MODULOS}
     for r in rotas:
         for metodo in sorted(r.methods):

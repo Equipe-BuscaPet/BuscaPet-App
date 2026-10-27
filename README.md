@@ -32,8 +32,8 @@ frentes num só lugar:
 
 | Camada | Tecnologias |
 |---|---|
-| Interface web | React 18, Vite 5, React Router 6, Leaflet (mapas, OpenStreetMap), PWA (instalável, com *service worker*) |
-| API | Python 3.12, FastAPI, SQLAlchemy 2, Alembic (migrações), Pydantic 2, JWT (python-jose) e bcrypt, Pillow (fotos), httpx |
+| Interface web | React 18, Vite 5, React Router 7, Leaflet (mapas, OpenStreetMap), PWA (instalável, com *service worker*) |
+| API | Python 3.12, FastAPI, SQLAlchemy 2, Alembic (migrações), Pydantic 2, JWT (PyJWT) e bcrypt, Pillow (fotos), httpx |
 | Banco de dados | PostgreSQL 16 (Supabase na demonstração; local ou Docker no desenvolvimento) |
 | Núcleo de semelhança visual | C + **OpenCL 3.0** (PoCL, roda na CPU do servidor), libmicrohttpd, cJSON |
 | Testes | pytest + pytest-cov (cobertura mínima de 90%), Playwright (ponta a ponta), axe-core (acessibilidade), ruff (estilo) |
@@ -71,6 +71,7 @@ BuscaPet-App/
   docs/schema.sql           modelo relacional (DDL), espelha api/app/models/
   docs/mer.md               diagrama entidade-relacionamento (gerado dos modelos)
   docs/api.md               guia das rotas da API
+  docs/manual-tecnico.md    manual técnico (arquitetura, configuração, publicação, manutenção)
   .github/workflows/ci.yml  CI: api, frontend, e2e, nucleo-opencl
   docker-compose.yml
 ```
@@ -126,12 +127,11 @@ Crie o arquivo `.env` na raiz do projeto (nunca é versionado):
 ```
 DATABASE_URL=postgresql+psycopg://buscapet:buscapet@db:5432/buscapet
 JWT_SECRET=troque-por-um-valor-aleatorio-longo
-REDIS_URL=redis://redis:6379/0
 NUCLEO_OPENCL_URL=http://nucleo-opencl:8001
 ```
 
 ```bash
-docker compose up -d --build db redis api frontend nucleo-opencl
+docker compose up -d --build db api frontend nucleo-opencl
 ```
 
 ## Banco de dados
@@ -187,7 +187,8 @@ npm run dev                                         # abre em http://localhost:5
 | <http://localhost:8000/health/db> | prova de conexão com o banco (`"banco": "conectado"`) |
 | <http://localhost:8001/saude> | estado do núcleo OpenCL e do dispositivo |
 
-Para gerar a versão de produção da interface: `npm run build` (saída em `frontend/dist/`; `npx vite preview` para
+Para publicar em produção (banco, API, núcleo e interface), siga a seção 13 do
+[manual técnico](docs/manual-tecnico.md#13-publicação-em-produção). Para gerar a versão de produção da interface: `npm run build` (saída em `frontend/dist/`; `npx vite preview` para
 conferir). Instalado como app, ele abre até sem internet.
 
 ### Roteiro rápido para ver tudo funcionando
@@ -239,6 +240,9 @@ no fuso de Recife. O job do núcleo compila, roda o teste de equivalência e tes
 
 ## Mais documentação
 
+- [`docs/manual-tecnico.md`](docs/manual-tecnico.md): **manual técnico** — arquitetura, variáveis de ambiente, núcleo
+  OpenCL, segurança, **publicação em produção** e manutenção
+- Manual do usuário: [`BuscaPet-Docs/manuais`](https://github.com/Equipe-BuscaPet/BuscaPet-Docs/tree/main/manuais)
 - [`docs/mer.md`](docs/mer.md): diagrama entidade-relacionamento
 - [`docs/schema.sql`](docs/schema.sql): modelo relacional
 - [`docs/api.md`](docs/api.md): guia das rotas da API

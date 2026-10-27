@@ -3,7 +3,7 @@ import datetime
 import email
 import re
 
-from jose import jwt
+import jwt
 
 from app.core.config import settings
 from tests.conftest import SENHA, cabecalho, dados_animal, dados_tutor

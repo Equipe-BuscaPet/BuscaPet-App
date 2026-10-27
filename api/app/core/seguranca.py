@@ -1,8 +1,8 @@
-"""Hash de senha (bcrypt) e tokens JWT — RF-02."""
+"""Hash de senha (bcrypt) e tokens JWT (PyJWT) — RF-02."""
 import datetime
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
 
 from app.core.config import settings
 
@@ -34,7 +34,7 @@ def decodificar_token(token: str) -> int | None:
         if dados.get("fim"):
             return None
         return int(dados["sub"])
-    except (JWTError, KeyError, ValueError):
+    except (jwt.PyJWTError, KeyError, ValueError):
         return None
 
 
@@ -56,7 +56,7 @@ def ler_token_redefinicao(token: str) -> tuple[int, str] | None:
         if dados.get("fim") != "redefinir-senha":
             return None
         return int(dados["sub"]), dados["h"]
-    except (JWTError, KeyError, ValueError):
+    except (jwt.PyJWTError, KeyError, ValueError):
         return None
 
 

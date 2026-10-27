@@ -62,12 +62,17 @@ test.describe('Mapa', () => {
     await expect(linkCao).toBeVisible() // os dois na mesma lista
 
     await abrirFiltros(page)
-    await painel(page).getByRole('checkbox', { name: /Avistados/ }).uncheck()
+    // O filtro mora na URL, e o React Router 7 atualiza a URL em transição: a caixa muda logo depois do clique,
+    // não no mesmo instante. Por isso clicar e esperar o estado, em vez de uncheck()/check() (que conferem na hora).
+    const avistados = painel(page).getByRole('checkbox', { name: /Avistados/ })
+    await avistados.click()
+    await expect(avistados).not.toBeChecked()
     await expect(page).toHaveURL(/mostrar=perdidos/)
     await expect(linkCao).toHaveCount(0)
     await expect(page.locator('.pino--avistamento')).toHaveCount(0)
 
-    await painel(page).getByRole('checkbox', { name: /Avistados/ }).check()
+    await avistados.click()
+    await expect(avistados).toBeChecked()
     await painel(page).getByLabel('Espécie').selectOption('gato')
     await expect(linkCao).toHaveCount(0)
     await expect(linkGato).toBeVisible()
