@@ -123,9 +123,7 @@ def test_doacao_recusada_nao_pontua(client, apoiador, necessidade, abrigo_aprova
 
 
 def test_regras_de_quem_doa_e_para_quem(client, apoiador, necessidade, abrigo_aprovado):
-    tutor = client.post("/auth/cadastro", json={"tipo_conta": "tutor", "nome": "Ana", "email": "ana@exemplo.com", "senha": SENHA})
-    assert tutor.status_code == 201
-    assert doar(client, {"headers": cabecalho(client, "ana@exemplo.com")}, necessidade_id=necessidade["id"]).status_code == 403
+    assert doar(client, abrigo_aprovado, necessidade_id=necessidade["id"]).status_code == 403  # abrigo não doa
     sem_selo = client.post("/auth/cadastro", json=dados_abrigo(email="semselo@exemplo.com")).json()["id"]
     r = doar(client, apoiador, abrigo_id=sem_selo, item="Areia")
     assert r.status_code == 409 and "selo Verificado" in r.json()["detail"]

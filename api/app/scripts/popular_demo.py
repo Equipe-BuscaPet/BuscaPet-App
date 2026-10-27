@@ -18,6 +18,9 @@ Contas criadas (senha de todas: veja SENHA_DEMO):
                                       clínica e distribuidora), com doações confirmadas em meses seguidos
                                       para o ranking, e uma doação aguardando a confirmação do Patinhas
 
+O Patinhas tem chave PIX e meta de gastos do mês (R$ 3.000); Maria e João já doaram por PIX (confirmado) e
+aparecem no ranking de pessoa física.
+
 O Abrigo Patinhas Felizes (verificado) ganha também necessidades publicadas no mural e um histórico de adoções
 (Pingo, adotado pela Maria; Nina, aprovada para o João; um interesse aguardando no Thor), com os registros de
 auditoria nas datas em que aconteceram, para o painel e os relatórios terem o que mostrar.
@@ -102,6 +105,11 @@ TUTORES = [
 ]
 
 # Necessidades do Abrigo Patinhas Felizes (o único verificado: só ele publica no mural).
+# Meta de gastos do mês do Patinhas e os PIX dos tutores (meses atrás → valor em centavos), já confirmados.
+PIX_PATINHAS = "doacoes@patinhasfelizes.org.br"
+META_PATINHAS = (300000, "Ração R$ 1.500 · veterinário e vacinas R$ 900 · água, luz e aluguel R$ 600")
+PIX_TUTORES = {"maria@exemplo.com": {1: 5000, 0: 8000}, "joao@exemplo.com": {0: 3000}}
+
 NECESSIDADES = [
     ("Ração para cão adulto (saco de 15 kg)", 10, UrgenciaNecessidade.ALTA),
     ("Vermífugo para filhotes", 20, UrgenciaNecessidade.MEDIA),
@@ -212,6 +220,22 @@ def _popular_doacoes(db: Session, criados: dict[str, int]) -> None:
             db.add(Doacao(apoiador_id=usuario.id, abrigo_id=patinhas.id, necessidade_id=limpeza.id, item=limpeza.item, quantidade=2))
         db.flush()
         pontuacao.recalcular(db, usuario.id)
+
+    abrigo = patinhas.abrigo
+    if abrigo.chave_doacao_financeira is None:
+        abrigo.chave_doacao_financeira = PIX_PATINHAS
+    if abrigo.meta_mensal_centavos is None:
+        abrigo.meta_mensal_centavos, abrigo.meta_mensal_descricao = META_PATINHAS
+    for email, por_mes in PIX_TUTORES.items():  # pessoas físicas no ranking e a meta do mês já andando
+        tutor = db.scalar(select(Usuario).where(Usuario.email == email))
+        if db.scalar(select(Doacao.id).where(Doacao.apoiador_id == tutor.id).limit(1)):
+            continue
+        for meses_atras, centavos in por_mes.items():
+            momento = _dia_do_mes(meses_atras)
+            db.add(Doacao(apoiador_id=tutor.id, abrigo_id=patinhas.id, item="Doação em dinheiro (PIX)", quantidade=1, valor_centavos=centavos,
+                          status=StatusDoacao.CONFIRMADA, registrado_em=momento, confirmado_em=momento))
+        db.flush()
+        pontuacao.recalcular(db, tutor.id)
 
 
 def _dias_atras(dias: int) -> datetime.datetime:

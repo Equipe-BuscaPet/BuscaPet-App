@@ -25,17 +25,19 @@ class Necessidade(Base):
 
 
 class Doacao(Base):
-    """Registrada pelo apoiador, só conta no ranking após confirmação do
-    abrigo (escopo, seção 5.4 — evita ranking autodeclarado)."""
+    """Registrada por quem doa (apoiador ou tutor), só conta no ranking após confirmação do
+    abrigo (escopo, seção 5.4 — evita ranking autodeclarado). Com `valor_centavos`, é uma doação em
+    dinheiro: o PIX é feito fora da plataforma e o abrigo confirma quando vê o valor na conta."""
 
     __tablename__ = "doacoes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    apoiador_id: Mapped[int] = mapped_column(ForeignKey("apoiadores.usuario_id"))
+    apoiador_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))  # quem doou: apoiador ou tutor
     abrigo_id: Mapped[int] = mapped_column(ForeignKey("abrigos.usuario_id"))
     necessidade_id: Mapped[int | None] = mapped_column(ForeignKey("necessidades.id"))
     item: Mapped[str] = mapped_column(String(200))
     quantidade: Mapped[int] = mapped_column(Integer)
+    valor_centavos: Mapped[int | None] = mapped_column(Integer)  # só na doação em dinheiro
     status: Mapped[StatusDoacao] = mapped_column(pg_enum(StatusDoacao, name="status_doacao"), default=StatusDoacao.AGUARDANDO_CONFIRMACAO)
     registrado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     confirmado_em: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
@@ -53,7 +55,7 @@ class PontuacaoApoiador(Base):
     __table_args__ = (UniqueConstraint("apoiador_id", "mes_referencia", name="uq_pontuacao_apoiador_mes"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    apoiador_id: Mapped[int] = mapped_column(ForeignKey("apoiadores.usuario_id"))
+    apoiador_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     mes_referencia: Mapped[datetime.date] = mapped_column(DateTime(timezone=True))  # sempre dia 1 do mês
     pontos_volume: Mapped[float] = mapped_column(Float, default=0)
     pontos_regularidade: Mapped[float] = mapped_column(Float, default=0)

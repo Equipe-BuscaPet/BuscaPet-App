@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Integer,
     String,
     UniqueConstraint,
     func,
@@ -67,6 +68,9 @@ class Abrigo(Base):
     # Só exibida no perfil — a plataforma nunca processa a doação financeira
     # (documento de escopo, seção 10, "fora do escopo"). Ver notas-tecnicas.
     chave_doacao_financeira: Mapped[str | None] = mapped_column(String(140))
+    # Meta de gastos do mês, arrecadada por PIX e confirmada pelo abrigo (só exibida com o selo Verificado).
+    meta_mensal_centavos: Mapped[int | None] = mapped_column(Integer)
+    meta_mensal_descricao: Mapped[str | None] = mapped_column(String(500))
     documento_comprobatorio_url: Mapped[str | None] = mapped_column(String(500))
     status_validacao: Mapped[StatusValidacao] = mapped_column(
         pg_enum(StatusValidacao, name="status_validacao"), default=StatusValidacao.PENDENTE

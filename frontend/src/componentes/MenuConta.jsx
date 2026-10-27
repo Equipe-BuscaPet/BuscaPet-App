@@ -8,7 +8,7 @@ export const ROTULO_TIPO = { tutor: 'Tutor', abrigo: 'Abrigo', apoiador: 'Apoiad
 
 function itensDoPerfil(usuario) {
   return {
-    tutor: [['/interesses', '❤️', 'Meus interesses de adoção']],
+    tutor: [['/interesses', '❤️', 'Meus interesses de adoção'], ['/minhas-doacoes', '📦', 'Minhas doações']],
     abrigo: [
       ['/painel', '🐾', 'Meus animais'], ['/interessados', '📋', 'Interessados'],
       ['/doacoes', '📦', 'Necessidades e doações'], ['/relatorios', '📊', 'Relatórios'],

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
-import { COR_DOACAO, STATUS_DOACAO } from '../rotulos'
+import { COR_DOACAO, STATUS_DOACAO, textoDoacao } from '../rotulos'
 
-// Doações do apoiador (RF-31): acompanha a confirmação de cada abrigo e pode desistir enquanto aguarda.
+// Doações de quem apoia (apoiador ou tutor, RF-31): acompanha a confirmação de cada abrigo e pode desistir enquanto aguarda.
 export default function MinhasDoacoes() {
   const { usuario } = useAuth()
   const [doacoes, setDoacoes] = useState(null)
@@ -17,7 +17,7 @@ export default function MinhasDoacoes() {
   useEffect(() => { carregar() }, [carregar])
 
   async function cancelar(d) {
-    if (!window.confirm(`Cancelar a doação de ${d.quantidade} × ${d.item}?`)) return
+    if (!window.confirm(`Cancelar a doação de ${textoDoacao(d)}?`)) return
     setErro('')
     try {
       await api(`/doacoes/${d.id}`, { metodo: 'DELETE' })
@@ -33,21 +33,25 @@ export default function MinhasDoacoes() {
       <div className="topo-pagina">
         <h1 style={{ margin: 0 }}>Minhas doações</h1>
         <div className="acoes">
-          <Link className="botao botao--leve" to={`/apoiadores/${usuario.id}`}>Meu perfil público</Link>
+          {usuario.tipo_conta === 'apoiador' && <Link className="botao botao--leve" to={`/apoiadores/${usuario.id}`}>Meu perfil público</Link>}
           <Link className="botao" to="/quem-apoia#mural">Ver o mural de necessidades</Link>
         </div>
       </div>
-      <p className="subtitulo">Cada doação conta no ranking quando o abrigo confirma que recebeu. Combine a entrega pelo contato do abrigo.</p>
+      <p className="subtitulo">
+        Cada doação conta no ranking quando o abrigo confirma que recebeu. Itens: combine a entrega pelo contato do abrigo.
+        Dinheiro: faça o PIX pela chave do perfil do abrigo e informe o valor lá.
+        {usuario.tipo_conta === 'tutor' && ' Você aparece no ranking de pessoa física com o primeiro nome e a inicial do sobrenome.'}
+      </p>
       {ok && <div className="aviso aviso--ok" role="status">{ok}</div>}
       {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
       {doacoes === null && <p className="estado">Carregando…</p>}
-      {doacoes?.length === 0 && <p className="estado">Você ainda não registrou doações. Escolha uma necessidade no mural.</p>}
+      {doacoes?.length === 0 && <p className="estado">Você ainda não registrou doações. Escolha uma necessidade no mural ou doe em dinheiro pelo perfil de um abrigo.</p>}
       <div style={{ display: 'grid', gap: '0.75rem' }}>
         {doacoes?.map((d) => (
           <article key={d.id} className="cartao" aria-label={`Doação para ${d.nome_abrigo}`}>
             <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
               <div>
-                <strong>{d.quantidade} × {d.item}</strong>
+                <strong>{textoDoacao(d)}</strong>
                 <div><small>para <Link to={`/abrigos/${d.abrigo_id}`}>{d.nome_abrigo}</Link> · registrada em {new Date(d.registrado_em).toLocaleDateString('pt-BR')}</small></div>
                 {d.contato && <div><small>Contato do abrigo: {d.contato}</small></div>}
               </div>

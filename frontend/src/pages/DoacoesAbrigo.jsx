@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import CartaoNecessidade from '../componentes/CartaoNecessidade'
-import { COR_DOACAO, STATUS_DOACAO, URGENCIAS } from '../rotulos'
+import { COR_DOACAO, STATUS_DOACAO, textoDoacao, URGENCIAS } from '../rotulos'
+import MetaDoMes from '../componentes/MetaDoMes'
 
 const VAZIA = { item: '', quantidade: 1, urgencia: 'media' }
 
-// Área do abrigo para doações (RF-30 e RF-32): publica necessidades e confirma o que recebeu.
+// Área do abrigo para doações (RF-30 e RF-32): meta do mês em dinheiro, necessidades e confirmação do que recebeu.
 export default function DoacoesAbrigo() {
   const { usuario } = useAuth()
   const verificado = usuario.perfil?.status_validacao === 'aprovado'
@@ -49,7 +50,7 @@ export default function DoacoesAbrigo() {
   const decidir = (d, status) => acao(
     () => api(`/doacoes/${d.id}`, { metodo: 'PATCH', corpo: { status } }),
     status === 'confirmada'
-      ? `Recebimento confirmado. A doação de ${d.nome_apoiador} passou a contar no ranking.`
+      ? `Recebimento confirmado. A doação de ${d.nome_apoiador} passou a contar no ranking${d.valor_centavos != null ? ' e na meta do mês' : ''}.`
       : `Doação de ${d.nome_apoiador} marcada como não recebida.`,
   )
   const pendentes = doacoes?.filter((d) => d.status === 'aguardando_confirmacao') ?? []
@@ -57,9 +58,11 @@ export default function DoacoesAbrigo() {
   return (
     <main className="pagina">
       <h1>Necessidades e doações</h1>
-      <p className="subtitulo">Publique o que o abrigo precisa e confirme as doações quando chegarem. Só doação confirmada conta no ranking dos apoiadores.</p>
+      <p className="subtitulo">Defina a meta do mês, publique o que o abrigo precisa e confirme as doações quando chegarem. Só doação confirmada conta no ranking e na meta.</p>
       {ok && <div className="aviso aviso--ok" role="status">{ok}</div>}
       {erro && <div className="aviso aviso--erro" role="alert">{erro}</div>}
+
+      <MetaDoMes verificado={verificado} aoMudar={carregar} />
 
       <section aria-labelledby="t-recebidas" style={{ marginBottom: '2rem' }}>
         <h2 id="t-recebidas">Doações para confirmar {pendentes.length > 0 && <span className="etiqueta etiqueta--atencao">{pendentes.length}</span>}</h2>
@@ -70,14 +73,14 @@ export default function DoacoesAbrigo() {
             <article key={d.id} className="cartao" aria-label={`Doação de ${d.nome_apoiador}`}>
               <div className="topo-pagina" style={{ marginBottom: '0.25rem' }}>
                 <div>
-                  <strong>{d.quantidade} × {d.item}</strong>
-                  <div><small>de <Link to={`/apoiadores/${d.apoiador_id}`}>{d.nome_apoiador}</Link> · {new Date(d.registrado_em).toLocaleDateString('pt-BR')} · <a href={`mailto:${d.contato}`}>{d.contato}</a></small></div>
+                  <strong>{textoDoacao(d)}</strong>
+                  <div><small>de {d.perfil_publico_doador ? <Link to={`/apoiadores/${d.apoiador_id}`}>{d.nome_apoiador}</Link> : <>{d.nome_apoiador} (pessoa física)</>} · {new Date(d.registrado_em).toLocaleDateString('pt-BR')} · <a href={`mailto:${d.contato}`}>{d.contato}</a></small></div>
                 </div>
                 <span className={`etiqueta ${COR_DOACAO[d.status]}`}>{STATUS_DOACAO[d.status]}</span>
               </div>
               {d.status === 'aguardando_confirmacao' && (
                 <div className="acoes">
-                  <button className="botao" onClick={() => decidir(d, 'confirmada')}>Confirmar recebimento</button>
+                  <button className="botao" onClick={() => decidir(d, 'confirmada')}>{d.valor_centavos != null ? 'Confirmar: o PIX chegou' : 'Confirmar recebimento'}</button>
                   <button className="botao botao--leve" onClick={() => decidir(d, 'recusada')}>Não recebi</button>
                 </div>
               )}

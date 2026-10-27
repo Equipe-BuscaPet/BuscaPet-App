@@ -59,6 +59,13 @@ class CadastroAbrigo(_CadastroBase):
     chave_doacao_financeira: str | None = Field(default=None, max_length=140)
 
 
+def _categoria_de_empresa(valor):
+    """A conta de apoiador é de empresa (CNPJ). Pessoa física doa com a conta de tutor e entra no ranking como tal."""
+    if valor == TipoEstabelecimento.PESSOA_FISICA:
+        raise ValueError("Pessoa física doa com uma conta de tutor. Para apoiador, escolha pet shop, clínica ou distribuidora.")
+    return valor
+
+
 class CadastroApoiador(_CadastroBase):
     tipo_conta: Literal["apoiador"]
     cnpj: str
@@ -68,6 +75,7 @@ class CadastroApoiador(_CadastroBase):
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
     _checa_cnpj = field_validator("cnpj")(_cnpj_valido)
+    _checa_categoria = field_validator("tipo_estabelecimento")(_categoria_de_empresa)
 
 
 # "admin" não está aqui de propósito: ninguém vira administrador pelo cadastro
@@ -91,6 +99,8 @@ class AbrigoOut(BaseModel):
     descricao: str | None
     telefone: str | None
     chave_doacao_financeira: str | None
+    meta_mensal_centavos: int | None = None
+    meta_mensal_descricao: str | None = None
     status_validacao: StatusValidacao
 
 
@@ -136,7 +146,12 @@ class AtualizaUsuario(BaseModel):
     horario_funcionamento: str | None = Field(default=None, max_length=255)
     descricao: str | None = Field(default=None, max_length=2000)
     chave_doacao_financeira: str | None = Field(default=None, max_length=140)
+    # Meta de gastos do mês do abrigo, em centavos (R$ 3.000,00 = 300000); null tira a meta.
+    meta_mensal_centavos: int | None = Field(default=None, ge=100, le=100_000_000)
+    meta_mensal_descricao: str | None = Field(default=None, max_length=500)
     tipo_estabelecimento: TipoEstabelecimento | None = None
+
+    _checa_categoria = field_validator("tipo_estabelecimento")(_categoria_de_empresa)
 
 
 class EsqueciSenha(BaseModel):

@@ -140,7 +140,7 @@ def test_exportacoes_do_abrigo(client, cenario):
     interesses = client.get("/relatorios/abrigo/interesses.csv", headers=h).content.decode("utf-8").strip().splitlines()
     assert interesses[0].endswith("Cidade;Situação") and "Thor;Maria Tutora;tutor@exemplo.com" in interesses[1] and interesses[1].endswith("Olinda;Aprovado")
     doacoes = client.get("/relatorios/abrigo/doacoes.csv", headers=h).content.decode("utf-8").strip().splitlines()
-    assert "Pet Shop Amigo;petshop;Ração;3;Confirmada" in doacoes[1]
+    assert "Pet Shop Amigo;petshop;Ração;3;;Confirmada" in doacoes[1]  # valor vazio: doação de itens
     animais = client.get("/relatorios/abrigo/animais.csv", headers=h).content.decode("utf-8").strip().splitlines()
     entrada = (HOJE - datetime.timedelta(days=10)).strftime("%d/%m/%Y")
     assert animais[1].startswith("Thor;cao;medio;macho;;em_processo;" + entrada)  # a data do dia não volta um dia

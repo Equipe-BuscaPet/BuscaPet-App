@@ -126,7 +126,7 @@ export default function App() {
         <Route path="/apoiadores/:id" element={<PerfilApoiador />} />
         <Route path="/doacoes" element={<Protegido tipos={['abrigo']}><DoacoesAbrigo /></Protegido>} />
         <Route path="/relatorios" element={<Protegido tipos={['abrigo']}><RelatoriosAbrigo /></Protegido>} />
-        <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador']}><MinhasDoacoes /></Protegido>} />
+        <Route path="/minhas-doacoes" element={<Protegido tipos={['apoiador', 'tutor']}><MinhasDoacoes /></Protegido>} />
         <Route path="/reencontro/perdidos/:id" element={<RegistroDetalhe key="perdido" tipo="perdido" />} />
         <Route path="/reencontro/avistamentos/:id" element={<RegistroDetalhe key="avistamento" tipo="avistamento" />} />
         <Route path="/perdi" element={<AssistenteRegistro key="perdido" tipo="perdido" />} />
