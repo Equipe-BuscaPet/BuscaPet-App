@@ -48,6 +48,9 @@ body {
   font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.5;
 }
+/* Rodapé sempre no pé da janela: com pouco conteúdo, o miolo estica e empurra o rodapé para baixo. */
+#root { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+#conteudo { flex: 1 0 auto; }
 a { color: var(--accent); }
 h1, h2, h3 { line-height: 1.2; margin: 0 0 0.5rem; }
 h1 { font-size: 1.75rem; font-weight: 800; }
@@ -518,6 +521,7 @@ button.miniatura { cursor: pointer; }
 .desempenho__resultado { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; margin-top: 1rem; }
 @media (max-width: 800px) { .desempenho__resultado { grid-template-columns: 1fr; } }
 .grafico-ganho { width: 100%; height: auto; }
+.desempenho__guia { margin: 0 0 0.75rem; padding-left: 1.2rem; display: grid; gap: 0.35rem; color: var(--ink-dim); }
 .grafico-ganho__barra { fill: var(--serie-1); }
 .grafico-ganho__ref { stroke: var(--line); stroke-dasharray: 4 4; }
 .grafico-ganho__base { stroke: var(--ink-dim); }
