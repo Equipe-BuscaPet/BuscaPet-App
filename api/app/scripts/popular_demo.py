@@ -43,6 +43,7 @@ from app.core import auditoria, pontuacao
 from app.core import fotos as armazenamento
 from app.models.animal import Animal, Foto, Interesse
 from app.models.doacao import Doacao, Necessidade
+from app.models.reencontro import AnimalPerdido, Avistamento, BuscaSalva
 from app.models.enums import (
     EntidadeFoto,
     Especie,
@@ -187,6 +188,7 @@ def popular(db: Session) -> dict[str, int]:
     _popular_doacoes(db, criados)
     _popular_historico(db, criados)
     _popular_fotos(db)
+    _popular_reencontro(db)
     db.commit()
     return criados
 
@@ -299,16 +301,84 @@ def _popular_historico(db: Session, criados: dict[str, int]) -> None:
 FOTOS_DEMO = Path(__file__).with_name("fotos_demo")
 FOTO_POR_ESPECIE = {Especie.CAO: "cachorro-caramelo.jpg", Especie.GATO: "gato-cinza.jpg"}
 
+# Fotos reais de cães (DogFaceNet, CC BY 4.0; créditos em fotos_demo/caes/CREDITOS.md): uma pasta por cão, 3 fotos.
+CAES = FOTOS_DEMO / "caes"
+CAPA_DOS_ANIMAIS = {"Thor": "preto-felpudo", "Mel": "bege-e-branco", "Bolinha": "preto-e-fogo", "Rex": "pastor-alemao"}
+
+
+def _salvar_foto(arquivo: Path) -> str:
+    """Grava a foto com o mesmo tratamento do envio real e devolve a URL pública."""
+    return armazenamento.url_publica(armazenamento.salvar(armazenamento.processar(arquivo.read_bytes())))
+
 
 def _popular_fotos(db: Session) -> None:
-    """Capa para os animais de demonstração que ainda não têm foto (RF-17), com o mesmo tratamento do envio real."""
+    """Capa para os animais de demonstração que ainda não têm foto (RF-17): o cão certo, ou a foto genérica da espécie."""
     com_foto = set(db.scalars(select(Foto.entidade_id).where(Foto.entidade_tipo == EntidadeFoto.ANIMAL.value)))
     for animal in db.scalars(select(Animal)):
-        arquivo = FOTO_POR_ESPECIE.get(animal.especie)
-        if animal.id in com_foto or arquivo is None:
+        if animal.id in com_foto:
             continue
-        nome = armazenamento.salvar(armazenamento.processar((FOTOS_DEMO / arquivo).read_bytes()))
-        db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=armazenamento.url_publica(nome), ordem=0))
+        if animal.nome in CAPA_DOS_ANIMAIS:
+            arquivo = CAES / CAPA_DOS_ANIMAIS[animal.nome] / "1.jpg"
+        elif animal.especie in FOTO_POR_ESPECIE:
+            arquivo = FOTOS_DEMO / FOTO_POR_ESPECIE[animal.especie]
+        else:
+            continue
+        db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=_salvar_foto(arquivo), ordem=0))
+
+
+# Reencontro para a busca por foto. Cada cão aparece em dois lugares com fotos diferentes:
+#   - a Branquinha, perdida pela Maria (fotos 1 e 2), foi avistada pelo João (foto 3);
+#   - o pastor do João está perdido (fotos 2 e 3) e a capa do Rex, no Protetores do Cordeiro, é outra foto dele (1).
+# Os demais avistamentos (cães diferentes) servem de distratores.
+PERDIDOS = [
+    # tutor, pasta, fotos, porte, cor, pelagem, sexo, sinais, lat, lng, dias desde o sumiço
+    ("maria@exemplo.com", "branco-e-caramelo", (1, 2), "medio", "branco e caramelo", "curta", Sexo.FEMEA,
+     "Orelhas caramelo e uma mancha na testa", -8.1180, -34.8990, 3),
+    ("joao@exemplo.com", "pastor-alemao", (2, 3), "grande", "preto e marrom", "curta", Sexo.MACHO,
+     "Pastor alemão, orelhas em pé", -8.0460, -34.9090, 5),
+]
+AVISTAMENTOS = [
+    # quem viu, pasta, foto, porte, cor, pelagem, sexo, sinais, lat, lng, dias
+    ("joao@exemplo.com", "branco-e-caramelo", 3, "medio", "branco e caramelo", "curta", Sexo.FEMEA,
+     "Vi andando sozinha, sem coleira", -8.1203, -34.9011, 1),
+    ("maria@exemplo.com", "caramelo", 1, "medio", "caramelo", "curta", Sexo.MACHO, "Bem dócil, aceitou carinho", -8.0975, -34.8920, 2),
+    ("maria@exemplo.com", "marrom-avermelhado", 1, "grande", "marrom avermelhado", "curta", Sexo.MACHO,
+     "Orelhas compridas, parecia cansado", -8.0580, -34.8800, 4),
+    ("joao@exemplo.com", "preto-mancha-branca", 1, "medio", "preto", "curta", Sexo.FEMEA,
+     "Mancha branca na testa", -8.0700, -34.9000, 6),
+]
+
+
+def _popular_reencontro(db: Session) -> None:
+    """Perdidos e avistamentos de cães com fotos reais. Só cria se ainda não houver nenhum perdido no banco."""
+    if db.scalar(select(AnimalPerdido.id).limit(1)):
+        return
+    usuarios = {u.email: u for u in db.scalars(select(Usuario).where(Usuario.email.in_(["maria@exemplo.com", "joao@exemplo.com"])))}
+    if len(usuarios) < 2:
+        return
+
+    for email, pasta, fotos, porte, cor, pelagem, sexo, sinais, lat, lng, dias in PERDIDOS:
+        perdido = AnimalPerdido(
+            tutor_id=usuarios[email].id, especie=Especie.CAO, porte=porte, cor_predominante=cor, pelagem=pelagem,
+            sexo=sexo, sinais_particulares=sinais, latitude=lat, longitude=lng, raio_busca_km=5.0,
+            data_desaparecimento=_dia_utc(dias),
+        )
+        db.add(perdido)
+        db.flush()
+        db.add(BuscaSalva(tutor_id=perdido.tutor_id, animal_perdido_id=perdido.id))
+        for ordem, numero in enumerate(fotos):
+            db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL_PERDIDO.value, entidade_id=perdido.id,
+                        url=_salvar_foto(CAES / pasta / f"{numero}.jpg"), ordem=ordem))
+
+    for email, pasta, numero, porte, cor, pelagem, sexo, sinais, lat, lng, dias in AVISTAMENTOS:
+        avistamento = Avistamento(
+            usuario_id=usuarios[email].id, especie=Especie.CAO, porte=porte, cor_predominante=cor, pelagem=pelagem,
+            sexo=sexo, sinais_particulares=sinais, latitude=lat, longitude=lng, data_avistamento=_dia_utc(dias),
+        )
+        db.add(avistamento)
+        db.flush()
+        db.add(Foto(entidade_tipo=EntidadeFoto.AVISTAMENTO.value, entidade_id=avistamento.id,
+                    url=_salvar_foto(CAES / pasta / f"{numero}.jpg"), ordem=0))
 
 
 def main() -> int:
