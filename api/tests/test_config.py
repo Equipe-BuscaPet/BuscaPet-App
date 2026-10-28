@@ -16,3 +16,11 @@ def test_banco_de_verdade_exige_segredo_proprio():
     with pytest.raises(ValidationError, match="Defina JWT_SECRET"):
         Settings(database_url=SUPABASE, jwt_secret=SEGREDO_PADRAO)
     assert Settings(database_url=SUPABASE, jwt_secret="x" * 48).database_url == SUPABASE
+
+
+def test_url_do_banco_ganha_o_driver_quando_a_hospedagem_entrega_so_postgresql():
+    from app.core.config import normalizar_url_banco
+
+    assert normalizar_url_banco("postgresql://u:p@host:5432/db") == "postgresql+psycopg://u:p@host:5432/db"
+    assert normalizar_url_banco("postgres://u:p@host/db") == "postgresql+psycopg://u:p@host/db"
+    assert normalizar_url_banco(" postgresql+psycopg://u:p@h/db ") == "postgresql+psycopg://u:p@h/db"
