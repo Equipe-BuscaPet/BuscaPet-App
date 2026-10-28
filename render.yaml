@@ -13,7 +13,7 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: CORS_ORIGINS      # ex.: ["https://buscapet.vercel.app"]  (lista em JSON)
+      - key: CORS_ORIGENS      # ex.: ["https://buscapet.vercel.app"]  (lista em JSON)
         sync: false
       - key: URL_INTERFACE     # ex.: https://buscapet.vercel.app  (usado nos links dos e-mails)
         sync: false

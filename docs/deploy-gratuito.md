@@ -37,7 +37,7 @@ As migrações (inclusive a 0006) rodam sozinhas na partida da API (`alembic upg
    (o `render.yaml` da raiz descreve tudo).
 2. Preencha as variáveis que ele pedir:
    - `DATABASE_URL`: a do Supabase.
-   - `CORS_ORIGINS`: a URL da Vercel em JSON, ex.: `["https://buscapet.vercel.app"]`. Você só sabe a URL
+   - `CORS_ORIGENS`: a URL da Vercel em JSON, ex.: `["https://buscapet.vercel.app"]`. Você só sabe a URL
      depois do passo 3: ponha qualquer valor agora e corrija depois com um *Manual Deploy*.
    - `URL_INTERFACE`: a URL da Vercel, sem barra no fim.
 3. `JWT_SECRET` é gerado pelo Render. O deploy leva alguns minutos; confira `https://<nome>.onrender.com/health/db`.
@@ -46,7 +46,7 @@ As migrações (inclusive a 0006) rodam sozinhas na partida da API (`alembic upg
 1. Em vercel.com → **Add New → Project** → o mesmo repositório.
 2. **Root Directory:** `frontend`. Framework: Vite (detectado).
 3. **Environment Variable:** `VITE_API_URL` = a URL da API no Render (sem barra no fim).
-4. Deploy. Volte ao Render e ajuste `CORS_ORIGINS` e `URL_INTERFACE` com a URL final da Vercel.
+4. Deploy. Volte ao Render e ajuste `CORS_ORIGENS` e `URL_INTERFACE` com a URL final da Vercel.
 
 ### 4. Depois de no ar
 ```
