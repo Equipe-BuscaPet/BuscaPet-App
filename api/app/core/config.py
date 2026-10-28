@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,6 +25,8 @@ class Settings(BaseSettings):
     # Fotos do reencontro (RF-19/RF-20). Pasta fora do Git; ver app/core/fotos.py.
     pasta_fotos: Path = ENV_FILE.parent / "uploads" / "fotos"
     foto_tamanho_max_mb: int = 8
+    # "disco" (pasta_fotos) ou "banco" (tabela fotos_arquivos): em hospedagem gratuita o disco é apagado a cada reinício.
+    armazenamento_fotos: Literal["disco", "banco"] = "disco"
     # E-mail (RF-05, RF-36). Sem SMTP_HOST, os e-mails vão para a caixa de saída (arquivos .eml); ver app/core/email.py.
     smtp_host: str | None = None
     smtp_porta: int = 587

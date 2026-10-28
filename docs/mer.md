@@ -4,7 +4,7 @@
 > Não edite à mão. Corresponde às migrações do Alembic até a última (`alembic upgrade head`) e ao
 > [`schema.sql`](schema.sql).
 
-**19 tabelas** e **27 chaves estrangeiras**. Nas linhas: `||` um e só um, `|o` zero ou um, `o{` zero ou
+**20 tabelas** e **27 chaves estrangeiras**. Nas linhas: `||` um e só um, `|o` zero ou um, `o{` zero ou
 muitos, `o|` zero ou um. PK = chave primária, FK = chave estrangeira (com a tabela de
 destino), UK = valor único.
 
@@ -176,6 +176,11 @@ erDiagram
         int entidade_id
         string url
         int ordem
+        datetime criado_em
+    }
+    FOTOS_ARQUIVOS {
+        string nome PK
+        bytes conteudo
         datetime criado_em
     }
     INTERESSES {
@@ -437,6 +442,11 @@ erDiagram
         int entidade_id
         string url
         int ordem
+        datetime criado_em
+    }
+    FOTOS_ARQUIVOS {
+        string nome PK
+        bytes conteudo
         datetime criado_em
     }
     TUTORES {

@@ -78,7 +78,7 @@ def _unicas(tabela: sa.Table) -> set[str]:
 
 MODULOS = {
     "Contas e adoção": {"usuarios", "tutores", "abrigos", "apoiadores", "membros_equipe_abrigo", "animais", "interesses", "denuncias"},
-    "Reencontro": {"animais_perdidos", "avistamentos", "buscas_salvas", "correspondencias", "fotos", "descritores_visuais"},
+    "Reencontro": {"animais_perdidos", "avistamentos", "buscas_salvas", "correspondencias", "fotos", "fotos_arquivos", "descritores_visuais"},
     "Doações": {"necessidades", "doacoes", "pontuacoes_apoiador"},
     "Transversais": {"notificacoes", "logs_auditoria"},
 }

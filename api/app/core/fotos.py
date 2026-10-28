@@ -7,8 +7,9 @@ Toda foto enviada é aberta e regravada pelo servidor antes de ser guardada:
   tirada (muitas vezes a casa de quem enviou), e o escopo (seção 9) proíbe expor o endereço de quem registra;
 - o nome do arquivo é aleatório (uuid), sem nada que identifique o autor.
 
-O arquivo fica em `settings.pasta_fotos` e é servido por `GET /fotos/{nome}`. Ao publicar (deploy), a
-pasta pode ser trocada por um storage externo sem mudar o resto da API.
+O arquivo fica em `settings.pasta_fotos` (padrão) ou, com `ARMAZENAMENTO_FOTOS=banco`, na tabela
+`fotos_arquivos` (hospedagem gratuita, onde o disco é apagado a cada reinício). Em qualquer caso é servido por
+`GET /fotos/{nome}`; o resto da API só usa `salvar`, `ler` e `apagar`.
 """
 import io
 import re
@@ -18,6 +19,8 @@ from pathlib import Path
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
+from app.db.session import SessionLocal
+from app.models.animal import FotoArquivo
 
 FORMATOS_ACEITOS = {"JPEG", "PNG", "WEBP"}
 LADO_MAXIMO = 1280
@@ -55,21 +58,34 @@ def processar(conteudo: bytes) -> bytes:
     return saida.getvalue()
 
 
+def _no_banco() -> bool:
+    return settings.armazenamento_fotos == "banco"
+
+
 def salvar(jpeg: bytes) -> str:
     """Grava a foto já processada e devolve o nome do arquivo (aleatório)."""
+    nome = f"{uuid.uuid4().hex}.jpg"
+    if _no_banco():
+        with SessionLocal() as db:  # sessão própria: a foto fica gravada mesmo antes de o registro ser confirmado
+            db.add(FotoArquivo(nome=nome, conteudo=jpeg))
+            db.commit()
+        return nome
     pasta = Path(settings.pasta_fotos)
     pasta.mkdir(parents=True, exist_ok=True)
-    nome = f"{uuid.uuid4().hex}.jpg"
     (pasta / nome).write_bytes(jpeg)
     return nome
 
 
-def caminho(nome: str) -> Path | None:
-    """Caminho do arquivo no disco, ou None se o nome não for de uma foto nossa (evita ler fora da pasta)."""
+def ler(nome: str) -> bytes | None:
+    """Bytes da foto, ou None se o nome não for de uma foto nossa (evita ler fora da pasta) ou ela não existir."""
     if not NOME_VALIDO.match(nome):
         return None
+    if _no_banco():
+        with SessionLocal() as db:
+            arquivo = db.get(FotoArquivo, nome)
+            return arquivo.conteudo if arquivo else None
     arquivo = Path(settings.pasta_fotos) / nome
-    return arquivo if arquivo.is_file() else None
+    return arquivo.read_bytes() if arquivo.is_file() else None
 
 
 def url_publica(nome: str) -> str:
@@ -82,6 +98,13 @@ def nome_da_url(url: str) -> str:
 
 def apagar(nomes: list[str]) -> None:
     for nome in nomes:
-        arquivo = caminho(nome)
-        if arquivo:
-            arquivo.unlink(missing_ok=True)
+        if not NOME_VALIDO.match(nome):
+            continue
+        if _no_banco():
+            with SessionLocal() as db:
+                arquivo = db.get(FotoArquivo, nome)
+                if arquivo:
+                    db.delete(arquivo)
+                    db.commit()
+        else:
+            (Path(settings.pasta_fotos) / nome).unlink(missing_ok=True)

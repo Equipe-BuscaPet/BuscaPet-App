@@ -7,10 +7,10 @@ Se o núcleo estiver fora do ar, nada quebra: a foto fica sem descritor (é calc
 ou pelo script `python -m app.scripts.indexar_fotos`) e a busca avisa que a comparação por foto está indisponível.
 """
 import base64
+import io
 import json
 import logging
 import time
-from pathlib import Path
 
 import httpx
 from PIL import Image
@@ -67,9 +67,9 @@ def saude() -> dict:
     return _pedir("GET", "/saude", timeout=3)
 
 
-def extrair(arquivo: Path) -> list[float]:
-    """Descritor (224 números) de uma foto gravada em disco."""
-    with Image.open(arquivo) as img:
+def extrair(conteudo: bytes) -> list[float]:
+    """Descritor (224 números) de uma foto (os bytes do JPEG)."""
+    with Image.open(io.BytesIO(conteudo)) as img:
         img = img.convert("RGB")
         img.thumbnail((LADO_ENVIO, LADO_ENVIO))
         corpo = {"largura": img.width, "altura": img.height, "pixels": base64.b64encode(img.tobytes()).decode()}
@@ -106,11 +106,11 @@ def indexar(db: Session, fotos: list[Foto], repassar_falha: bool = False) -> int
     for foto in fotos:
         if foto.id in ja_tem:
             continue
-        arquivo = armazenamento.caminho(armazenamento.nome_da_url(foto.url))
-        if arquivo is None or not arquivo.exists():
+        conteudo = armazenamento.ler(armazenamento.nome_da_url(foto.url))
+        if conteudo is None:
             continue
         try:
-            d = extrair(arquivo)
+            d = extrair(conteudo)
         except NucleoIndisponivel as erro:
             log.warning("Descritor da foto %s não calculado: %s", foto.id, erro)
             if feitas:

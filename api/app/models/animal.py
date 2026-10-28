@@ -2,7 +2,7 @@
 import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, LargeBinary, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -49,6 +49,18 @@ class Animal(Base):
         order_by="(Foto.ordem, Foto.id)",
     )
     interesses: Mapped[list["Interesse"]] = relationship(back_populates="animal")
+
+
+class FotoArquivo(Base):
+    """O JPEG de uma foto, guardado no banco quando `ARMAZENAMENTO_FOTOS=banco` (hospedagem gratuita, onde o
+    disco do servidor é apagado a cada reinício). `nome` é o mesmo identificador aleatório que aparece em
+    `fotos.url`; não há FK porque, no modo disco, a tabela simplesmente fica vazia."""
+
+    __tablename__ = "fotos_arquivos"
+
+    nome: Mapped[str] = mapped_column(String(40), primary_key=True)
+    conteudo: Mapped[bytes] = mapped_column(LargeBinary)
+    criado_em: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Foto(Base):
