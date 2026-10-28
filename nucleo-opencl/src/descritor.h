@@ -18,7 +18,9 @@
 #ifndef NUCLEO_DESCRITOR_H
 #define NUCLEO_DESCRITOR_H
 
+#ifndef SEM_OPENCL
 #include "ocl.h"
+#endif
 
 #include <stdint.h>
 
@@ -57,6 +59,23 @@ void descritor_sequencial(const Imagem *imgs, int n, float *saida, Tempos *t);
 void comparar_sequencial(const float *consultas, int m, const float *candidatos, int n,
                          float *notas, Tempos *t);
 
+#ifdef SEM_OPENCL
+/* Build "leve" (make leve): sem OpenCL, para hospedagem gratuita com pouca memória. As funções "opencl"
+ * chamam a versão sequencial, que dá exatamente os mesmos números (é o que o teste de equivalência prova). */
+typedef struct {
+    int vazio;
+} Nucleo;
+
+static inline void descritor_opencl(Nucleo *nc, const Imagem *imgs, int n, float *saida, Tempos *t) {
+    (void)nc;
+    descritor_sequencial(imgs, n, saida, t);
+}
+static inline void comparar_opencl(Nucleo *nc, const float *consultas, int m, const float *candidatos, int n,
+                                   float *notas, Tempos *t) {
+    (void)nc;
+    comparar_sequencial(consultas, m, candidatos, n, notas, t);
+}
+#else
 /* ---- versão OpenCL ---- */
 typedef struct {
     NucleoOcl *ocl;
@@ -69,6 +88,8 @@ void nucleo_liberar(Nucleo *nc);
 void descritor_opencl(Nucleo *nc, const Imagem *imgs, int n, float *saida, Tempos *t);
 void comparar_opencl(Nucleo *nc, const float *consultas, int m, const float *candidatos, int n,
                      float *notas, Tempos *t);
+
+#endif
 
 /* Monta o descritor a partir das contagens inteiras (comum às duas versões). */
 void descritor_de_estatisticas(const int *estat, float *saida);

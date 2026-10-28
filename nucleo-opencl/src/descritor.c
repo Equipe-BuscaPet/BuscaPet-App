@@ -247,6 +247,7 @@ void comparar_sequencial(const float *consultas, int m, const float *candidatos,
     }
 }
 
+#ifndef SEM_OPENCL
 /* ===================================================== versão OpenCL */
 
 int nucleo_preparar(Nucleo *nc, NucleoOcl *ocl) {
@@ -416,3 +417,4 @@ void comparar_opencl(Nucleo *nc, const float *consultas, int m, const float *can
     clReleaseMemObject(d_cand);
     clReleaseMemObject(d_notas);
 }
+#endif /* SEM_OPENCL */
