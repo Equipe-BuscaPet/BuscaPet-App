@@ -5,7 +5,9 @@ Uso, a partir da pasta api/ (ou dentro do container: `docker compose exec api py
 
 É seguro rodar mais de uma vez: o que já existe (pelo e-mail da conta ou pelo nome do animal no abrigo)
 é ignorado. Por segurança, o script **só roda em banco local** (host `db`, `localhost` ou `127.0.0.1`):
-as senhas abaixo são públicas e não podem existir no banco compartilhado (Supabase). Para forçar, `--forcar`.
+as senhas abaixo são públicas e não podem existir no banco compartilhado (Supabase). Para forçar, `--forcar` junto de
+`--senha` (uma senha só sua para todas as contas, p. ex. para o site publicado) ou, de propósito, só `--forcar`.
+Com `ARMAZENAMENTO_FOTOS=banco` as fotos vão para o banco (é o que a hospedagem gratuita usa).
 
 Contas criadas (senha de todas: veja SENHA_DEMO):
     admin@exemplo.com                 administrador
@@ -384,7 +386,14 @@ def _popular_reencontro(db: Session) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Cria os dados de demonstração (abrigos, animais e contas).")
     parser.add_argument("--forcar", action="store_true", help="roda mesmo em banco que não é local (não use no Supabase)")
+    parser.add_argument("--senha", help="senha de todas as contas criadas (padrão: a senha pública da demonstração)")
     args = parser.parse_args()
+    if args.senha:
+        global SENHA_DEMO
+        if len(args.senha) < 10:
+            print("A senha precisa ter ao menos 10 caracteres.", file=sys.stderr)
+            return 1
+        SENHA_DEMO = args.senha
 
     host = make_url(settings.database_url).host
     if host not in HOSTS_LOCAIS and not args.forcar:
@@ -398,7 +407,8 @@ def main() -> int:
     with SessionLocal() as db:
         criados = popular(db)
     print(f"Pronto: {criados['contas']} conta(s) e {criados['animais']} animal(is) criados "
-          f"(o que já existia foi mantido). Senha de todas as contas: {SENHA_DEMO}")
+          f"(o que já existia foi mantido). "
+          + ("Senha de todas as contas: a que você informou em --senha." if args.senha else f"Senha de todas as contas: {SENHA_DEMO}"))
     return 0
 
 
