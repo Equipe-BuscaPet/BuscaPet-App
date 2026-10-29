@@ -1,6 +1,6 @@
 # BuscaPet — Manual Técnico
 
-Versão do sistema: **1.0.0-rc.1** (Release Candidate). Para quem vai instalar, executar, publicar ou dar continuidade
+Versão do sistema: **1.0.0** (versão final). Para quem vai instalar, executar, publicar ou dar continuidade
 ao desenvolvimento. O uso do sistema pelas pessoas está no **Manual do Usuário** (repositório
 [`BuscaPet-Docs`](https://github.com/Equipe-BuscaPet/BuscaPet-Docs), pasta `manuais/`).
 
