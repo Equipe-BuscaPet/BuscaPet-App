@@ -1,6 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -10,6 +11,15 @@ HOSTS_LOCAIS = {None, "", "localhost", "127.0.0.1", "db"}  # db = o Postgres do 
 
 # .env fica em api/.env — caminho absoluto para funcionar rodando de qualquer pasta.
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
+def normalizar_url_banco(url: str) -> str:
+    """Hospedagens entregam `postgres://` ou `postgresql://`; o SQLAlchemy precisa do driver (`+psycopg`)."""
+    url = url.strip()
+    for prefixo in ("postgres://", "postgresql://"):
+        if url.startswith(prefixo):
+            return "postgresql+psycopg://" + url[len(prefixo):]
+    return url
 
 
 class Settings(BaseSettings):
@@ -24,6 +34,8 @@ class Settings(BaseSettings):
     # Fotos do reencontro (RF-19/RF-20). Pasta fora do Git; ver app/core/fotos.py.
     pasta_fotos: Path = ENV_FILE.parent / "uploads" / "fotos"
     foto_tamanho_max_mb: int = 8
+    # "disco" (pasta_fotos) ou "banco" (tabela fotos_arquivos): em hospedagem gratuita o disco é apagado a cada reinício.
+    armazenamento_fotos: Literal["disco", "banco"] = "disco"
     # E-mail (RF-05, RF-36). Sem SMTP_HOST, os e-mails vão para a caixa de saída (arquivos .eml); ver app/core/email.py.
     smtp_host: str | None = None
     smtp_porta: int = 587
@@ -34,6 +46,11 @@ class Settings(BaseSettings):
     # Endereço da interface, usado nos links dos e-mails (ex.: redefinir senha).
     url_interface: str = "http://localhost:5173"
     redefinir_senha_minutos: int = 30
+
+    @field_validator("database_url")
+    @classmethod
+    def _driver_do_banco(cls, valor: str) -> str:
+        return normalizar_url_banco(valor)
 
     @model_validator(mode="after")
     def _segredo_de_verdade(self):

@@ -14,7 +14,7 @@ BUILD = build
 COMUM = src/ocl.c src/ocl.h
 NUCLEO = src/descritor.c src/descritor.h $(COMUM)
 
-.PHONY: all teste limpar
+.PHONY: all leve teste teste-leve limpar
 
 all: $(BUILD)/spike $(BUILD)/nucleo-servidor $(BUILD)/teste-nucleo $(BUILD)/bench
 
@@ -44,3 +44,16 @@ teste: $(BUILD)/spike $(BUILD)/teste-nucleo
 
 limpar:
 	rm -rf $(BUILD)
+
+# Build "leve": sem OpenCL (nem PoCL), só o servidor HTTP com a versão sequencial em C. Gera os mesmos
+# descritores e as mesmas notas; serve para hospedagem gratuita com pouca memória (imagem ~100 MB).
+leve: $(BUILD)/nucleo-servidor-leve $(BUILD)/teste-leve
+
+$(BUILD)/nucleo-servidor-leve: src/servidor.c src/descritor.c src/descritor.h | $(BUILD)
+	$(CC) $(CPPFLAGS) -USEM_OPENCL -DSEM_OPENCL $(CFLAGS) -pthread -o $@ src/servidor.c src/descritor.c 		-lmicrohttpd -lcjson -lm
+
+$(BUILD)/teste-leve: src/teste_nucleo.c src/descritor.c src/descritor.h | $(BUILD)
+	$(CC) $(CPPFLAGS) -DSEM_OPENCL $(CFLAGS) -o $@ src/teste_nucleo.c src/descritor.c -lm
+
+teste-leve: $(BUILD)/teste-leve
+	./$(BUILD)/teste-leve

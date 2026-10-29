@@ -1,0 +1,19 @@
+# Blueprint do Render (plano gratuito): um serviço web com a API + núcleo leve. Veja docs/deploy-gratuito.md.
+services:
+  - type: web
+    name: buscapet-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: false          # publicar só quando você mandar (Manual Deploy), para não gastar build à toa
+    envVars:
+      - key: DATABASE_URL      # connection string do Supabase (Session pooler); cole no painel, nunca no Git
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGENS      # ex.: ["https://buscapet.vercel.app"]  (lista em JSON)
+        sync: false
+      - key: URL_INTERFACE     # ex.: https://buscapet.vercel.app  (usado nos links dos e-mails)
+        sync: false

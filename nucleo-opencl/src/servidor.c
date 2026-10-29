@@ -33,7 +33,9 @@
 #define MAX_CONSULTAS 50
 
 typedef struct {
+#ifndef SEM_OPENCL
     NucleoOcl ocl;
+#endif
     Nucleo nucleo;
     char *json_saude; /* montado uma vez na partida: o dispositivo não muda */
 } Estado;
@@ -80,6 +82,28 @@ static cJSON *json_tempos(const Tempos *t) {
 
 /* ------------------------------------------------------------ /saude */
 
+#ifdef SEM_OPENCL
+/* Build leve: o mesmo formato de resposta, mas avisando que não há OpenCL (a API só lê "dispositivo"). */
+static char *montar_json_saude(void) {
+    cJSON *raiz = cJSON_CreateObject();
+    cJSON_AddStringToObject(raiz, "servico", "nucleo-opencl");
+    cJSON_AddStringToObject(raiz, "versao", VERSAO);
+    cJSON_AddStringToObject(raiz, "status", "ok");
+    cJSON_AddStringToObject(raiz, "versao_descritor", VERSAO_DESCRITOR);
+    cJSON_AddNumberToObject(raiz, "dimensao_descritor", DIM);
+    cJSON_AddStringToObject(raiz, "modo", "leve");
+    cJSON *o = cJSON_AddObjectToObject(raiz, "opencl");
+    cJSON_AddStringToObject(o, "plataforma", "nenhuma (build leve)");
+    cJSON_AddStringToObject(o, "versao", "-");
+    cJSON_AddStringToObject(o, "dispositivo", "CPU sequencial (sem OpenCL)");
+    cJSON_AddStringToObject(o, "tipo", "CPU");
+    cJSON_AddNumberToObject(o, "unidades_computo", 1);
+    cJSON_AddNumberToObject(o, "memoria_global_mb", 0);
+    char *texto = cJSON_PrintUnformatted(raiz);
+    cJSON_Delete(raiz);
+    return texto;
+}
+#else
 static char *montar_json_saude(const NucleoOcl *ocl) {
     char plataforma[256], versao_ocl[256], dispositivo[256];
     ocl_info_plataforma(ocl->plataforma, CL_PLATFORM_NAME, plataforma, sizeof(plataforma));
@@ -112,6 +136,8 @@ static char *montar_json_saude(const NucleoOcl *ocl) {
     cJSON_Delete(raiz);
     return texto;
 }
+
+#endif /* SEM_OPENCL */
 
 /* ------------------------------------------------------------ /extrair-descritor */
 
@@ -283,6 +309,13 @@ static void descritores_aleatorios(float *d, int n) {
 
 /* GET /benchmark?etapa=busca|lote|extracao&n=1000 — roda as duas versões
  * (com 1 aquecimento e média de 3) e confere se dão o mesmo resultado. */
+#ifdef SEM_OPENCL
+static enum MHD_Result rota_benchmark(Estado *e, struct MHD_Connection *con) {
+    (void)e;
+    return enviar_erro(con, MHD_HTTP_NOT_IMPLEMENTED, "Benchmark indisponível: este núcleo foi compilado sem OpenCL (build leve).");
+}
+
+#else
 static enum MHD_Result rota_benchmark(Estado *e, struct MHD_Connection *con) {
     const char *etapa = MHD_lookup_connection_value(con, MHD_GET_ARGUMENT_KIND, "etapa");
     const char *n_txt = MHD_lookup_connection_value(con, MHD_GET_ARGUMENT_KIND, "n");
@@ -360,6 +393,8 @@ static enum MHD_Result rota_benchmark(Estado *e, struct MHD_Connection *con) {
     cJSON_AddNumberToObject(raiz, "repeticoes", REP);
     return enviar_objeto(con, MHD_HTTP_OK, raiz);
 }
+
+#endif /* SEM_OPENCL */
 
 /* ------------------------------------------------------------ roteamento */
 
@@ -448,9 +483,13 @@ int main(void) {
     const int porta = porta_txt ? atoi(porta_txt) : 8001;
 
     Estado estado;
+#ifdef SEM_OPENCL
+    estado.json_saude = montar_json_saude();
+#else
     if (ocl_iniciar(&estado.ocl, 1) != 0) return EXIT_FAILURE; /* sem OpenCL, não sobe */
     nucleo_preparar(&estado.nucleo, &estado.ocl);                /* compila os kernels uma vez */
     estado.json_saude = montar_json_saude(&estado.ocl);
+#endif
 
     /* Bloqueia SIGINT/SIGTERM antes de criar as threads do servidor, para que
      * só a thread principal os receba (via sigwait) e o encerramento seja limpo
@@ -478,7 +517,9 @@ int main(void) {
 
     MHD_stop_daemon(daemon);
     cJSON_free(estado.json_saude);
+#ifndef SEM_OPENCL
     nucleo_liberar(&estado.nucleo);
     ocl_encerrar(&estado.ocl);
+#endif
     return EXIT_SUCCESS;
 }

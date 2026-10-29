@@ -164,7 +164,7 @@ docker compose up -d --build db api frontend nucleo-opencl
 
 2. **Dados de demonstração** (só em banco local; o script se recusa a rodar no Supabase, porque as senhas são
    públicas): `python -m app.scripts.popular_demo` (no Docker: `docker compose exec api python -m app.scripts.popular_demo`).
-   Cria 11 contas, 4 abrigos e 10 animais, com histórico de adoções, mural de necessidades e doações. Senha de
+   Cria 11 contas, 4 abrigos e 13 animais, com histórico de adoções, mural de necessidades e doações. Senha de
    todas: `Senha1234!`. É seguro repetir.
 
 3. **Administrador** (não existe cadastro público de admin):

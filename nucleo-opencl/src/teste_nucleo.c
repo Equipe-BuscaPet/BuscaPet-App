@@ -183,15 +183,19 @@ static void teste_comportamento(Nucleo *nc) {
 }
 
 int main(void) {
+    Nucleo nc;
+#ifndef SEM_OPENCL
     NucleoOcl ocl;
     if (ocl_iniciar(&ocl, 1) != 0) return 1;
-    Nucleo nc;
     nucleo_preparar(&nc, &ocl);
+#endif
     teste_equivalencia_descritores(&nc);
     teste_equivalencia_comparacao(&nc);
     teste_comportamento(&nc);
+#ifndef SEM_OPENCL
     nucleo_liberar(&nc);
     ocl_encerrar(&ocl);
+#endif
     printf(falhas ? "\n%d teste(s) FALHARAM\n" : "\nTodos os testes passaram\n", falhas);
     return falhas ? 1 : 0;
 }

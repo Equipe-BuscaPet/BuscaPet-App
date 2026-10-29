@@ -5,7 +5,9 @@ Uso, a partir da pasta api/ (ou dentro do container: `docker compose exec api py
 
 É seguro rodar mais de uma vez: o que já existe (pelo e-mail da conta ou pelo nome do animal no abrigo)
 é ignorado. Por segurança, o script **só roda em banco local** (host `db`, `localhost` ou `127.0.0.1`):
-as senhas abaixo são públicas e não podem existir no banco compartilhado (Supabase). Para forçar, `--forcar`.
+as senhas abaixo são públicas e não podem existir no banco compartilhado (Supabase). Para forçar, `--forcar` junto de
+`--senha` (uma senha só sua para todas as contas, p. ex. para o site publicado) ou, de propósito, só `--forcar`.
+Com `ARMAZENAMENTO_FOTOS=banco` as fotos vão para o banco (é o que a hospedagem gratuita usa).
 
 Contas criadas (senha de todas: veja SENHA_DEMO):
     admin@exemplo.com                 administrador
@@ -74,6 +76,9 @@ ABRIGOS = [
             ("Thor", Especie.CAO, "grande", Sexo.MACHO, 36, "Brincalhão e leal"),
             ("Mel", Especie.CAO, "pequeno", Sexo.FEMEA, 8, "Tranquila e dócil"),
             ("Bolinha", Especie.CAO, "pequeno", Sexo.MACHO, 24, "Esperto e sociável"),
+            ("Tigre", Especie.GATO, "medio", Sexo.MACHO, 36, "Sossegado e carente"),
+            ("Frajola", Especie.GATO, "medio", Sexo.MACHO, 20, "Curioso e brincalhão"),
+            ("Cacau", Especie.GATO, "pequeno", Sexo.FEMEA, 12, "Esperta e dengosa"),
         ],
     },
     {
@@ -187,6 +192,7 @@ def popular(db: Session) -> dict[str, int]:
 
     _popular_doacoes(db, criados)
     _popular_historico(db, criados)
+    db.flush()  # a sessão não faz autoflush: sem isto, os animais recém-criados ficam sem capa até a próxima execução
     _popular_fotos(db)
     _popular_reencontro(db)
     db.commit()
@@ -305,25 +311,56 @@ FOTO_POR_ESPECIE = {Especie.CAO: "cachorro-caramelo.jpg", Especie.GATO: "gato-ci
 CAES = FOTOS_DEMO / "caes"
 CAPA_DOS_ANIMAIS = {"Thor": "preto-felpudo", "Mel": "bege-e-branco", "Bolinha": "preto-e-fogo", "Rex": "pastor-alemao"}
 
+# Fotos reais de gatos (Cat Individual Images, CC BY 4.0; créditos em fotos_demo/gatos/CREDITOS.md): uma pasta por gato, 3 fotos.
+GATOS = FOTOS_DEMO / "gatos"
+CAPA_DOS_GATOS = {
+    "Luna": "preto", "Mia": "branco", "Simba": "laranja", "Pipoca": "branco-e-preto",
+    "Tigre": "cinza-rajado", "Frajola": "preto-e-branco", "Cacau": "casco-de-tartaruga",
+}
+
 
 def _salvar_foto(arquivo: Path) -> str:
     """Grava a foto com o mesmo tratamento do envio real e devolve a URL pública."""
     return armazenamento.url_publica(armazenamento.salvar(armazenamento.processar(arquivo.read_bytes())))
 
 
+def _arquivo_da_capa(animal: Animal) -> Path | None:
+    if animal.nome in CAPA_DOS_ANIMAIS:
+        return CAES / CAPA_DOS_ANIMAIS[animal.nome] / "1.jpg"
+    if animal.especie == Especie.GATO and animal.nome in CAPA_DOS_GATOS:
+        return GATOS / CAPA_DOS_GATOS[animal.nome] / "1.jpg"
+    if animal.especie in FOTO_POR_ESPECIE:
+        return FOTOS_DEMO / FOTO_POR_ESPECIE[animal.especie]
+    return None
+
+
 def _popular_fotos(db: Session) -> None:
-    """Capa para os animais de demonstração que ainda não têm foto (RF-17): o cão certo, ou a foto genérica da espécie."""
+    """Capa para os animais de demonstração que ainda não têm foto (RF-17): o cão ou gato certo, ou a foto genérica da espécie."""
     com_foto = set(db.scalars(select(Foto.entidade_id).where(Foto.entidade_tipo == EntidadeFoto.ANIMAL.value)))
     for animal in db.scalars(select(Animal)):
-        if animal.id in com_foto:
-            continue
-        if animal.nome in CAPA_DOS_ANIMAIS:
-            arquivo = CAES / CAPA_DOS_ANIMAIS[animal.nome] / "1.jpg"
-        elif animal.especie in FOTO_POR_ESPECIE:
-            arquivo = FOTOS_DEMO / FOTO_POR_ESPECIE[animal.especie]
-        else:
-            continue
-        db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=_salvar_foto(arquivo), ordem=0))
+        arquivo = None if animal.id in com_foto else _arquivo_da_capa(animal)
+        if arquivo:
+            db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id, url=_salvar_foto(arquivo), ordem=0))
+
+
+def trocar_capas_genericas(db: Session) -> int:
+    """Troca a foto genérica da espécie pela foto real nos gatos de demonstração que ainda a usam (bancos populados antes
+    das fotos reais). Só mexe em quem tem exatamente a foto genérica, então fotos enviadas por usuários ficam como estão."""
+    generica = armazenamento.processar((FOTOS_DEMO / FOTO_POR_ESPECIE[Especie.GATO]).read_bytes())
+    trocadas = 0
+    for animal in db.scalars(select(Animal).where(Animal.especie == Especie.GATO, Animal.nome.in_(CAPA_DOS_GATOS))):
+        for foto in db.scalars(select(Foto).where(Foto.entidade_tipo == EntidadeFoto.ANIMAL.value, Foto.entidade_id == animal.id)):
+            nome = armazenamento.nome_da_url(foto.url)
+            if armazenamento.ler(nome) != generica:
+                continue
+            if foto.descritor:
+                db.delete(foto.descritor)
+            db.delete(foto)
+            armazenamento.apagar([nome])
+            db.add(Foto(entidade_tipo=EntidadeFoto.ANIMAL.value, entidade_id=animal.id,
+                        url=_salvar_foto(_arquivo_da_capa(animal)), ordem=foto.ordem))
+            trocadas += 1
+    return trocadas
 
 
 # Reencontro para a busca por foto. Cada cão aparece em dois lugares com fotos diferentes:
@@ -384,7 +421,16 @@ def _popular_reencontro(db: Session) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Cria os dados de demonstração (abrigos, animais e contas).")
     parser.add_argument("--forcar", action="store_true", help="roda mesmo em banco que não é local (não use no Supabase)")
+    parser.add_argument("--senha", help="senha de todas as contas criadas (padrão: a senha pública da demonstração)")
+    parser.add_argument("--trocar-fotos-gatos", action="store_true",
+                        help="troca a foto genérica dos gatos de demonstração pela foto real (para bancos já populados)")
     args = parser.parse_args()
+    if args.senha:
+        global SENHA_DEMO
+        if len(args.senha) < 10:
+            print("A senha precisa ter ao menos 10 caracteres.", file=sys.stderr)
+            return 1
+        SENHA_DEMO = args.senha
 
     host = make_url(settings.database_url).host
     if host not in HOSTS_LOCAIS and not args.forcar:
@@ -395,10 +441,18 @@ def main() -> int:
         )
         return 1
 
+    if args.trocar_fotos_gatos:
+        with SessionLocal() as db:
+            trocadas = trocar_capas_genericas(db)
+            db.commit()
+        print(f"{trocadas} foto(s) genérica(s) de gato trocada(s) pela foto real. Rode indexar_fotos para calcular os descritores.")
+        return 0
+
     with SessionLocal() as db:
         criados = popular(db)
     print(f"Pronto: {criados['contas']} conta(s) e {criados['animais']} animal(is) criados "
-          f"(o que já existia foi mantido). Senha de todas as contas: {SENHA_DEMO}")
+          f"(o que já existia foi mantido). "
+          + ("Senha de todas as contas: a que você informou em --senha." if args.senha else f"Senha de todas as contas: {SENHA_DEMO}"))
     return 0
 
 

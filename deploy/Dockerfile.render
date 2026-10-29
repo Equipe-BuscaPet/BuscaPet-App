@@ -1,0 +1,39 @@
+# Imagem única para a hospedagem gratuita (Render free): a API (Python) e o núcleo leve (C, sem OpenCL)
+# no mesmo contêiner, como DOIS PROCESSOS separados que conversam por HTTP em 127.0.0.1:8001 — a arquitetura
+# continua a mesma (o núcleo é um serviço à parte); só a embalagem muda. Motivo: o plano gratuito dá ~750 h/mês
+# no total, o que sustenta UM serviço sempre ligado, e um serviço dormindo derrubaria a busca por foto.
+#
+# Contexto de build: a raiz do repositório.
+
+# ---------- Estágio 1: compila e testa o núcleo leve ----------
+FROM debian:bookworm-slim AS nucleo
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential libmicrohttpd-dev libcjson-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY nucleo-opencl/Makefile ./
+COPY nucleo-opencl/src/ ./src/
+RUN make leve && make teste-leve
+
+# ---------- Estágio 2: a API ----------
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get install -y --no-install-recommends libmicrohttpd12 libcjson1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home api
+WORKDIR /app
+COPY api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+# Cópias explícitas (e não "COPY api/ .") para que api/.env, .venv e uploads nunca entrem na imagem.
+COPY api/app ./app
+COPY api/alembic ./alembic
+COPY api/alembic.ini .
+COPY --from=nucleo /src/build/nucleo-servidor-leve /usr/local/bin/nucleo-servidor
+COPY deploy/render-start.sh /usr/local/bin/render-start.sh
+RUN chmod +x /usr/local/bin/render-start.sh && mkdir -p caixa-de-saida && chown -R api /app
+USER api
+
+ENV ARMAZENAMENTO_FOTOS=banco \
+    NUCLEO_OPENCL_URL=http://127.0.0.1:8001 \
+    PORTA=8001
+EXPOSE 8000
+CMD ["render-start.sh"]

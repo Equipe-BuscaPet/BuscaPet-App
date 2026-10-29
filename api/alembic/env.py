@@ -14,9 +14,19 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+def normalizar_url_banco(url: str) -> str:
+    """Igual a app.core.config.normalizar_url_banco (não importado: criar Settings exigiria JWT_SECRET)."""
+    url = url.strip()
+    for prefixo in ("postgres://", "postgresql://"):
+        if url.startswith(prefixo):
+            return "postgresql+psycopg://" + url[len(prefixo):]
+    return url
+
+
 config.set_main_option(
     "sqlalchemy.url",
-    os.environ.get("DATABASE_URL", "postgresql+psycopg://buscapet:buscapet@localhost:5432/buscapet"),
+    # "%%": o configparser do Alembic trata "%" como interpolação, e senhas de banco podem ter "%".
+    normalizar_url_banco(os.environ.get("DATABASE_URL", "postgresql+psycopg://buscapet:buscapet@localhost:5432/buscapet")).replace("%", "%%"),
 )
 
 target_metadata = Base.metadata

@@ -103,6 +103,13 @@ CREATE TABLE fotos (
 );
 CREATE INDEX ix_fotos_entidade ON fotos (entidade_tipo, entidade_id);
 
+-- JPEG da foto, usado quando ARMAZENAMENTO_FOTOS=banco (hospedagem sem disco permanente); nome = o de fotos.url
+CREATE TABLE fotos_arquivos (
+    nome      VARCHAR(40) PRIMARY KEY,
+    conteudo  BYTEA NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE interesses (
     id         SERIAL PRIMARY KEY,
     animal_id  INTEGER NOT NULL REFERENCES animais(id),

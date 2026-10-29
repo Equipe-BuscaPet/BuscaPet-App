@@ -1,0 +1,24 @@
+# Núcleo "leve" do BuscaPet — o mesmo serviço em C, sem OpenCL nem PoCL (imagem pequena).
+# Serve para hospedagem gratuita com pouca memória (Render free: 512 MB). Gera os mesmos descritores e
+# as mesmas notas que o núcleo completo; só não paraleliza nem tem o benchmark do RF-29.
+
+FROM debian:bookworm-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libmicrohttpd-dev libcjson-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY Makefile ./
+COPY src/ ./src/
+# O build só termina se os testes passarem (equivalência e comportamento do descritor).
+RUN make leve && make teste-leve
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libmicrohttpd12 libcjson1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home nucleo
+WORKDIR /app
+COPY --from=build /src/build/nucleo-servidor-leve ./nucleo-servidor
+ENV PORTA=8001
+USER nucleo
+EXPOSE 8001
+CMD ["./nucleo-servidor"]
