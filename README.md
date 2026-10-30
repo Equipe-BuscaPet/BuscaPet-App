@@ -5,7 +5,7 @@ para abrigos, voltada a Recife e região. Projeto acadêmico da Universidade Mau
 Ciência da Computação, integrando as disciplinas de Fábrica de Software, Tópicos Avançados e Atividades Práticas
 Interdisciplinares de Extensão IV.
 
-**Versão atual: `1.0.0-rc.1` (Release Candidate, Sprint 10).** Entrega final: 05/12/2026.
+**Versão atual: `1.0.0` (versão final, Sprint 12).** Entrega final: 05/12/2026.
 
 ## Objetivo
 
