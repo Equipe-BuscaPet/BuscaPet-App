@@ -178,7 +178,8 @@ Nenhuma credencial fica no repositório: os arquivos `.env` estão no `.gitignor
 | `CORS_ORIGENS` | em produção | endereços da interface que podem chamar a API, em **formato JSON** | `["https://buscapet.exemplo.app"]` |
 | `URL_INTERFACE` | em produção | endereço da interface, usado nos links dos e-mails | `https://buscapet.exemplo.app` |
 | `SMTP_HOST`, `SMTP_PORTA`, `SMTP_USUARIO`, `SMTP_SENHA`, `EMAIL_REMETENTE` | não | envio real de e-mail (recuperação de senha, avisos). Sem `SMTP_HOST`, os e-mails viram arquivos em `api/caixa-de-saida/` | — |
-| `PASTA_FOTOS` | não | onde as fotos são gravadas (precisa ser um disco **persistente** em produção) | `/dados/fotos` |
+| `ARMAZENAMENTO_FOTOS` | não | onde ficam os JPEGs: `disco` (padrão) ou `banco` (tabela `fotos_arquivos`). Em hospedagem de disco efêmero, como o plano gratuito do Render, use `banco` | `banco` |
+| `PASTA_FOTOS` | não | pasta das fotos no modo `disco` (precisa ser um disco **persistente** em produção) | `/dados/fotos` |
 | `PORT` | não | porta da API na imagem Docker (as hospedagens costumam definir sozinhas) | `8000` |
 
 **Interface** (no momento do build): `VITE_API_URL` = endereço público da API (padrão `http://localhost:8000`).
@@ -254,21 +255,50 @@ A CI (`.github/workflows/ci.yml`) roda tudo a cada Pull Request, em quatro traba
 
 ## 13. Publicação em produção
 
-A publicação precisa de quatro peças. O que vale para qualquer hospedagem:
+### 13.1 Publicação gratuita em uso (Sprint 12)
+
+A versão `1.0.0` está publicada sem custo e sem cartão, em três peças. O passo a passo completo está em
+[`deploy-gratuito.md`](deploy-gratuito.md); o `render.yaml` da raiz descreve o serviço do Render.
+
+| Peça | Hospedagem | Endereço |
+|---|---|---|
+| Interface | Vercel (Hobby), pasta `frontend/` | https://busca-pet-app.vercel.app |
+| API + núcleo leve | Render (free), `deploy/Dockerfile.render`, dois processos no mesmo contêiner | https://buscapet-api.onrender.com |
+| Banco e fotos | Supabase (free), PostgreSQL, migrações 0001 a 0006 | — |
+
+Decisões que o plano gratuito impôs:
+
+- **Núcleo leve.** A imagem do núcleo OpenCL passa de 850 MB e o plano dá 512 MB de memória. No Render roda a versão
+  sequencial em C (cerca de 114 MB), que produz os **mesmos descritores e as mesmas notas** (o teste de equivalência
+  roda no build). Não há ganho de velocidade, e `/admin/nucleo/benchmark` responde 503. O OpenCL completo, com o
+  benchmark, roda no computador da apresentação (`iniciar-demo.ps1`).
+- **Fotos no banco.** O disco do Render é apagado a cada reinício; por isso `ARMAZENAMENTO_FOTOS=banco` (já definido
+  na imagem) grava os JPEGs na tabela `fotos_arquivos`.
+- **A API dorme.** Sem acesso por 15 minutos, a primeira requisição leva de 30 a 50 s: abrir o site uns 2 minutos antes
+  de uma apresentação. O Supabase **pausa** após cerca de uma semana sem uso: restaurar no painel.
+- **Publicação manual.** O serviço usa `autoDeploy: false`; depois de um merge na `main`, publicar em Render →
+  `buscapet-api` → *Manual Deploy → Deploy latest commit*. A Vercel publica sozinha a cada merge.
+- **Variáveis.** No Render: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGENS` (lista JSON, nome com **E**) e
+  `URL_INTERFACE` (endereço puro, sem colchetes). Na Vercel: `VITE_API_URL`.
+- **Dados de demonstração.** O `popular_demo` recusa bancos remotos porque as senhas dele são públicas. Em produção
+  roda com `--forcar --senha <valor>`, com uma senha aleatória guardada fora do repositório, e a opção
+  `--trocar-fotos-gatos` troca a foto genérica dos gatos pelas fotos reais (créditos em
+  `api/app/scripts/fotos_demo/*/CREDITOS.md`, licença CC BY 4.0). **Trocar todas as senhas ao fim da apresentação.**
+
+### 13.2 Publicação em outra hospedagem
+
+Se o sistema for para uma hospedagem sem as limitações acima, as quatro peças são:
 
 | Peça | Como publicar | Atenção |
 |---|---|---|
-| Banco | Supabase (PostgreSQL) | rodar `alembic upgrade head` com a `DATABASE_URL` de produção antes de subir a API; o plano gratuito **pausa** após cerca de uma semana sem uso (acessar o painel e restaurar) |
-| API | imagem `api/Dockerfile` (já roda sem `--reload`, como usuário sem privilégios, na porta `$PORT`) | **as fotos ficam em disco** (`PASTA_FOTOS`): a hospedagem precisa de **volume persistente**, senão as fotos somem a cada nova publicação; definir `JWT_SECRET`, `CORS_ORIGENS`, `URL_INTERFACE` e `NUCLEO_OPENCL_URL` |
+| Banco | PostgreSQL gerenciado (ex.: Supabase) | rodar `alembic upgrade head` com a `DATABASE_URL` de produção antes de subir a API |
+| API | imagem `api/Dockerfile` (já roda sem `--reload`, como usuário sem privilégios, na porta `$PORT`) | com `ARMAZENAMENTO_FOTOS=disco`, a hospedagem precisa de **volume persistente** em `PASTA_FOTOS`, senão as fotos somem a cada nova publicação; definir `JWT_SECRET`, `CORS_ORIGENS`, `URL_INTERFACE` e `NUCLEO_OPENCL_URL` |
 | Núcleo | imagem `nucleo-opencl/Dockerfile` (cerca de 850 MB) | precisa de memória para o PoCL (reserve pelo menos 1 GB); se ficar em rede interna da hospedagem, a API o alcança pelo nome do serviço |
 | Interface | `npm run build` com `VITE_API_URL` = endereço da API → publicar a pasta `dist/` em hospedagem estática | as regras para recarregar páginas internas já estão no projeto: `frontend/vercel.json` (Vercel) e `public/_redirects` (Netlify, Render) |
 
 Depois da primeira publicação: `python -m app.scripts.criar_admin` (administrador) e
-`python -m app.scripts.indexar_fotos` (descritores das fotos). Os dados de demonstração (`popular_demo`) foram feitos
-para banco local e se recusam a rodar num banco remoto, porque as senhas deles são públicas. Para a apresentação, o
-caminho recomendado é cadastrar abrigos, animais e contas pela própria interface; se a equipe decidir usar o cenário
-de demonstração em produção, `--forcar` existe, e as senhas dessas contas precisam ser trocadas logo depois. Conferir `/health/db` na API,
-`/saude` no núcleo e a aba Administração → Núcleo OpenCL ("No ar").
+`python -m app.scripts.indexar_fotos` (descritores das fotos). Conferir `/health/db` na API, `/saude` no núcleo e a
+aba Administração → Núcleo OpenCL ("No ar").
 
 ## 14. Manutenção e continuidade
 
@@ -290,6 +320,7 @@ de demonstração em produção, `--forcar` existe, e as senhas dessas contas pr
 |---|---|---|
 | Pagamento não acontece dentro da plataforma; doação em dinheiro é por PIX direto ao abrigo, confirmada por ele | fora do escopo (exige intermediador de pagamento) | o abrigo confirma manualmente cada PIX |
 | Tabela `membros_equipe_abrigo`, coluna `abrigos.documento_comprobatorio_url` e o tipo de correspondência `busca_inversa` existem no modelo, mas não têm tela | previstos na modelagem da Sprint 2; ficaram para depois da versão 1.0 | nenhum: não interferem no uso |
-| Fotos gravadas no disco do servidor da API | simplicidade; a troca por um armazenamento externo fica isolada em `app/core/fotos.py` | a hospedagem precisa de disco persistente (seção 13) |
+| Fotos no disco (padrão) ou na tabela `fotos_arquivos` (`ARMAZENAMENTO_FOTOS=banco`); sem armazenamento de objetos externo | simplicidade; a troca fica isolada em `app/core/fotos.py` | no modo `disco`, a hospedagem precisa de volume persistente; no modo `banco`, as fotos ocupam o limite de 500 MB do Supabase gratuito (seção 13) |
+| Na versão publicada, o núcleo roda em modo leve (C sequencial, sem OpenCL) e a API dorme após 15 min sem acesso | limites de 512 MB e de horas do plano gratuito do Render | sem benchmark online (ele roda na demonstração local) e primeira requisição lenta (seção 13.1) |
 | Alerta do `esbuild` (ferramenta do servidor de desenvolvimento do Vite) | a correção exige trocar o Vite 5 pelo 8 | só afeta `npm run dev`; o site publicado (`npm run build`) não usa esse servidor |
 | Núcleo testado em CPU (PoCL), não em GPU | a hospedagem e as máquinas da equipe não têm GPU dedicada | o código é OpenCL padrão e roda em GPU sem mudanças, se houver |
